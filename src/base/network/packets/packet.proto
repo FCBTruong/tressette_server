@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+message Packet {
+  int32 cmd_id = 1;        // CMD ID
+  bytes payload = 2;       // Generic payload (serialized message)
+}
+
+message ChatMessage {
+  string username = 1;
+  string message = 2;
+}
