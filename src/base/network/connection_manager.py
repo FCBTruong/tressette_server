@@ -31,11 +31,15 @@ class ConnectionManager:
         print(f"Packet sent: cmd_id={cmd_id}, payload={payload}")
 
     async def receive_packet(self, raw_data):
-        packet = Packet()
-        packet.ParseFromString(raw_data)
-        cmd_id = packet.cmd_id
-        payload = packet.payload
-        print(f"Packet received: cmd_id={cmd_id}")
-        packet_processor.on_receive_packet(cmd_id, payload)
+        try:
+            print(f"Raw data received: {raw_data}")  # Log raw bytes for debugging
+            packet = Packet()
+            packet.ParseFromString(raw_data)
+            cmd_id = packet.cmd_id
+            payload = packet.payload
+            print(f"Packet received: cmd_id={cmd_id}")
+            packet_processor.on_receive_packet(cmd_id, payload)
+        except Exception as e:
+            print(f"Failed to parse packet: {e}")
 
 connection_manager = ConnectionManager()
