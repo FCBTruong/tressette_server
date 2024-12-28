@@ -6,10 +6,12 @@ message Packet {
 }
 
 message ChatMessage {
-  string username = 1;     // User's name
-  uint32 level = 2;        // Level (using uint32 for single-byte values)
-  int32 gold = 3;         // Gold (using int32)
-  string message = 4;      // Chat message
+  double abc = 1;
+  string username = 2;     // User's name
+  int64 level = 3;        // Level (using uint32 for single-byte values)
+  int32 gold = 4;         // Gold (using int32)
+  string message = 5;      // Chat message
+  bool is_active = 6;
 }
 
 
@@ -18,5 +20,5 @@ message PingPong {
 }
 
 message Login {
-  
+
 }

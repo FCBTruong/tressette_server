@@ -110,7 +110,7 @@ class ConnectionManager:
             if cmd_id == CMD_PING_PONG:
                 self.ping_responses[websocket] += 1  # Increment pong counter
             else:
-                game_client.on_receive_packet(cmd_id, payload)
+                await game_client.on_receive_packet(cmd_id, payload)
                 pass
         except Exception as e:
             print(f"Failed to parse packet: {e}")

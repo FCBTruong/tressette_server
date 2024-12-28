@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cpacket.proto\")\n\x06Packet\x12\x0e\n\x06\x63md_id\x18\x01 \x01(\x05\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\"M\n\x0b\x43hatMessage\x12\x10\n\x08username\x18\x01 \x01(\t\x12\r\n\x05level\x18\x02 \x01(\r\x12\x0c\n\x04gold\x18\x03 \x01(\x05\x12\x0f\n\x07message\x18\x04 \x01(\t\"\n\n\x08PingPongb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cpacket.proto\")\n\x06Packet\x12\x0e\n\x06\x63md_id\x18\x01 \x01(\x05\x12\x0f\n\x07payload\x18\x02 \x01(\x0c\"m\n\x0b\x43hatMessage\x12\x0b\n\x03\x61\x62\x63\x18\x01 \x01(\x01\x12\x10\n\x08username\x18\x02 \x01(\t\x12\r\n\x05level\x18\x03 \x01(\x03\x12\x0c\n\x04gold\x18\x04 \x01(\x05\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x11\n\tis_active\x18\x06 \x01(\x08\"\n\n\x08PingPong\"\x07\n\x05Loginb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,7 +34,9 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_PACKET']._serialized_start=16
   _globals['_PACKET']._serialized_end=57
   _globals['_CHATMESSAGE']._serialized_start=59
-  _globals['_CHATMESSAGE']._serialized_end=136
-  _globals['_PINGPONG']._serialized_start=138
-  _globals['_PINGPONG']._serialized_end=148
+  _globals['_CHATMESSAGE']._serialized_end=168
+  _globals['_PINGPONG']._serialized_start=170
+  _globals['_PINGPONG']._serialized_end=180
+  _globals['_LOGIN']._serialized_start=182
+  _globals['_LOGIN']._serialized_end=189
 # @@protoc_insertion_point(module_scope)

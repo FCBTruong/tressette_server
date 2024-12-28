@@ -5,7 +5,7 @@ class GameClient:
     def __init__(self):
         pass
 
-    def on_receive_packet(self, cmd_id, payload):
+    async def on_receive_packet(self, cmd_id, payload):
         match cmd_id:
             case CMDs.TEST_MESSAGE:
                 print("Received TEST_MESSAGE packet")
@@ -14,7 +14,7 @@ class GameClient:
                 chat_message = ChatMessage()
                 try:
                     chat_message.ParseFromString(payload)
-                    print(f"Message from {chat_message.gold}")
+                    print(f"Message from {chat_message}")
                 except Exception as e:
                     print(f"Failed to parse ChatMessage: {e}")
             
@@ -24,7 +24,7 @@ class GameClient:
             case _:
                 print(f"Unknown command ID: {cmd_id}")
 
-    def send_packet(self, user_id, cmd_id, payload):
+    async def send_packet(self, user_id, cmd_id, payload):
         pass
 
 # Instantiate the PacketProcessor
