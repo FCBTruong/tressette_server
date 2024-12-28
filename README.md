@@ -1,3 +1,3 @@
 
-python -m grpc_tools.protoc -I. --python_out=. message.proto
+python -m grpc_tools.protoc -I. --python_out=. packet.proto
 uvicorn main:app --reload

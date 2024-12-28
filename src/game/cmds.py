@@ -1,9 +1,5 @@
 class CMDs:
-    LOGIN = 0
-    LOGOUT = 1
-    USER_INFO = 2
-    FRIEND_LIST = 3
-    ADD_FRIEND = 4
-    REMOVE_FRIEND = 5
-    PLAY_NOW = 6
+    # PING_PONG = 0 set in base
+    LOGIN = 100
+    LOGOUT = 101
     TEST_MESSAGE = 1000

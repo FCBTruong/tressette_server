@@ -1,7 +1,7 @@
 from src.game.cmds import CMDs
 from src.base.network.packets.packet_pb2 import ChatMessage  # Import ChatMessage from the protobuf module
 
-class PacketProcessor:
+class GameClient:
     def __init__(self):
         pass
 
@@ -14,18 +14,18 @@ class PacketProcessor:
                 chat_message = ChatMessage()
                 try:
                     chat_message.ParseFromString(payload)
-                    print(f"Message from {chat_message.username}: {chat_message.message}")
+                    print(f"Message from {chat_message.gold}")
                 except Exception as e:
                     print(f"Failed to parse ChatMessage: {e}")
             
             case CMDs.LOGOUT:
                 print("Received LOGOUT packet")
 
-            case CMDs.USER_INFO:
-                print("Received USER_INFO packet")
-
             case _:
                 print(f"Unknown command ID: {cmd_id}")
 
+    def send_packet(self, user_id, cmd_id, payload):
+        pass
+
 # Instantiate the PacketProcessor
-packet_processor = PacketProcessor()
+game_client = GameClient()

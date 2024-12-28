@@ -51,13 +51,5 @@ async def get():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     print(f"New WebSocket connection from Client")
-    await connection_manager.connect(websocket)
-    try:
-        while True:
-            data = await websocket.receive_bytes()
-            await connection_manager.receive_packet(data)
-
-    except WebSocketDisconnect:
-        await connection_manager.disconnect(websocket)
-    
+    await connection_manager.handle_new_connection(websocket)
 
