@@ -1,5 +1,8 @@
 syntax = "proto3";
 
+message Empty {
+}
+
 message Packet {
   string token = 1;
   int32 cmd_id = 2;        // CMD ID
@@ -30,4 +33,14 @@ message Login {
 message LoginResponse {
   int32 uid = 1;
   string token = 2;
+}
+
+message UserInfo {
+  int32 uid = 1;
+  string name = 2;
+  int64 gold = 3;
+}
+
+message GameInfo {
+  
 }

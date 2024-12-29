@@ -1,0 +1,42 @@
+from asyncio.log import logger
+import os
+from typing import Optional
+from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
+from enum import Enum
+
+# Load environment variables from .env file
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+
+class EnvironmentOption(Enum):
+    LOCAL = "local"
+    STAGING = "staging"
+    PRODUCTION = "production"
+
+class EnvironmentSettings(BaseSettings):
+    ENVIRONMENT: EnvironmentOption = os.getenv("ENVIRONMENT", default="local")
+
+class DatabaseSettings(BaseSettings):
+    pass
+
+class PostgresSettings(DatabaseSettings):
+    POSTGRES_USER: Optional[str] = os.getenv("POSTGRES_USER")
+    POSTGRES_PASSWORD: Optional[str] = os.getenv("POSTGRES_PASSWORD")
+    POSTGRES_SERVER: Optional[str] = os.getenv("POSTGRES_SERVER")
+    POSTGRES_PORT: Optional[str] = os.getenv("POSTGRES_PORT")
+    POSTGRES_DB: Optional[str] = os.getenv("POSTGRES_DB")
+
+    # PsqlORM settings
+    POSTGRES_POOL_SIZE: Optional[int] = os.getenv("POSTGRES_POOL_SIZE", 100)
+    POSTGRES_MAX_OVERFLOW: Optional[int] = os.getenv("POSTGRES_MAX_OVERFLOW", 100)
+    POSTGRES_POOL_TIMEOUT: Optional[int] = os.getenv("POSTGRES_POOL_TIMEOUT", 30)
+    POSTGRES_POOL_RECYCLE: Optional[int] = os.getenv("POSTGRES_POOL_RECYCLE", 3600)
+
+
+class Settings(
+    EnvironmentSettings,
+    PostgresSettings,
+):
+    pass
+
+settings = Settings()

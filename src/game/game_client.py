@@ -1,3 +1,4 @@
+from src.base.network.packets import packet_pb2
 from src.game.cmds import CMDs
 from src.base.network.packets.packet_pb2 import ChatMessage  # Import ChatMessage from the protobuf module
 
@@ -23,18 +24,25 @@ class GameClient:
             
             case CMDs.QUICK_PLAY:
                 print("Received QUICK_PLAY packet")
-                await self.send_packet(uid, CMDs.GAME_INFO, b"Game info!")
+                game_info = packet_pb2.GameInfo()
+                await self.send_packet(uid, CMDs.GAME_INFO, game_info)
             case _:
                 print(f"Unknown command ID: {cmd_id}")
 
     async def user_login_success(self, uid):
         from src.base.network.connection_manager import connection_manager
         print(f"User with ID {uid} has successfully logged in")
-        await self.send_packet(uid, CMDs.GENERAL_INFO, b"Welcome to the server!")
+        await self.send_packet(uid, CMDs.GENERAL_INFO, packet_pb2.Empty())
+
+        user_info = packet_pb2.UserInfo()
+        user_info.name = "test"
+        user_info.gold = 1111
+        user_info.uid = uid
+        await self.send_packet(uid, CMDs.USER_INFO, user_info)
     
-    async def send_packet(self, uid, cmd_id, payload):
+    async def send_packet(self, uid, cmd_id, pkt):
         from src.base.network.connection_manager import connection_manager
-        await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=payload)
+        await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())
         pass
 
 # Instantiate the PacketProcessor
