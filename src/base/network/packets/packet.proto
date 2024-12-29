@@ -20,5 +20,8 @@ message PingPong {
 }
 
 message Login {
-
+  bool active = 4;
+  int32 uid = 1;
+  string username = 2;
+  double abc = 3;
 }

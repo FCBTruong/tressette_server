@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import WebSocket, WebSocketDisconnect
 from src.game.game_client import game_client
-from src.base.network.packets.packet_pb2 import Packet, PingPong
+from src.base.network.packets import packet_pb2
 from src.game.cmds import CMDs
 
 MAX_RETRY_PINGS = 3
@@ -55,7 +55,7 @@ class ConnectionManager:
 
     async def _send_ping_packet(self, websocket: WebSocket):
         """Sends a ping packet."""
-        ping = PingPong()  # Empty message
+        ping = packet_pb2.PingPong()  # Empty message
         payload_ping = ping.SerializeToString()
         await self.send_packet(websocket, CMD_PING_PONG, payload_ping)
 
@@ -91,7 +91,7 @@ class ConnectionManager:
         """Sends a serialized packet to the WebSocket."""
         print(f"Sending packet: cmd_id={cmd_id}")
         
-        packet = Packet(cmd_id=cmd_id, payload=payload)
+        packet = packet_pb2.Packet(cmd_id=cmd_id, payload=payload)
         serialized_packet = packet.SerializeToString()
 
         # Send the serialized packet
@@ -101,7 +101,7 @@ class ConnectionManager:
     async def handle_received_packet(self, websocket: WebSocket, raw_data: bytes):
         """Handles incoming packets and responds accordingly."""
         try:
-            packet = Packet()
+            packet = packet_pb2.Packet()
             packet.ParseFromString(raw_data)
             cmd_id = packet.cmd_id
             payload = packet.payload
@@ -111,6 +111,15 @@ class ConnectionManager:
                 self.ping_responses[websocket] += 1  # Increment pong counter
             else:
                 await game_client.on_receive_packet(cmd_id, payload)
+
+                chat_message = packet_pb2.Login()
+                chat_message.abc = 100.1
+                chat_message.username = "test"
+                chat_message.uid = 222
+                chat_message.active = True
+
+                p = chat_message.SerializeToString()
+                await self.send_packet(websocket, CMDs.TEST_MESSAGE, p)  # Echo the message back to the client
                 pass
         except Exception as e:
             print(f"Failed to parse packet: {e}")
