@@ -1,11 +1,14 @@
 import asyncio
 from fastapi import WebSocket, WebSocketDisconnect
+from src.base.security.jwt import create_access_token, verify_token
 from src.game.game_client import game_client
 from src.base.network.packets import packet_pb2
 from src.game.cmds import CMDs
 
 MAX_RETRY_PINGS = 3
+
 CMD_PING_PONG = 0
+CMD_LOGIN = 1
 PING_INTERVAL = 10  # Interval between pings
 
 class ConnectionManager:
@@ -13,6 +16,7 @@ class ConnectionManager:
         self.active_connections: set[WebSocket] = set()
         self.ping_tasks: dict[WebSocket, asyncio.Task] = {}
         self.ping_responses: dict[WebSocket, int] = {}  # Track pongs received per connection
+        self.user_websockets: dict[int, WebSocket] = {}  # Track user IDs to WebSockets
 
     async def handle_new_connection(self, websocket: WebSocket):
         """Handles a new WebSocket connection."""
@@ -105,24 +109,67 @@ class ConnectionManager:
             packet.ParseFromString(raw_data)
             cmd_id = packet.cmd_id
             payload = packet.payload
+            token = packet.token
             print(f"Packet received: cmd_id={cmd_id}")
 
             if cmd_id == CMD_PING_PONG:
                 self.ping_responses[websocket] += 1  # Increment pong counter
+            elif cmd_id == CMD_LOGIN:
+                uid = 123
+                user_info = {
+                    "username": "test",
+                    "uid": uid,
+                    "active": True
+                }
+
+                new_token = create_access_token(user_info)
+                print(f"New token: {new_token}")
+                login_response = packet_pb2.LoginResponse()
+                login_response.token = new_token
+                login_response.uid = uid
+
+                p = login_response.SerializeToString()
+
+                self.user_websockets[uid] = websocket
+                await self.send_packet(websocket, CMD_LOGIN, p)
+                await game_client.user_login_success(uid=uid)
             else:
-                await game_client.on_receive_packet(cmd_id, payload)
+                if not token:
+                    print("Unauthorized")
+                    return
 
-                chat_message = packet_pb2.Login()
-                chat_message.abc = 100.1
-                chat_message.username = "test"
-                chat_message.uid = 222
-                chat_message.active = True
+                user = verify_token(token)
+                if not user:
+                    print("Unauthorized")
+                    return
+                print(f"User: {user}")
+                uid = user.get("uid")
+                
+                await game_client.on_receive_packet(uid=uid, cmd_id=cmd_id, payload=payload)
+                # chat_message = packet_pb2.Login()
+                # chat_message.abc = 100.1
+                # chat_message.username = "test"
+                # chat_message.uid = 222
+                # chat_message.active = True
 
-                p = chat_message.SerializeToString()
-                await self.send_packet(websocket, CMDs.TEST_MESSAGE, p)  # Echo the message back to the client
+                # p = chat_message.SerializeToString()
+                # await self.send_packet(websocket, CMDs.TEST_MESSAGE, p)  # Echo the message back to the client
                 pass
         except Exception as e:
             print(f"Failed to parse packet: {e}")
+
+    async def send_packet_to_user(self, uid: int, cmd_id: int, payload: bytes):
+        websocket_ref = self.user_websockets.get(uid)
+        if websocket_ref:
+            # check active, other wise remove from user_websockets
+            if websocket_ref not in self.active_connections:
+                print(f"User with ID {uid} has no active WebSocket connection")
+                del self.user_websockets[uid]
+                return
+            await self.send_packet(websocket_ref, cmd_id, payload)
+        else:
+            print(f"User with ID {uid} not has no active WebSocket connection")
+        pass
 
 # Instantiate the ConnectionManager for usage
 connection_manager = ConnectionManager()

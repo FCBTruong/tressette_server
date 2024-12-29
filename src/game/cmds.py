@@ -1,5 +1,7 @@
 class CMDs:
-    # PING_PONG = 0 set in base
-    LOGIN = 100
-    LOGOUT = 101
-    TEST_MESSAGE = 1000
+    TEST_MESSAGE = 100
+    GENERAL_INFO = 1000
+    USER_INFO = 1001
+    LOGOUT = 1002
+    QUICK_PLAY = 2000
+    GAME_INFO = 2001

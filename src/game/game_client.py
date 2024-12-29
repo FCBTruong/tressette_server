@@ -5,7 +5,7 @@ class GameClient:
     def __init__(self):
         pass
 
-    async def on_receive_packet(self, cmd_id, payload):
+    async def on_receive_packet(self, uid, cmd_id, payload):
         match cmd_id:
             case CMDs.TEST_MESSAGE:
                 print("Received TEST_MESSAGE packet")
@@ -20,11 +20,21 @@ class GameClient:
             
             case CMDs.LOGOUT:
                 print("Received LOGOUT packet")
-
+            
+            case CMDs.QUICK_PLAY:
+                print("Received QUICK_PLAY packet")
+                await self.send_packet(uid, CMDs.GAME_INFO, b"Game info!")
             case _:
                 print(f"Unknown command ID: {cmd_id}")
 
-    async def send_packet(self, user_id, cmd_id, payload):
+    async def user_login_success(self, uid):
+        from src.base.network.connection_manager import connection_manager
+        print(f"User with ID {uid} has successfully logged in")
+        await self.send_packet(uid, CMDs.GENERAL_INFO, b"Welcome to the server!")
+    
+    async def send_packet(self, uid, cmd_id, payload):
+        from src.base.network.connection_manager import connection_manager
+        await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=payload)
         pass
 
 # Instantiate the PacketProcessor

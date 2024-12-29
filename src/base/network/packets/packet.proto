@@ -1,8 +1,9 @@
 syntax = "proto3";
 
 message Packet {
-  int32 cmd_id = 1;        // CMD ID
-  bytes payload = 2;       // Generic payload (serialized message)
+  string token = 1;
+  int32 cmd_id = 2;        // CMD ID
+  bytes payload = 3;       // Generic payload (serialized message)
 }
 
 message ChatMessage {
@@ -24,4 +25,9 @@ message Login {
   int32 uid = 1;
   string username = 2;
   double abc = 3;
+}
+
+message LoginResponse {
+  int32 uid = 1;
+  string token = 2;
 }
