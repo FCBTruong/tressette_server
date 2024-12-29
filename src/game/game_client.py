@@ -1,4 +1,5 @@
 from src.base.network.packets import packet_pb2
+from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.base.network.packets.packet_pb2 import ChatMessage  # Import ChatMessage from the protobuf module
 
@@ -34,16 +35,20 @@ class GameClient:
         print(f"User with ID {uid} has successfully logged in")
         await self.send_packet(uid, CMDs.GENERAL_INFO, packet_pb2.Empty())
 
-        user_info = packet_pb2.UserInfo()
-        user_info.name = "test"
-        user_info.gold = 1111
-        user_info.uid = uid
-        await self.send_packet(uid, CMDs.USER_INFO, user_info)
+        user_pkg = packet_pb2.UserInfo()
+        
+        user_info = await users_info_mgr.get_user_info(uid)
+
+        user_pkg.uid = user_info.uid
+        user_pkg.name = user_info.name
+        user_pkg.gold = user_info.gold
+        print(f"User info: {user_info.gold}")
+
+        await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
     
     async def send_packet(self, uid, cmd_id, pkt):
         from src.base.network.connection_manager import connection_manager
         await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())
-        pass
 
 # Instantiate the PacketProcessor
 game_client = GameClient()

@@ -115,9 +115,9 @@ class ConnectionManager:
             if cmd_id == CMD_PING_PONG:
                 self.ping_responses[websocket] += 1  # Increment pong counter
             elif cmd_id == CMD_LOGIN:
-                uid = 123
+                uid = 1000000
                 user_info = {
-                    "username": "test",
+                    "name": "test",
                     "uid": uid,
                     "active": True
                 }

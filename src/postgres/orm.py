@@ -19,7 +19,7 @@ class PsqlOrm(object):
         'pool_timeout': settings.POSTGRES_POOL_TIMEOUT,
         'pool_recycle': settings.POSTGRES_POOL_RECYCLE,
     }
-    
+    print(PSQL_CONNECTION)
     engine = None
     async_session = None
     current_connection_type = None
