@@ -42,5 +42,7 @@ message UserInfo {
 }
 
 message GameInfo {
-  
+  int32 match_id = 1;
+  int32 game_mode = 2;
+  int32 player_mode = 3;
 }

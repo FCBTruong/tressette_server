@@ -1,7 +1,8 @@
 import asyncio
+import traceback
 from fastapi import WebSocket, WebSocketDisconnect
 from src.base.security.jwt import create_access_token, verify_token
-from src.game.game_client import game_client
+from src.game.game_vars import game_vars
 from src.base.network.packets import packet_pb2
 from src.game.cmds import CMDs
 
@@ -132,7 +133,7 @@ class ConnectionManager:
 
                 self.user_websockets[uid] = websocket
                 await self.send_packet(websocket, CMD_LOGIN, p)
-                await game_client.user_login_success(uid=uid)
+                await game_vars.get_game_client().user_login_success(uid=uid)
             else:
                 if not token:
                     print("Unauthorized")
@@ -145,7 +146,7 @@ class ConnectionManager:
                 print(f"User: {user}")
                 uid = user.get("uid")
                 
-                await game_client.on_receive_packet(uid=uid, cmd_id=cmd_id, payload=payload)
+                await game_vars.get_game_client().on_receive_packet(uid=uid, cmd_id=cmd_id, payload=payload)
                 # chat_message = packet_pb2.Login()
                 # chat_message.abc = 100.1
                 # chat_message.username = "test"
@@ -157,6 +158,7 @@ class ConnectionManager:
                 pass
         except Exception as e:
             print(f"Failed to parse packet: {e}")
+            traceback.print_exc()
 
     async def send_packet_to_user(self, uid: int, cmd_id: int, payload: bytes):
         websocket_ref = self.user_websockets.get(uid)

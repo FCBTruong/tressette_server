@@ -32,10 +32,15 @@ class PostgresSettings(DatabaseSettings):
     POSTGRES_POOL_TIMEOUT: Optional[int] = os.getenv("POSTGRES_POOL_TIMEOUT", 30)
     POSTGRES_POOL_RECYCLE: Optional[int] = os.getenv("POSTGRES_POOL_RECYCLE", 3600)
 
+class RedisSettings(DatabaseSettings):
+    REDIS_HOST: Optional[str] = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT: Optional[str] = os.getenv("REDIS_PORT", "6379")
+    REDIS_TTL: Optional[int] = os.getenv("REDIS_TTL", 3600)
 
 class Settings(
     EnvironmentSettings,
     PostgresSettings,
+    RedisSettings
 ):
     pass
 

@@ -1,4 +1,5 @@
 from src.base.network.packets import packet_pb2
+from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.base.network.packets.packet_pb2 import ChatMessage  # Import ChatMessage from the protobuf module
@@ -8,6 +9,7 @@ class GameClient:
         pass
 
     async def on_receive_packet(self, uid, cmd_id, payload):
+        await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
         match cmd_id:
             case CMDs.TEST_MESSAGE:
                 print("Received TEST_MESSAGE packet")
@@ -22,11 +24,6 @@ class GameClient:
             
             case CMDs.LOGOUT:
                 print("Received LOGOUT packet")
-            
-            case CMDs.QUICK_PLAY:
-                print("Received QUICK_PLAY packet")
-                game_info = packet_pb2.GameInfo()
-                await self.send_packet(uid, CMDs.GAME_INFO, game_info)
             case _:
                 print(f"Unknown command ID: {cmd_id}")
 
@@ -50,5 +47,3 @@ class GameClient:
         from src.base.network.connection_manager import connection_manager
         await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())
 
-# Instantiate the PacketProcessor
-game_client = GameClient()

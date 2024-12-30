@@ -5,7 +5,7 @@ from sqlalchemy.orm import DeclarativeBase
 class Base(DeclarativeBase):
     pass
 
-class UserInfo(Base):
+class UserInfoSchema(Base):
     __tablename__ = 'user_info'
     
     # Define the columns based on the table structure
