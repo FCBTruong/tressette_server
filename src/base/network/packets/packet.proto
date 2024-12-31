@@ -14,7 +14,7 @@ message ChatMessage {
   string username = 2;     // User's name
   int64 level = 3;        // Level (using uint32 for single-byte values)
   int32 gold = 4;         // Gold (using int32)
-  string message = 5;      // Chat message
+  string abcd = 5;      // Chat message
   bool is_active = 6;
 }
 
@@ -24,10 +24,7 @@ message PingPong {
 }
 
 message Login {
-  bool active = 4;
   int32 uid = 1;
-  string username = 2;
-  double abc = 3;
 }
 
 message LoginResponse {
@@ -39,10 +36,29 @@ message UserInfo {
   int32 uid = 1;
   string name = 2;
   int64 gold = 3;
+  repeated int32 scores = 4;
+  repeated string names = 5;
+  int32 abc = 6;
 }
 
 message GameInfo {
   int32 match_id = 1;
   int32 game_mode = 2;
   int32 player_mode = 3;
+  repeated int32 uids = 4;
+  repeated int64 user_golds = 5;
+}
+
+message LeaveGame {
+  int32 status = 1;
+}
+
+message NewUserJoinMatch {
+  int32 uid = 1;
+  int32 gold = 2;
+  string name = 3;
+}
+
+message UserLeaveMatch {
+  int32 uid = 1;
 }

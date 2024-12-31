@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cpacket.proto\"\x07\n\x05\x45mpty\"8\n\x06Packet\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0e\n\x06\x63md_id\x18\x02 \x01(\x05\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"m\n\x0b\x43hatMessage\x12\x0b\n\x03\x61\x62\x63\x18\x01 \x01(\x01\x12\x10\n\x08username\x18\x02 \x01(\t\x12\r\n\x05level\x18\x03 \x01(\x03\x12\x0c\n\x04gold\x18\x04 \x01(\x05\x12\x0f\n\x07message\x18\x05 \x01(\t\x12\x11\n\tis_active\x18\x06 \x01(\x08\"\n\n\x08PingPong\"C\n\x05Login\x12\x0e\n\x06\x61\x63tive\x18\x04 \x01(\x08\x12\x0b\n\x03uid\x18\x01 \x01(\x05\x12\x10\n\x08username\x18\x02 \x01(\t\x12\x0b\n\x03\x61\x62\x63\x18\x03 \x01(\x01\"+\n\rLoginResponse\x12\x0b\n\x03uid\x18\x01 \x01(\x05\x12\r\n\x05token\x18\x02 \x01(\t\"3\n\x08UserInfo\x12\x0b\n\x03uid\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04gold\x18\x03 \x01(\x03\"\n\n\x08GameInfob\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0cpacket.proto\"\x07\n\x05\x45mpty\"8\n\x06Packet\x12\r\n\x05token\x18\x01 \x01(\t\x12\x0e\n\x06\x63md_id\x18\x02 \x01(\x05\x12\x0f\n\x07payload\x18\x03 \x01(\x0c\"j\n\x0b\x43hatMessage\x12\x0b\n\x03\x61\x62\x63\x18\x01 \x01(\x01\x12\x10\n\x08username\x18\x02 \x01(\t\x12\r\n\x05level\x18\x03 \x01(\x03\x12\x0c\n\x04gold\x18\x04 \x01(\x05\x12\x0c\n\x04\x61\x62\x63\x64\x18\x05 \x01(\t\x12\x11\n\tis_active\x18\x06 \x01(\x08\"\n\n\x08PingPong\"\x14\n\x05Login\x12\x0b\n\x03uid\x18\x01 \x01(\x05\"+\n\rLoginResponse\x12\x0b\n\x03uid\x18\x01 \x01(\x05\x12\r\n\x05token\x18\x02 \x01(\t\"_\n\x08UserInfo\x12\x0b\n\x03uid\x18\x01 \x01(\x05\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04gold\x18\x03 \x01(\x03\x12\x0e\n\x06scores\x18\x04 \x03(\x05\x12\r\n\x05names\x18\x05 \x03(\t\x12\x0b\n\x03\x61\x62\x63\x18\x06 \x01(\x05\"f\n\x08GameInfo\x12\x10\n\x08match_id\x18\x01 \x01(\x05\x12\x11\n\tgame_mode\x18\x02 \x01(\x05\x12\x13\n\x0bplayer_mode\x18\x03 \x01(\x05\x12\x0c\n\x04uids\x18\x04 \x03(\x05\x12\x12\n\nuser_golds\x18\x05 \x03(\x03\"\x1b\n\tLeaveGame\x12\x0e\n\x06status\x18\x01 \x01(\x05\";\n\x10NewUserJoinMatch\x12\x0b\n\x03uid\x18\x01 \x01(\x05\x12\x0c\n\x04gold\x18\x02 \x01(\x05\x12\x0c\n\x04name\x18\x03 \x01(\t\"\x1d\n\x0eUserLeaveMatch\x12\x0b\n\x03uid\x18\x01 \x01(\x05\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -36,15 +36,21 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_PACKET']._serialized_start=25
   _globals['_PACKET']._serialized_end=81
   _globals['_CHATMESSAGE']._serialized_start=83
-  _globals['_CHATMESSAGE']._serialized_end=192
-  _globals['_PINGPONG']._serialized_start=194
-  _globals['_PINGPONG']._serialized_end=204
-  _globals['_LOGIN']._serialized_start=206
-  _globals['_LOGIN']._serialized_end=273
-  _globals['_LOGINRESPONSE']._serialized_start=275
-  _globals['_LOGINRESPONSE']._serialized_end=318
-  _globals['_USERINFO']._serialized_start=320
-  _globals['_USERINFO']._serialized_end=371
-  _globals['_GAMEINFO']._serialized_start=373
-  _globals['_GAMEINFO']._serialized_end=383
+  _globals['_CHATMESSAGE']._serialized_end=189
+  _globals['_PINGPONG']._serialized_start=191
+  _globals['_PINGPONG']._serialized_end=201
+  _globals['_LOGIN']._serialized_start=203
+  _globals['_LOGIN']._serialized_end=223
+  _globals['_LOGINRESPONSE']._serialized_start=225
+  _globals['_LOGINRESPONSE']._serialized_end=268
+  _globals['_USERINFO']._serialized_start=270
+  _globals['_USERINFO']._serialized_end=365
+  _globals['_GAMEINFO']._serialized_start=367
+  _globals['_GAMEINFO']._serialized_end=469
+  _globals['_LEAVEGAME']._serialized_start=471
+  _globals['_LEAVEGAME']._serialized_end=498
+  _globals['_NEWUSERJOINMATCH']._serialized_start=500
+  _globals['_NEWUSERJOINMATCH']._serialized_end=559
+  _globals['_USERLEAVEMATCH']._serialized_start=561
+  _globals['_USERLEAVEMATCH']._serialized_end=590
 # @@protoc_insertion_point(module_scope)

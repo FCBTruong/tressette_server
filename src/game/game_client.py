@@ -25,7 +25,7 @@ class GameClient:
             case CMDs.LOGOUT:
                 print("Received LOGOUT packet")
             case _:
-                print(f"Unknown command ID: {cmd_id}")
+                pass
 
     async def user_login_success(self, uid):
         from src.base.network.connection_manager import connection_manager
@@ -39,9 +39,17 @@ class GameClient:
         user_pkg.uid = user_info.uid
         user_pkg.name = user_info.name
         user_pkg.gold = user_info.gold
+        user_pkg.scores.extend([1, 2, 3, 4, 5])
+        user_pkg.names.extend(["a", "", "c", "d", "e"])
+        user_pkg.abc = 999
         print(f"User info: {user_info.gold}")
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
+
+        # check if user is in a match
+        await game_vars.get_game_mgr().on_user_login(uid)
+
+
     
     async def send_packet(self, uid, cmd_id, pkt):
         from src.base.network.connection_manager import connection_manager

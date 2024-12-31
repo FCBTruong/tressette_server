@@ -116,9 +116,12 @@ class ConnectionManager:
             if cmd_id == CMD_PING_PONG:
                 self.ping_responses[websocket] += 1  # Increment pong counter
             elif cmd_id == CMD_LOGIN:
-                uid = 1000000
+                login_client_pkg = packet_pb2.Login()
+                login_client_pkg.ParseFromString(payload)
+                uid = login_client_pkg.uid
+                print(f"Login packet received: uid={uid}")
+
                 user_info = {
-                    "name": "test",
                     "uid": uid,
                     "active": True
                 }
@@ -147,14 +150,6 @@ class ConnectionManager:
                 uid = user.get("uid")
                 
                 await game_vars.get_game_client().on_receive_packet(uid=uid, cmd_id=cmd_id, payload=payload)
-                # chat_message = packet_pb2.Login()
-                # chat_message.abc = 100.1
-                # chat_message.username = "test"
-                # chat_message.uid = 222
-                # chat_message.active = True
-
-                # p = chat_message.SerializeToString()
-                # await self.send_packet(websocket, CMDs.TEST_MESSAGE, p)  # Echo the message back to the client
                 pass
         except Exception as e:
             print(f"Failed to parse packet: {e}")
