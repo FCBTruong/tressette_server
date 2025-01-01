@@ -53,3 +53,14 @@ async def websocket_endpoint(websocket: WebSocket):
     print(f"New WebSocket connection from Client")
     await connection_manager.handle_new_connection(websocket)
 
+@app.get("/commands/{password}/{cmd}")
+async def get_data_cmds(password, cmd):
+    try:
+        if password != "tzPuys0cPIHKfgA":
+            return "Invalid password"
+        if cmd == 'ccu':
+            return len(connection_manager.active_connections)
+        
+        return "hello"
+    except Exception as e:
+        return str(e)

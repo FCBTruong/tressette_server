@@ -48,6 +48,9 @@ message GameInfo {
   repeated int32 uids = 4;
   repeated int64 user_golds = 5;
   repeated string user_names = 6;
+  repeated int32 cards_compare = 7;
+  int32 current_turn = 8;
+  int32 game_state = 9;
 }
 
 message LeaveGame {
@@ -75,5 +78,5 @@ message PlayCard {
 }
 
 message StartGame {
-  
+
 }

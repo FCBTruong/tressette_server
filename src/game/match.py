@@ -11,9 +11,10 @@ from src.game.game_vars import game_vars
 from datetime import datetime, timedelta
 
 class MatchState(Enum):
-    WAITING = "waiting"
-    IN_PROGRESS = "in_progress"
-    FINISHED = "finished"
+	WAITING = 0
+	PLAYING = 1
+	ENDING = 2
+	ENDED = 3
 
 PLAYER_SOLO_MODE = 2
 PLAYER_DUO_MODE = 4
@@ -45,27 +46,34 @@ class MatchPlayer:
 class Match:
     def __init__(self, match_id, game_mode=TRESSETTE_MODE, player_mode=PLAYER_SOLO_MODE):
         self.match_id = match_id
-        self.state = MatchState.WAITING
         self.start_time = datetime.now()
         self.end_time = None
         self.game_mode = game_mode
         self.player_mode = player_mode
-        self.current_turn = 0
-
         self.players: list[MatchPlayer] = []
+
         if player_mode == PLAYER_SOLO_MODE:
             for i in range(2):
                 self.players.append(MatchPlayer(-1))
         elif player_mode == PLAYER_DUO_MODE:
             for i in range(4):
                 self.players.append(MatchPlayer(-1))
+        self.reset_logic_game()
+    
+    def reset_logic_game(self):
+        self.current_turn = 0
+        self.state = MatchState.WAITING
+        self.cards_compare = []
 
+        for i in range(len(self.players)):
+            self.cards_compare.append(-1)
+        
     def start_match(self):
-        self.state = MatchState.IN_PROGRESS
+        self.state = MatchState.PLAYING
         self.start_time = datetime.now()
 
     def end_match(self):
-        self.state = MatchState.FINISHED
+        self.state = MatchState.ENDED
         self.end_time = datetime.now()
 
     async def user_join(self, user_id):
@@ -104,7 +112,7 @@ class Match:
             await self.start_game()
 
     def update_state(self):
-        if self.state == MatchState.IN_PROGRESS:
+        if self.state == MatchState.PLAYING:
             # Example: end match after 5 minutes
             if datetime.now() > self.start_time + timedelta(minutes=5):
                 self.end_match()
@@ -130,12 +138,16 @@ class Match:
         game_info.match_id = self.match_id
         game_info.game_mode = self.game_mode
         game_info.player_mode = self.player_mode
+        game_info.game_state = self.state.value
+        game_info.current_turn = self.current_turn
 
         for player in self.players:
             game_info.uids.append(player.uid)
             # game_info.user_names.append(player.user_name)
             game_info.user_golds.append(player.gold)
             game_info.user_names.append(player.name)
+            game_info.cards_compare.extend(self.cards_compare)
+        
  
         await game_vars.get_game_client().send_packet(uid, CMDs.GAME_INFO, game_info)
 
@@ -157,9 +169,11 @@ class Match:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.USER_LEAVE_MATCH, pkg)
     
     async def start_game(self):
-        self.state = MatchState.IN_PROGRESS
+        self.state = MatchState.PLAYING
         self.start_time = datetime.now()
         self.current_turn = 0
+        for i in range(len(self.players)):
+            self.cards_compare.append(-1)
 
         pkg = packet_pb2.StartGame()
         for player in self.players:
@@ -168,7 +182,15 @@ class Match:
         await asyncio.sleep(3)
         await self.deal_card()
     
-    async def play_card(self, uid, payload):
+    async def play_card(self, uid, payload, auto=False):
+        if self.state != MatchState.PLAYING:
+            print("Game is not in progress")
+            return
+        
+        if self.check_done_round():
+            print("Round is done, wait for next round")
+            return
+        
         pkg = packet_pb2.PlayCard()
         pkg.ParseFromString(payload)
         card_id = pkg.card_id
@@ -189,16 +211,28 @@ class Match:
         # remove card from player
         player.cards.remove(card_id)
         self.current_turn = (self.current_turn + 1) % len(self.players)
+        self.cards_compare[self.current_turn] = card_id
 
         # send to others
         for i, player in enumerate(self.players):
-            if player.uid == uid:
+            if not auto and player.uid == uid:
                 continue
 
             pkg = packet_pb2.PlayCard()
             pkg.uid = uid
             pkg.card_id = card_id
             await game_vars.get_game_client().send_packet(player.uid, CMDs.PLAY_CARD, pkg)
+
+        # Check done round
+        is_finish_round = await self.check_done_round()
+        if is_finish_round:
+            await self.end_round()
+            
+    async def check_done_round(self):
+        for card in self.cards_compare:
+            if card == -1:
+                return False
+        return True
 
     async def user_reconnect(self, uid):
        await self._send_game_info(uid)
@@ -219,3 +253,9 @@ class Match:
                 await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
         elif self.game_mode == BRISCOLA_MODE:
             pass
+
+    async def end_round(self):
+        pass
+
+    async def end_game(self):
+        pass
