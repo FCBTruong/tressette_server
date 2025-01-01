@@ -16,6 +16,8 @@ class GameMgr:
                 pass
             case CMDs.LEAVE_GAME:
                 await self._handle_leave_game(uid)
+            case CMDs.PLAY_CARD:
+                await game_vars.get_match_mgr().user_play_card(uid, payload)
         pass
     
     async def _handle_quick_play(self, uid: int):
@@ -51,5 +53,4 @@ class GameMgr:
             await match.user_reconnect(uid)
             return
     async def on_user_disconnect(self, uid: int):
-        game_vars.get_match_mgr().user_disconnect(uid)
-        pass
+        await game_vars.get_match_mgr().user_disconnect(uid)

@@ -47,6 +47,7 @@ message GameInfo {
   int32 player_mode = 3;
   repeated int32 uids = 4;
   repeated int64 user_golds = 5;
+  repeated string user_names = 6;
 }
 
 message LeaveGame {
@@ -57,8 +58,22 @@ message NewUserJoinMatch {
   int32 uid = 1;
   int32 gold = 2;
   string name = 3;
+  int32 seat_server = 4;
 }
 
 message UserLeaveMatch {
   int32 uid = 1;
+}
+
+message DealCard {
+  repeated int32 cards = 1;
+}
+
+message PlayCard {
+  int32 uid = 1;
+  int32 card_id = 2;
+}
+
+message StartGame {
+  
 }

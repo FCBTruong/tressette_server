@@ -1,6 +1,7 @@
 import asyncio
 import traceback
 from fastapi import WebSocket, WebSocketDisconnect
+from fastapi.websockets import WebSocketState
 from src.base.security.jwt import create_access_token, verify_token
 from src.game.game_vars import game_vars
 from src.base.network.packets import packet_pb2
@@ -83,6 +84,14 @@ class ConnectionManager:
 
         print(f"WebSocket disconnected: {websocket}")
 
+        # find user id
+        for user_id, ws in self.user_websockets.items():
+            if ws == websocket:
+                del self.user_websockets[user_id]
+                break
+        if user_id:
+            await game_vars.get_game_mgr().on_user_disconnect(user_id)
+
     async def send_personal_message(self, message: str, websocket: WebSocket):
         """Sends a personal message to a WebSocket."""
         await websocket.send_text(message)
@@ -125,6 +134,14 @@ class ConnectionManager:
                     "uid": uid,
                     "active": True
                 }
+
+                # Check if user is already logged in, if so, disconnect the old connection
+                old_websocket = self.user_websockets.get(uid)
+                if old_websocket:
+                    print(f"User with ID {uid} is already logged in. Disconnecting old connection.")
+                
+                    if old_websocket.application_state == WebSocketState.CONNECTED:
+                        await   old_websocket.close()
 
                 new_token = create_access_token(user_info)
                 print(f"New token: {new_token}")
