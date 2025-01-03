@@ -11,3 +11,5 @@ class CMDs:
     DEAL_CARD = 2005
     PLAY_CARD = 2006
     START_GAME = 2007
+    NEW_ROUND = 2008
+    END_ROUND = 2009

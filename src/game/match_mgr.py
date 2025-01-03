@@ -86,4 +86,4 @@ class MatchManager:
     async def user_play_card(self, uid: int, payload):
         match = await self.get_match_of_user(uid)
         if match:
-            await match.play_card(uid, payload)
+            await match.user_play_card(uid, payload)

@@ -85,9 +85,11 @@ class ConnectionManager:
         print(f"WebSocket disconnected: {websocket}")
 
         # find user id
-        for user_id, ws in self.user_websockets.items():
+        user_id = None
+        for uid, ws in self.user_websockets.items():
             if ws == websocket:
-                del self.user_websockets[user_id]
+                user_id = uid
+                del self.user_websockets[uid]
                 break
         if user_id:
             await game_vars.get_game_mgr().on_user_disconnect(user_id)

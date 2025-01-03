@@ -51,6 +51,9 @@ message GameInfo {
   repeated int32 cards_compare = 7;
   int32 current_turn = 8;
   int32 game_state = 9;
+  repeated int32 my_cards = 10;
+  int32 remain_cards = 11;
+  repeated int32 user_points = 12;
 }
 
 message LeaveGame {
@@ -70,6 +73,7 @@ message UserLeaveMatch {
 
 message DealCard {
   repeated int32 cards = 1;
+  int32 remain_cards = 2;
 }
 
 message PlayCard {
@@ -79,4 +83,19 @@ message PlayCard {
 
 message StartGame {
 
+}
+
+message NewRound {
+  int32 current_turn = 1;
+  repeated int32 my_cards = 2;
+}
+
+message UpdateGamePoint {
+  repeated int32 points = 1;
+}
+
+message EndRound {
+  int32 win_uid = 1;
+  int32 win_card = 2;
+  repeated int32 user_points = 3;
 }
