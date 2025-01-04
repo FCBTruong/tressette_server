@@ -13,3 +13,4 @@ class CMDs:
     START_GAME = 2007
     NEW_ROUND = 2008
     END_ROUND = 2009
+    DRAW_CARD = 2010

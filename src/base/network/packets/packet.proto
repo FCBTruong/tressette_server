@@ -99,3 +99,7 @@ message EndRound {
   int32 win_card = 2;
   repeated int32 user_points = 3;
 }
+
+message DrawCard {
+  repeated int32 cards = 1;
+}

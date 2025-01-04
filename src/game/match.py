@@ -244,7 +244,6 @@ class Match:
         is_finish_round = await self.check_done_round()
         if is_finish_round:
             self.current_turn = -1
-            await asyncio.sleep(0.5)
             await self.end_round()
 
     async def check_done_round(self):
@@ -290,22 +289,56 @@ class Match:
         self.current_round += 1
 
         pkg = packet_pb2.EndRound()
-        # send to others
+        pkg.win_uid = win_player.uid
+        pkg.win_card = win_card
         for player in self.players:
-            pkg.win_uid = win_player.uid
-            pkg.win_card = win_card
-            pkg.user_points.append(win_player.points)
+            pkg.user_points.append(player.points)
+
+        # send to others
+        await asyncio.sleep(0.5)
+        for player in self.players:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.END_ROUND, pkg)
+
+        # draw new cards
+        if self._is_end_game():
+            await self.end_game()
+            return
+        if len(self.cards) != 0:
+            await asyncio.sleep(2)
+            await self._handle_draw_card()
 
         # check end game
         self.current_turn = 0
-        if self.state == MatchState.PLAYING:
-            # send new round
-            await asyncio.sleep(1)
-            pkg = packet_pb2.NewRound()
-            pkg.current_turn = self.current_turn
-            for player in self.players:
-                await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_ROUND, pkg)
+        await asyncio.sleep(1)
+        await self._handle_new_round()
+    
+    def _is_end_game(self):
+        if len(self.cards) == 0 and all(player.cards == [] for player in self.players):
+            return True
+        return False
+    
+    async def _handle_draw_card(self):
+        draw_cards = []
+        for player in self.players:
+            new_card = self._draw_card()
+            player.cards.append(new_card)
+            draw_cards.append(new_card)
+        
+        # send to users
+        pkg = packet_pb2.DrawCard()
+        pkg.cards.extend(draw_cards)
+        for player in self.players:
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.DRAW_CARD, pkg)
+
+    async def _handle_new_round(self):
+        pkg = packet_pb2.NewRound()
+        pkg.current_turn = self.current_turn
+        for player in self.players:
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_ROUND, pkg)
+
+    def _draw_card(self):
+        card = self.cards.pop(0)
+        return card
 
     def get_win_card(self):
         win_card = self.cards_compare[0]
@@ -315,4 +348,5 @@ class Match:
         return win_card
 
     async def end_game(self):
+        self.state = MatchState.ENDED
         pass
