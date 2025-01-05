@@ -203,6 +203,9 @@ class Match:
         await self._play_card(uid, card_id, auto=False)
     
     async def _play_card(self, uid, card_id, auto=False):
+        # test
+        await self.end_game()
+        return
         if self.state != MatchState.PLAYING:
             logger.error("Game is not in progress")
             return
@@ -358,4 +361,11 @@ class Match:
 
     async def end_game(self):
         self.state = MatchState.ENDED
-        pass
+        
+        # send to users
+        pkg = packet_pb2.EndGame()
+        for player in self.players:
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.END_GAME, pkg)
+        
+        await asyncio.sleep(2)
+        self.state = MatchState.WAITING

@@ -14,3 +14,4 @@ class CMDs:
     NEW_ROUND = 2008
     END_ROUND = 2009
     DRAW_CARD = 2010
+    END_GAME = 2011

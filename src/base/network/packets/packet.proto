@@ -109,3 +109,7 @@ message DrawCard {
 message GeneralInfo {
   int64 timestamp = 1;
 }
+
+message EndGame {
+  repeated int32 points = 1;
+}
