@@ -21,6 +21,9 @@ PLAYER_DUO_MODE = 4
 TRESSETTE_MODE = 0
 BRISCOLA_MODE = 1
 
+TIME_AUTO_PLAY = 10 # seconds
+TIME_START_TO_DEAL = 3 # seconds
+
 # 0 - 39
 TRESSETTE_CARDS = [i for i in range(40)]
 
@@ -62,8 +65,14 @@ class Match:
                 self.players.append(MatchPlayer(-1))
         self.reset_logic_game()
     
+    async def loop(self):
+        if self.state == MatchState.PLAYING:
+            if self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
+                await self._play_card(self.players[self.current_turn].uid, self.players[self.current_turn].cards[0], auto=True)
+    
     def reset_logic_game(self):
-        self.current_turn = 0 
+        self.current_turn = -1
+        self.time_auto_play = -1
         self.state = MatchState.WAITING
         self.cards_compare.clear()
         for i in range(self.player_mode):
@@ -74,10 +83,6 @@ class Match:
         print(f"Player mode: {self.player_mode}")
         for i in range(self.player_mode):
             self.cards_compare.append(-1)
-        
-    def start_match(self):
-        self.state = MatchState.PLAYING
-        self.start_time = datetime.now()
 
     def end_match(self):
         self.state = MatchState.ENDED
@@ -90,10 +95,10 @@ class Match:
                 print('User already in match, can not jion')
                 return
         
+        user_data = await users_info_mgr.get_user_info(user_id)
         # find empty slot
         for i, player in enumerate(self.players):
             if player.uid == -1:
-                user_data = await users_info_mgr.get_user_info(user_id)
                 self.players[i].uid = user_data.uid
                 self.players[i].name = user_data.name
                 self.players[i].gold = user_data.gold
@@ -107,6 +112,7 @@ class Match:
             print(f"Send to user {player.uid} that user {user_id} has joined")
             pkg = packet_pb2.NewUserJoinMatch()
             pkg.uid = user_id
+            pkg.name = user_data.name
             pkg.seat_server = seat_server_id
 
             i += 1
@@ -117,16 +123,6 @@ class Match:
 
         if all(player.uid != -1 for player in self.players):
             await self.start_game()
-
-    def update_state(self):
-        if self.state == MatchState.PLAYING:
-            # Example: end match after 5 minutes
-            if datetime.now() > self.start_time + timedelta(minutes=5):
-                self.end_match()
-        elif self.state == MatchState.WAITING:
-            # Example: start match when all players are ready
-            if all(player['ready'] for player in self.players):
-                self.start_match()
 
     def check_can_join(self, uid: int):
         if self.state == MatchState.WAITING:
@@ -184,6 +180,8 @@ class Match:
         self.state = MatchState.PLAYING
         self.start_time = datetime.now()
         self.current_turn = 0
+        self.current_round = -1
+        self.time_auto_play = -1
         self.cards_compare.clear()
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
@@ -192,8 +190,11 @@ class Match:
         for player in self.players:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.START_GAME, pkg)
         # wait for 3 seconds
-        await asyncio.sleep(3)
+        await asyncio.sleep(TIME_START_TO_DEAL)
         await self.deal_card()
+        # wait for 2 seconds
+        await asyncio.sleep(2)
+        await self._handle_new_round()
 
     async def user_play_card(self, uid, payload):
         pkg = packet_pb2.PlayCard()
@@ -225,26 +226,32 @@ class Match:
         # check whether the card is valid
 
         # remove card from player
-        print('remove card id: ', card_id)
+        print('remove card id: ', card_id, ' auto: ', auto)
         player.cards.remove(card_id)
         self.cards_compare[self.current_turn] = card_id
-        self.current_turn = (self.current_turn + 1) % len(self.players)
+        self.time_auto_play = -1
+
+        is_finish_round = await self.check_done_round()
+        if not is_finish_round:
+            self.current_turn = (self.current_turn + 1) % len(self.players)
+        else:
+            self.current_turn = -1
 
         # send to others
         for i, player in enumerate(self.players):
-            if not auto and player.uid == uid:
-                continue
-
             pkg = packet_pb2.PlayCard()
             pkg.uid = uid
             pkg.card_id = card_id
+            pkg.auto = auto
+            pkg.current_turn = self.current_turn 
             await game_vars.get_game_client().send_packet(player.uid, CMDs.PLAY_CARD, pkg)
 
         # Check done round
-        is_finish_round = await self.check_done_round()
         if is_finish_round:
             self.current_turn = -1
             await self.end_round()
+        else:
+            self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
     async def check_done_round(self):
         for card in self.cards_compare:
@@ -256,25 +263,22 @@ class Match:
        await self._send_game_info(uid)
 
     async def deal_card(self):
-        if self.game_mode == TRESSETTE_MODE:
-            # shuffle cards
-            self.cards = TRESSETTE_CARDS.copy()
-            random.shuffle(self.cards)
-            print(f"Cards: {self.cards}")
-            for i, player in enumerate(self.players):
-                player.cards = self.cards[i*10: (i+1)*10]
-            
-            # remove cards dealt
-            self.cards = self.cards[10 * len(self.players):]
+        self.cards = TRESSETTE_CARDS.copy()
+        random.shuffle(self.cards)
+        print(f"Cards: {self.cards}")
+        for i, player in enumerate(self.players):
+            player.cards = self.cards[i*10: (i+1)*10]
+        
+        # remove cards dealt
+        self.cards = self.cards[10 * len(self.players):]
 
-            # send to users
-            for player in self.players:
-                pkg = packet_pb2.DealCard()
-                pkg.cards.extend(player.cards)
-                pkg.remain_cards = len(self.cards)
-                await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
-        elif self.game_mode == BRISCOLA_MODE:
-            pass
+        # send to users
+        for player in self.players:
+            pkg = packet_pb2.DealCard()
+            pkg.cards.extend(player.cards)
+            pkg.remain_cards = len(self.cards)
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
+    
 
     async def end_round(self):
         win_card = self.get_win_card()
@@ -299,17 +303,19 @@ class Match:
         for player in self.players:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.END_ROUND, pkg)
 
+        # effect show win cards
+        await asyncio.sleep(2)
+        
         # draw new cards
         if self._is_end_game():
             await self.end_game()
             return
         if len(self.cards) != 0:
-            await asyncio.sleep(2)
             await self._handle_draw_card()
+            await asyncio.sleep(3)
 
         # check end game
         self.current_turn = 0
-        await asyncio.sleep(1)
         await self._handle_new_round()
     
     def _is_end_game(self):
@@ -331,6 +337,9 @@ class Match:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DRAW_CARD, pkg)
 
     async def _handle_new_round(self):
+        self.current_round += 1
+        self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+
         pkg = packet_pb2.NewRound()
         pkg.current_turn = self.current_turn
         for player in self.players:

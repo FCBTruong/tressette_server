@@ -79,6 +79,8 @@ message DealCard {
 message PlayCard {
   int32 uid = 1;
   int32 card_id = 2;
+  bool auto = 3;
+  int32 current_turn = 4;
 }
 
 message StartGame {
@@ -102,4 +104,8 @@ message EndRound {
 
 message DrawCard {
   repeated int32 cards = 1;
+}
+
+message GeneralInfo {
+  int64 timestamp = 1;
 }

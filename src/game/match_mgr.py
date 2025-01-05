@@ -1,5 +1,6 @@
 # Configure the logger
 
+import asyncio
 import logging
 
 from src.game.match import LeaveMatchErrors, Match, MatchState
@@ -17,6 +18,32 @@ class MatchManager:
         self.start_match_id = 1000
         self.matches: dict[int, Match] = {}
         self.user_matchids: dict[int, int] = {}
+        self._task = None
+
+    def start(self):
+        """Starts the match manager loop."""
+        if self._task is None or self._task.done():
+            self._task = asyncio.create_task(self._loop())
+
+    def stop(self):
+        """Stops the match manager loop."""
+        if self._task:
+            self._task.cancel()
+
+    async def _loop(self):
+        """The main loop to manage matches."""
+        try:
+            while True:
+                for match in list(self.matches.values()):  # Use list() to avoid mutation issues.
+                    try:
+                        await match.loop()
+                    except Exception as e:
+                        logger.error(f"Error in match loop: {e}")
+                await asyncio.sleep(0.5)
+        except asyncio.CancelledError:
+            logger.info("MatchManager loop has been stopped.")
+        except Exception as e:
+            logger.error(f"Unexpected error in MatchManager loop: {e}")
 
     async def create_match(self) -> Match:
         match_id = self.start_match_id

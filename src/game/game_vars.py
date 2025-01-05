@@ -22,6 +22,8 @@ class GameVars:
         if self.match_mgr is None:
             from src.game.match_mgr import MatchManager
             self.match_mgr = MatchManager()
+            self.match_mgr.start()
+
         return self.match_mgr
     
 game_vars = GameVars()

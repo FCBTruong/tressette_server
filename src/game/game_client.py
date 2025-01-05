@@ -1,3 +1,4 @@
+from datetime import datetime
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
@@ -30,7 +31,9 @@ class GameClient:
     async def user_login_success(self, uid):
         from src.base.network.connection_manager import connection_manager
         print(f"User with ID {uid} has successfully logged in")
-        await self.send_packet(uid, CMDs.GENERAL_INFO, packet_pb2.Empty())
+        general_pkg = packet_pb2.GeneralInfo()
+        general_pkg.timestamp = int(datetime.now().timestamp())
+        await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
         user_pkg = packet_pb2.UserInfo()
         

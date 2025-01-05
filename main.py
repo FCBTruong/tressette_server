@@ -1,9 +1,14 @@
+import asyncio
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 from fastapi.websockets import WebSocketDisconnect
 from src.base.network.connection_manager import connection_manager
 
-app = FastAPI()
+async def lifespan(app: FastAPI):
+    print("Application startup complete.")
+    yield
+
+app = FastAPI(lifespan=lifespan)
 
 html = """
 <!DOCTYPE html>
