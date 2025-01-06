@@ -111,5 +111,8 @@ message GeneralInfo {
 }
 
 message EndGame {
-  repeated int32 points = 1;
+  repeated int32 win_uids = 1;
+  repeated int32 score_cards = 2;
+  repeated int32 score_last_tricks = 3;
+  repeated int32 score_totals = 4;
 }

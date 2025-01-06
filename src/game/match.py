@@ -24,6 +24,7 @@ BRISCOLA_MODE = 1
 TIME_AUTO_PLAY = 10 # seconds
 TIME_START_TO_DEAL = 3 # seconds
 
+
 # 0 - 39
 TRESSETTE_CARDS = [i for i in range(40)]
 
@@ -45,6 +46,12 @@ class MatchPlayer:
         self.gold = 0
         self.cards = [] # id of cards
         self.points = 0
+        self.score_last_trick = 0
+    
+    def reset_game(self):
+        self.cards.clear()
+        self.points = 0
+        self.score_last_trick = 0
 
 class Match:
     cards_compare = []
@@ -203,9 +210,9 @@ class Match:
         await self._play_card(uid, card_id, auto=False)
     
     async def _play_card(self, uid, card_id, auto=False):
-        # test
-        await self.end_game()
-        return
+        # # test
+        # await self.end_game()
+        # return
         if self.state != MatchState.PLAYING:
             logger.error("Game is not in progress")
             return
@@ -233,13 +240,12 @@ class Match:
         player.cards.remove(card_id)
         self.cards_compare[self.current_turn] = card_id
         self.time_auto_play = -1
+        self.current_turn = -1
 
         is_finish_round = await self.check_done_round()
         if not is_finish_round:
             self.current_turn = (self.current_turn + 1) % len(self.players)
-        else:
-            self.current_turn = -1
-
+    
         # send to others
         for i, player in enumerate(self.players):
             pkg = packet_pb2.PlayCard()
@@ -251,7 +257,6 @@ class Match:
 
         # Check done round
         if is_finish_round:
-            self.current_turn = -1
             await self.end_round()
         else:
             self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
@@ -361,9 +366,19 @@ class Match:
 
     async def end_game(self):
         self.state = MatchState.ENDED
-        
+        win_uids = [self.players[0].uid]
+        score_totals = [self.players[0].points]
+        score_last_tricks = [self.players[0].score_last_trick]
+        score_cards = []
+        for player in self.players:
+            score_cards.append(player.points - player.score_last_trick)
         # send to users
         pkg = packet_pb2.EndGame()
+        print(f"End game, win_uids: {win_uids}")
+        pkg.win_uids.extend(win_uids)
+        pkg.score_cards.extend(score_cards)
+        pkg.score_last_tricks.extend(score_last_tricks)
+        pkg.score_totals.extend(score_totals)
         for player in self.players:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.END_GAME, pkg)
         
