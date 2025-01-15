@@ -3,6 +3,7 @@ from enum import Enum
 from datetime import datetime, timedelta
 import logging
 import random
+import traceback
 
 from src.base.network.packets import packet_pb2
 from src.game.users_info_mgr import users_info_mgr
@@ -73,10 +74,13 @@ class Match:
         self.reset_logic_game()
     
     async def loop(self):
-        if self.state == MatchState.PLAYING:
-            if self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
-                await self._play_card(self.players[self.current_turn].uid, self.players[self.current_turn].cards[0], auto=True)
-    
+        try:
+            if self.state == MatchState.PLAYING:
+                if self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
+                    await self._play_card(self.players[self.current_turn].uid, self.players[self.current_turn].cards[0], auto=True)
+        except Exception as e:
+            traceback.print_exc()
+            raise e
     def reset_logic_game(self):
         self.current_turn = -1
         self.time_auto_play = -1
@@ -85,7 +89,7 @@ class Match:
         for i in range(self.player_mode):
             self.cards_compare.append(-1)
 
-        self.current_round = 0
+        self.current_hand = 0
 
         print(f"Player mode: {self.player_mode}")
         for i in range(self.player_mode):
@@ -187,7 +191,7 @@ class Match:
         self.state = MatchState.PLAYING
         self.start_time = datetime.now()
         self.current_turn = 0
-        self.current_round = -1
+        self.current_hand = -1
         self.time_auto_play = -1
         self.cards_compare.clear()
         for i in range(len(self.players)):
@@ -201,7 +205,7 @@ class Match:
         await self.deal_card()
         # wait for 2 seconds
         await asyncio.sleep(2)
-        await self._handle_new_round()
+        await self._handle_new_hand()
 
     async def user_play_card(self, uid, payload):
         pkg = packet_pb2.PlayCard()
@@ -217,8 +221,8 @@ class Match:
             logger.error("Game is not in progress")
             return
         
-        if await self.check_done_round():
-            logger.error("Round is done, wait for next round")
+        if await self.check_done_hand():
+            logger.error("hand is done, wait for next hand")
             return
     
 
@@ -240,11 +244,13 @@ class Match:
         player.cards.remove(card_id)
         self.cards_compare[self.current_turn] = card_id
         self.time_auto_play = -1
-        self.current_turn = -1
 
-        is_finish_round = await self.check_done_round()
-        if not is_finish_round:
+
+        is_finish_hand = await self.check_done_hand()
+        if not is_finish_hand:
             self.current_turn = (self.current_turn + 1) % len(self.players)
+        else:
+            self.current_turn = -1
     
         # send to others
         for i, player in enumerate(self.players):
@@ -255,13 +261,13 @@ class Match:
             pkg.current_turn = self.current_turn 
             await game_vars.get_game_client().send_packet(player.uid, CMDs.PLAY_CARD, pkg)
 
-        # Check done round
-        if is_finish_round:
-            await self.end_round()
+        # Check done hand
+        if is_finish_hand:
+            await self.end_hand()
         else:
             self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
-    async def check_done_round(self):
+    async def check_done_hand(self):
         for card in self.cards_compare:
             if card == -1:
                 return False
@@ -288,19 +294,19 @@ class Match:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
     
 
-    async def end_round(self):
+    async def end_hand(self):
         win_card = self.get_win_card()
         win_player = self.players[self.cards_compare.index(win_card)]
         win_player.points += 1
 
-        # reset round
+        # reset hand
         self.cards_compare.clear()
         for _ in range(self.player_mode):
             self.cards_compare.append(-1)
 
-        self.current_round += 1
+        self.current_hand += 1
 
-        pkg = packet_pb2.EndRound()
+        pkg = packet_pb2.EndHand()
         pkg.win_uid = win_player.uid
         pkg.win_card = win_card
         for player in self.players:
@@ -309,7 +315,7 @@ class Match:
         # send to others
         await asyncio.sleep(0.5)
         for player in self.players:
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.END_ROUND, pkg)
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.END_HAND, pkg)
 
         # effect show win cards
         await asyncio.sleep(2)
@@ -322,9 +328,7 @@ class Match:
             await self._handle_draw_card()
             await asyncio.sleep(3)
 
-        # check end game
-        self.current_turn = 0
-        await self._handle_new_round()
+        await self._handle_new_hand()
     
     def _is_end_game(self):
         if len(self.cards) == 0 and all(player.cards == [] for player in self.players):
@@ -344,14 +348,15 @@ class Match:
         for player in self.players:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DRAW_CARD, pkg)
 
-    async def _handle_new_round(self):
-        self.current_round += 1
+    async def _handle_new_hand(self):
+        self.current_hand += 1
+        self.current_turn = 0
         self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
-        pkg = packet_pb2.NewRound()
+        pkg = packet_pb2.NewHand()
         pkg.current_turn = self.current_turn
         for player in self.players:
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_ROUND, pkg)
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_HAND, pkg)
 
     def _draw_card(self):
         card = self.cards.pop(0)

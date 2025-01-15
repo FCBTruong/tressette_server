@@ -87,7 +87,7 @@ message StartGame {
 
 }
 
-message NewRound {
+message NewHand {
   int32 current_turn = 1;
   repeated int32 my_cards = 2;
 }
@@ -96,7 +96,7 @@ message UpdateGamePoint {
   repeated int32 points = 1;
 }
 
-message EndRound {
+message EndHand {
   int32 win_uid = 1;
   int32 win_card = 2;
   repeated int32 user_points = 3;
