@@ -1,7 +1,7 @@
 
 import json
 import logging
-from src.cache import redis_cache
+# from src.cache import redis_cache
 from src.game.models import UserInfo
 from src.postgres.sql_models import UserInfoSchema
 from src.postgres.orm import PsqlOrm
@@ -30,7 +30,7 @@ class UsersInfoMgr:
         # If not found, get from Postgres and cache it
         cache_key = 'user' + str(uid)
         logger.info('debug: 001')
-        cached_user_info = redis_cache.get_from_cache(cache_key)
+        cached_user_info = None #redis_cache.get_from_cache(cache_key)
         logger.info('debug: 002')
         if cached_user_info:
             logger.info("Cache hit")
@@ -48,7 +48,7 @@ class UsersInfoMgr:
                     "gold": user_info.gold,
                     "level": user_info.level
                 }
-                redis_cache.set_to_cache(cache_key, json.dumps(user_info_data))
+                #redis_cache.set_to_cache(cache_key, json.dumps(user_info_data))
                 return UserInfo(**user_info_data)
             return user_info
         logger.info('debug: 006')
