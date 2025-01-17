@@ -1,9 +1,16 @@
 from datetime import datetime
+import logging
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.base.network.packets.packet_pb2 import ChatMessage  # Import ChatMessage from the protobuf module
+
+logging.basicConfig(
+    level=logging.INFO,  # Set logging level
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
+)
+logger = logging.getLogger("game_client")  # Name your logger
 
 class GameClient:
     def __init__(self):
@@ -29,15 +36,20 @@ class GameClient:
                 pass
 
     async def user_login_success(self, uid):
+        logger.info('debug abc 00001')
         from src.base.network.connection_manager import connection_manager
-        print(f"User with ID {uid} has successfully logged in")
+        logger.info('debug abc 00002')
+        logger.info(f"User with ID {uid} has successfully logged in")
         general_pkg = packet_pb2.GeneralInfo()
         general_pkg.timestamp = int(datetime.now().timestamp())
+        logger.info('debug abc 00003')
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
+        logger.info('debug abc 00004')
 
         user_pkg = packet_pb2.UserInfo()
         
         user_info = await users_info_mgr.get_user_info(uid)
+        logger.info('debug abc 00005')
 
         user_pkg.uid = user_info.uid
         user_pkg.name = user_info.name
@@ -45,7 +57,7 @@ class GameClient:
         user_pkg.scores.extend([1, 2, 3, 4, 5])
         user_pkg.names.extend(["a", "", "c", "d", "e"])
         user_pkg.abc = 999
-        print(f"User info: {user_info.gold}")
+        logger.info(f"User info: {user_info.gold}")
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
 

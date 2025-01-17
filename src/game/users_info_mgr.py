@@ -1,10 +1,16 @@
 
 import json
+import logging
 from src.cache import redis_cache
 from src.game.models import UserInfo
 from src.postgres.sql_models import UserInfoSchema
 from src.postgres.orm import PsqlOrm
 
+logging.basicConfig(
+    level=logging.INFO,  # Set logging level
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
+)
+logger = logging.getLogger("user_info_mgr")  # Name your logger
 
 class UsersInfoMgr:
     async def create_new_user(self) -> UserInfo:
@@ -23,13 +29,18 @@ class UsersInfoMgr:
         # First get from Redis cache
         # If not found, get from Postgres and cache it
         cache_key = 'user' + str(uid)
+        logger.info('debug: 001')
         cached_user_info = redis_cache.get_from_cache(cache_key)
+        logger.info('debug: 002')
         if cached_user_info:
-            print("Cache hit")
+            logger.info("Cache hit")
             user_info_data = json.loads(cached_user_info)
             return UserInfo(**user_info_data)
+        logger.info('debug: 003')
         async with PsqlOrm.get().session() as session:
+            logger.info('debug: 004')
             user_info = await session.get(UserInfoSchema, uid)
+            logger.info('debug: 005')
             if user_info:
                 user_info_data = {
                     "uid": user_info.uid,
@@ -40,5 +51,6 @@ class UsersInfoMgr:
                 redis_cache.set_to_cache(cache_key, json.dumps(user_info_data))
                 return UserInfo(**user_info_data)
             return user_info
+        logger.info('debug: 006')
 
 users_info_mgr = UsersInfoMgr()

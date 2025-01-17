@@ -45,3 +45,6 @@ class Settings(
     pass
 
 settings = Settings()
+
+print('hmmm')
+print('configlog: ', settings)

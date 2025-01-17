@@ -23,7 +23,7 @@ TRESSETTE_MODE = 0
 BRISCOLA_MODE = 1
 
 TIME_AUTO_PLAY = 10 # seconds
-TIME_START_TO_DEAL = 3 # seconds
+TIME_START_TO_DEAL = 3.5 # seconds
 
 
 # 0 - 39
@@ -48,6 +48,7 @@ class MatchPlayer:
         self.cards = [] # id of cards
         self.points = 0
         self.score_last_trick = 0
+        self.team_id = -1
     
     def reset_game(self):
         self.cards.clear()
@@ -64,20 +65,38 @@ class Match:
         self.player_mode = player_mode
         self.players: list[MatchPlayer] = []
         self.cards = []
+        self.win_player = None
+        self.hand_suit = -1
+        self.auto_play_time_by_uid = {}
 
         if player_mode == PLAYER_SOLO_MODE:
             for i in range(2):
-                self.players.append(MatchPlayer(-1))
+                p = MatchPlayer(-1)
+                self.players.append(p)
+                p.team_id = i
         elif player_mode == PLAYER_DUO_MODE:
             for i in range(4):
-                self.players.append(MatchPlayer(-1))
+                p = MatchPlayer(-1)
+                p.team_id = i % 2
+                self.players.append(p)
         self.reset_logic_game()
     
     async def loop(self):
         try:
             if self.state == MatchState.PLAYING:
                 if self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
-                    await self._play_card(self.players[self.current_turn].uid, self.players[self.current_turn].cards[0], auto=True)
+                    card_id = self.players[self.current_turn].cards[0]
+                    if self.hand_suit != -1:
+                        # find suitable card
+                        for card in self.players[self.current_turn].cards:
+                            if card % 4 == self.hand_suit:
+                                card_id = card
+                                break
+
+                    await self._play_card(self.players[self.current_turn].uid, card_id, auto=True)
+            elif self.state == MatchState.WAITING:
+                if self.check_room_full() and self.time_start != -1 and datetime.now().timestamp() > self.time_start:
+                    await self.start_game()
         except Exception as e:
             traceback.print_exc()
             raise e
@@ -114,6 +133,7 @@ class Match:
                 self.players[i].name = user_data.name
                 self.players[i].gold = user_data.gold
                 seat_server_id = i
+                team_id = self.players[i].team_id
                 break
 
         # send to others that user has joined
@@ -125,15 +145,20 @@ class Match:
             pkg.uid = user_id
             pkg.name = user_data.name
             pkg.seat_server = seat_server_id
-
-            i += 1
+            pkg.team_id = team_id
 
             await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_USER_JOIN_MATCH, pkg)
         
         await self._send_game_info(user_id)
 
-        if all(player.uid != -1 for player in self.players):
-            await self.start_game()
+        if self.check_room_full():
+            self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
+            # Send to all players that game is starting, wait for 3 seconds
+            pkg = packet_pb2.PrepareStartGame()
+            pkg.time_start = int(self.time_start)
+            print('Game is starting, wait for 3 seconds')
+            for player in self.players:
+                await game_vars.get_game_client().send_packet(player.uid, CMDs.PREPARE_START_GAME, pkg)
 
     def check_can_join(self, uid: int):
         if self.state == MatchState.WAITING:
@@ -156,6 +181,7 @@ class Match:
         game_info.current_turn = self.current_turn
         game_info.cards_compare.extend(self.cards_compare)
         game_info.remain_cards = len(self.cards)
+        game_info.hand_suit = self.hand_suit # current suit of hand
 
         for player in self.players:
             game_info.uids.append(player.uid)
@@ -163,6 +189,7 @@ class Match:
             game_info.user_golds.append(player.gold)
             game_info.user_names.append(player.name)
             game_info.user_points.append(player.points)
+            game_info.team_ids.append(player.team_id)
 
             if player.uid == uid:
                 game_info.my_cards.extend(player.cards)
@@ -194,14 +221,15 @@ class Match:
         self.current_hand = -1
         self.time_auto_play = -1
         self.cards_compare.clear()
+        self.auto_play_time_by_uid.clear()
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
 
         pkg = packet_pb2.StartGame()
         for player in self.players:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.START_GAME, pkg)
-        # wait for 3 seconds
-        await asyncio.sleep(TIME_START_TO_DEAL)
+        # # wait for 3 seconds
+        # await asyncio.sleep(TIME_START_TO_DEAL)
         await self.deal_card()
         # wait for 2 seconds
         await asyncio.sleep(2)
@@ -237,14 +265,26 @@ class Match:
             logger.error(f"User {uid} does not have card {card_id}")
             return
         
-        # check whether the card is valid
+        if self.hand_suit == -1:
+            self.hand_suit = card_id % 4
+        else:
+            card_suit = card_id % 4
+            if card_suit != self.hand_suit:
+                for card in player.cards:
+                    if card % 4 == self.hand_suit:
+                        logger.error(f"User {uid} must play card with suit {self.hand_suit}")
+                        return
 
+        # Now user can play card
+        if not auto:
+            # remove auto play time
+            self.auto_play_time_by_uid.pop(uid, None)
+            
         # remove card from player
         print('remove card id: ', card_id, ' auto: ', auto)
         player.cards.remove(card_id)
         self.cards_compare[self.current_turn] = card_id
         self.time_auto_play = -1
-
 
         is_finish_hand = await self.check_done_hand()
         if not is_finish_hand:
@@ -258,14 +298,20 @@ class Match:
             pkg.uid = uid
             pkg.card_id = card_id
             pkg.auto = auto
-            pkg.current_turn = self.current_turn 
+            pkg.current_turn = self.current_turn
+            pkg.hand_suit = self.hand_suit
             await game_vars.get_game_client().send_packet(player.uid, CMDs.PLAY_CARD, pkg)
 
         # Check done hand
         if is_finish_hand:
             await self.end_hand()
         else:
-            self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+            # next uid
+            next_uid = self.players[self.current_turn].uid
+            if self.auto_play_time_by_uid.get(next_uid):
+                self.time_auto_play = self.auto_play_time_by_uid[next_uid] + TIME_AUTO_PLAY
+            else:
+                self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
     async def check_done_hand(self):
         for card in self.cards_compare:
@@ -295,9 +341,11 @@ class Match:
     
 
     async def end_hand(self):
-        win_card = self.get_win_card()
+        win_card = self.get_win_card_in_hand()
         win_player = self.players[self.cards_compare.index(win_card)]
-        win_player.points += 1
+        self.win_player = win_player
+        win_score = self.get_win_score_in_hand()
+        win_player.points += win_score
 
         # reset hand
         self.cards_compare.clear()
@@ -350,7 +398,14 @@ class Match:
 
     async def _handle_new_hand(self):
         self.current_hand += 1
-        self.current_turn = 0
+        self.hand_suit = -1
+
+        # next turn is the winner of last hand
+        if self.win_player:
+            self.current_turn = self.players.index(self.win_player)
+        else:
+            self.current_turn = 0
+
         self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
         pkg = packet_pb2.NewHand()
@@ -362,21 +417,38 @@ class Match:
         card = self.cards.pop(0)
         return card
 
-    def get_win_card(self):
-        win_card = self.cards_compare[0]
+
+    def get_win_card_in_hand(self):
+        # valid cards in hand, same defined suit
+        cards_valid = []
         for card in self.cards_compare:
-            if card > win_card:
+            if card % 4 == self.hand_suit:
+                cards_valid.append(card)
+
+        win_card = cards_valid[0]
+        for card in cards_valid:
+            if CARD_STRONGS[card // 4] > CARD_STRONGS[win_card // 4]:
                 win_card = card
         return win_card
+
+    def get_win_score_in_hand(self):
+        total_score = 0
+        for card in self.cards_compare:
+            total_score += CARD_VALUES[card]
+        return total_score
+
+        
 
     async def end_game(self):
         self.state = MatchState.ENDED
         win_uids = [self.players[0].uid]
-        score_totals = [self.players[0].points]
-        score_last_tricks = [self.players[0].score_last_trick]
+        score_totals = []
+        score_last_tricks = []
         score_cards = []
         for player in self.players:
             score_cards.append(player.points - player.score_last_trick)
+            score_last_tricks.append(player.score_last_trick)
+            score_totals.append(player.points)
         # send to users
         pkg = packet_pb2.EndGame()
         print(f"End game, win_uids: {win_uids}")
@@ -389,3 +461,31 @@ class Match:
         
         await asyncio.sleep(2)
         self.state = MatchState.WAITING
+
+# Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
+CARD_VALUES = {
+    0: 3, 1: 3, 2: 3, 3: 3,  # Aces (1 point * 3)
+    4: 0, 5: 0, 6: 0, 7: 0,  # 2s
+    8: 1, 9: 1, 10: 1, 11: 1,  # 3s (1 point * 3)
+    12: 0, 13: 0, 14: 0, 15: 0,  # 4s
+    16: 0, 17: 0, 18: 0, 19: 0,  # 5s
+    20: 0, 21: 0, 22: 0, 23: 0,  # 6s
+    24: 0, 25: 0, 26: 0, 27: 0,  # 7s
+    28: 1, 29: 1, 30: 1, 31: 1,  # Jacks (1/3 point * 3 = 1)
+    32: 1, 33: 1, 34: 1, 35: 1,  # Queens (1/3 point * 3 = 1)
+    36: 1, 37: 1, 38: 1, 39: 1   # Kings (1/3 point * 3 = 1)
+}
+
+# Three (2) -> Two(1) -> ACE(0) -> King (9) -> Queen (8) -> Jack (7) -> 7 (6) -> 6 (5) -> 5 (4) -> 4 (3)
+CARD_STRONGS = {
+    2: 100,
+    1: 99,
+    0: 98,
+    9: 97,
+    8: 96,
+    7: 95,
+    6: 94,
+    5: 93,
+    4: 92,
+    3: 91
+}

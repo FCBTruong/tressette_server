@@ -1,8 +1,16 @@
-import asyncio
+
+import logging
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
-from fastapi.websockets import WebSocketDisconnect
 from src.base.network.connection_manager import connection_manager
+import src.game.game_client as game_client
+
+
+logging.basicConfig(
+    level=logging.INFO,  # Set logging level
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
+)
+logger = logging.getLogger("main")  # Name your logger
 
 async def lifespan(app: FastAPI):
     print("Application startup complete.")
@@ -50,6 +58,8 @@ html = """
 
 @app.get("/")
 async def get():
+    print('Get data')
+    logger.info('get main page html')
     return HTMLResponse(html)
 
 

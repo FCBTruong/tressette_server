@@ -54,6 +54,8 @@ message GameInfo {
   repeated int32 my_cards = 10;
   int32 remain_cards = 11;
   repeated int32 user_points = 12;
+  repeated int32 team_ids = 13;
+  int32 hand_suit = 14;
 }
 
 message LeaveGame {
@@ -65,6 +67,7 @@ message NewUserJoinMatch {
   int32 gold = 2;
   string name = 3;
   int32 seat_server = 4;
+  int32 team_id = 5;
 }
 
 message UserLeaveMatch {
@@ -81,6 +84,7 @@ message PlayCard {
   int32 card_id = 2;
   bool auto = 3;
   int32 current_turn = 4;
+  int32 hand_suit = 5;
 }
 
 message StartGame {
@@ -115,4 +119,8 @@ message EndGame {
   repeated int32 score_cards = 2;
   repeated int32 score_last_tricks = 3;
   repeated int32 score_totals = 4;
+}
+
+message PrepareStartGame {
+  int32 time_start = 1;
 }

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import traceback
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
@@ -7,6 +8,11 @@ from src.game.game_vars import game_vars
 from src.base.network.packets import packet_pb2
 from src.game.cmds import CMDs
 
+logging.basicConfig(
+    level=logging.INFO,  # Set logging level
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
+)
+logger = logging.getLogger("connection_manager")  # Name your logger
 MAX_RETRY_PINGS = 3
 
 CMD_PING_PONG = 0
@@ -114,15 +120,19 @@ class ConnectionManager:
         await websocket.send_bytes(serialized_packet)
         print(f"Packet successfully sent: cmd_id={cmd_id}")
 
+    def _authenticate_user(self):
+        return True
+
     async def handle_received_packet(self, websocket: WebSocket, raw_data: bytes):
         """Handles incoming packets and responds accordingly."""
         try:
+            logger.info('receive -packet')
             packet = packet_pb2.Packet()
             packet.ParseFromString(raw_data)
             cmd_id = packet.cmd_id
             payload = packet.payload
             token = packet.token
-            print(f"Packet received: cmd_id={cmd_id}")
+            logger.info(f"Packet received: cmd_id={cmd_id}")
 
             if cmd_id == CMD_PING_PONG:
                 self.ping_responses[websocket] += 1  # Increment pong counter
@@ -130,23 +140,33 @@ class ConnectionManager:
                 login_client_pkg = packet_pb2.Login()
                 login_client_pkg.ParseFromString(payload)
                 uid = login_client_pkg.uid
-                print(f"Login packet received: uid={uid}")
+                logger.info(f"Login packet received: uid={uid}")
+                logger.info('debug ABC: 001')
+
+                # authenticate user
+                if not self._authenticate_user():
+                    logger.info("user not authenticated")
+                    return
+                logger.info('debug ABC: 002')
 
                 user_info = {
                     "uid": uid,
                     "active": True
                 }
+                logger.info('debug ABC: 003')
 
                 # Check if user is already logged in, if so, disconnect the old connection
                 old_websocket = self.user_websockets.get(uid)
+                logger.info('debug ABC: 004')
                 if old_websocket:
                     print(f"User with ID {uid} is already logged in. Disconnecting old connection.")
                 
                     if old_websocket.application_state == WebSocketState.CONNECTED:
-                        await   old_websocket.close()
+                        await  old_websocket.close()
 
+                logger.info('create access token')
                 new_token = create_access_token(user_info)
-                print(f"New token: {new_token}")
+                logger.info('access token', new_token)
                 login_response = packet_pb2.LoginResponse()
                 login_response.token = new_token
                 login_response.uid = uid
@@ -155,23 +175,23 @@ class ConnectionManager:
 
                 self.user_websockets[uid] = websocket
                 await self.send_packet(websocket, CMD_LOGIN, p)
+                logger.info('debug 03')
                 await game_vars.get_game_client().user_login_success(uid=uid)
             else:
                 if not token:
-                    print("Unauthorized")
+                    logger.info("Unauthorized")
                     return
 
                 user = verify_token(token)
                 if not user:
-                    print("Unauthorized")
+                    logger.info("Unauthorized")
                     return
                 print(f"User: {user}")
                 uid = user.get("uid")
                 
                 await game_vars.get_game_client().on_receive_packet(uid=uid, cmd_id=cmd_id, payload=payload)
-                pass
         except Exception as e:
-            print(f"Failed to parse packet: {e}")
+            logger.info(f"Failed to parse packet: {e}")
             traceback.print_exc()
 
     async def send_packet_to_user(self, uid: int, cmd_id: int, payload: bytes):
