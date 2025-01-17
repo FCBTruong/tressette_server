@@ -126,7 +126,6 @@ class ConnectionManager:
     async def handle_received_packet(self, websocket: WebSocket, raw_data: bytes):
         """Handles incoming packets and responds accordingly."""
         try:
-            logger.info('receive -packet')
             packet = packet_pb2.Packet()
             packet.ParseFromString(raw_data)
             cmd_id = packet.cmd_id
@@ -141,23 +140,19 @@ class ConnectionManager:
                 login_client_pkg.ParseFromString(payload)
                 uid = login_client_pkg.uid
                 logger.info(f"Login packet received: uid={uid}")
-                logger.info('debug ABC: 001')
 
                 # authenticate user
                 if not self._authenticate_user():
                     logger.info("user not authenticated")
                     return
-                logger.info('debug ABC: 002')
 
                 user_info = {
                     "uid": uid,
                     "active": True
                 }
-                logger.info('debug ABC: 003')
 
                 # Check if user is already logged in, if so, disconnect the old connection
                 old_websocket = self.user_websockets.get(uid)
-                logger.info('debug ABC: 004')
                 if old_websocket:
                     print(f"User with ID {uid} is already logged in. Disconnecting old connection.")
                 
@@ -166,7 +161,6 @@ class ConnectionManager:
 
                 logger.info('create access token')
                 new_token = create_access_token(user_info)
-                logger.info('access token', new_token)
                 login_response = packet_pb2.LoginResponse()
                 login_response.token = new_token
                 login_response.uid = uid
@@ -175,7 +169,6 @@ class ConnectionManager:
 
                 self.user_websockets[uid] = websocket
                 await self.send_packet(websocket, CMD_LOGIN, p)
-                logger.info('debug 03')
                 await game_vars.get_game_client().user_login_success(uid=uid)
             else:
                 if not token:

@@ -36,20 +36,15 @@ class GameClient:
                 pass
 
     async def user_login_success(self, uid):
-        logger.info('debug abc 00001')
         from src.base.network.connection_manager import connection_manager
-        logger.info('debug abc 00002')
         logger.info(f"User with ID {uid} has successfully logged in")
         general_pkg = packet_pb2.GeneralInfo()
         general_pkg.timestamp = int(datetime.now().timestamp())
-        logger.info('debug abc 00003')
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
-        logger.info('debug abc 00004')
 
         user_pkg = packet_pb2.UserInfo()
         
         user_info = await users_info_mgr.get_user_info(uid)
-        logger.info('debug abc 00005')
 
         user_pkg.uid = user_info.uid
         user_pkg.name = user_info.name

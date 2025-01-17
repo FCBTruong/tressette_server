@@ -58,8 +58,6 @@ html = """
 
 @app.get("/")
 async def get():
-    print('Get data')
-    logger.info('get main page html')
     return HTMLResponse(html)
 
 
