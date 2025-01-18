@@ -38,7 +38,7 @@ class GameMgr:
         await game_vars.get_match_mgr().user_join_match(match, uid=uid)
 
     async def _handle_leave_game(self, uid: int):  
-        status = await game_vars.get_match_mgr().user_leave_match(uid)
+        status = await game_vars.get_match_mgr().handle_user_leave_match(uid)
         leave_pkg = packet_pb2.LeaveGame()
         print(f"User {uid} leave game with status {status}")
         leave_pkg.status = status.value

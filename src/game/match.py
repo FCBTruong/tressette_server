@@ -152,13 +152,16 @@ class Match:
         await self._send_game_info(user_id)
 
         if self.check_room_full():
-            self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
-            # Send to all players that game is starting, wait for 3 seconds
-            pkg = packet_pb2.PrepareStartGame()
-            pkg.time_start = int(self.time_start)
-            print('Game is starting, wait for 3 seconds')
-            for player in self.players:
-                await game_vars.get_game_client().send_packet(player.uid, CMDs.PREPARE_START_GAME, pkg)
+            await self._prepare_start_game()
+
+    async def _prepare_start_game(self):
+        self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
+        # Send to all players that game is starting, wait for 3 seconds
+        pkg = packet_pb2.PrepareStartGame()
+        pkg.time_start = int(self.time_start)
+        print('Game is starting, wait for 3 seconds')
+        for player in self.players:
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.PREPARE_START_GAME, pkg)
 
     def check_can_join(self, uid: int):
         if self.state == MatchState.WAITING:
@@ -168,6 +171,12 @@ class Match:
     def check_room_full(self):
         for player in self.players:
             if player.uid == -1:
+                return False
+        return True
+    
+    def check_room_empty(self):
+        for player in self.players:
+            if player.uid != -1:
                 return False
         return True
     
@@ -197,6 +206,7 @@ class Match:
         print(f"Send game info to user {uid}, game_info: {game_info}")
         await game_vars.get_game_client().send_packet(uid, CMDs.GAME_INFO, game_info)
 
+    # ALERT: This function is called from match_mgr
     async def user_leave(self, uid): 
         for i, player in enumerate(self.players):
             if player.uid == uid:
@@ -205,16 +215,21 @@ class Match:
 
         # noti to others
         for player in self.players:
-            if player.uid == -1:
-                continue
+            # if player.uid == -1:
+            #     continue
 
             print(f"Send to user {player.uid} that user {uid} has left")
 
             pkg = packet_pb2.UserLeaveMatch()
             pkg.uid = uid
             await game_vars.get_game_client().send_packet(player.uid, CMDs.USER_LEAVE_MATCH, pkg)
+
+        # Destroy the room if no one in room
+        if self.check_room_empty():
+            await game_vars.get_match_mgr().destroy_match(self.match_id)
     
     async def start_game(self):
+        self.time_start = -1
         self.state = MatchState.PLAYING
         self.start_time = datetime.now()
         self.current_turn = 0
@@ -222,6 +237,15 @@ class Match:
         self.time_auto_play = -1
         self.cards_compare.clear()
         self.auto_play_time_by_uid.clear()
+        self.hand_suit = -1
+        self.win_player = None
+
+        # reset players scores:
+        for player in self.players:
+            player.points = 0
+            player.score_last_trick = 0
+            player.cards.clear()
+
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
 
@@ -379,7 +403,20 @@ class Match:
         await self._handle_new_hand()
     
     def _is_end_game(self):
-        if len(self.cards) == 0 and all(player.cards == [] for player in self.players):
+        # check if one team reach 21 * 3 points then end game
+        score_team1 = 0
+        score_team2 = 0
+        for player in self.players:
+            if player.team_id == 0:
+                score_team1 += player.points
+            else:
+                score_team2 += player.points
+
+        # test
+        if score_team1 >= 5 or score_team2 >= 5:
+            return True
+        
+        if score_team1 >= 63 or score_team2 >= 63:
             return True
         return False
     
@@ -459,8 +496,18 @@ class Match:
         for player in self.players:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.END_GAME, pkg)
         
+        # User can quit the room now
         await asyncio.sleep(2)
         self.state = MatchState.WAITING
+        # Kick users auto playing, or register exit room
+        for player in self.players:
+            await game_vars.get_match_mgr().handle_user_leave_match(player.uid)
+        await asyncio.sleep(1)
+        # prepare for next game
+        self.reset_logic_game()
+        if self.check_room_full():
+            await self._prepare_start_game()
+
 
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
 CARD_VALUES = {

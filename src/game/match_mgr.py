@@ -66,12 +66,13 @@ class MatchManager:
             return self.matches.get(match_id)
         return None
 
-    async def on_end_match(self, match_id):
+    async def destroy_match(self, match_id):
         print(f"End match {match_id}")
         match = self.matches.get(match_id)
         if match:
             for player in match.players:
-                self.user_matchids.pop(player.uid)
+                if player.uid in self.user_matchids:
+                    self.user_matchids.pop(player.uid)
             self.matches.pop(match_id)
 
     async def is_user_in_match(self, user_id):
@@ -88,7 +89,7 @@ class MatchManager:
         self.user_matchids[uid] = match.match_id
         await match.user_join(uid)
 
-    async def user_leave_match(self, uid: int) -> LeaveMatchErrors:
+    async def handle_user_leave_match(self, uid: int) -> LeaveMatchErrors:
         match_id = self.user_matchids.get(uid)
 
         if not match_id:
@@ -108,7 +109,7 @@ class MatchManager:
             print(f"User {uid} is in a match, auto leave")
             match = await self.get_match_of_user(uid)
             if match.state == MatchState.WAITING:
-                await self.user_leave_match(uid)
+                await self.handle_user_leave_match(uid)
 
     async def user_play_card(self, uid: int, payload):
         match = await self.get_match_of_user(uid)
