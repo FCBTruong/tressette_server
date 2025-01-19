@@ -124,3 +124,8 @@ message EndGame {
 message PrepareStartGame {
   int32 time_start = 1;
 }
+
+message InGameChatMessage {
+  int32 uid = 1;
+  string chat_message = 2;
+}

@@ -1,10 +1,10 @@
 
-
 class GameVars:
     def __init__(self):
         self.game_client = None
         self.game_mgr = None
         self.match_mgr = None
+        self.ingame_chat_mgr = None
         
     def get_game_client(self):
         if self.game_client is None:
@@ -25,5 +25,11 @@ class GameVars:
             self.match_mgr.start()
 
         return self.match_mgr
+    
+    def get_ingame_chat_mgr(self):
+        if self.ingame_chat_mgr is None:
+            from src.game.ingame_chat_mgr import InGameChatMgr
+            self.ingame_chat_mgr = InGameChatMgr()
+        return self.ingame_chat_mgr
     
 game_vars = GameVars()

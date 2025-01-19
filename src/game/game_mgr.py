@@ -18,6 +18,8 @@ class GameMgr:
                 await self._handle_leave_game(uid)
             case CMDs.PLAY_CARD:
                 await game_vars.get_match_mgr().user_play_card(uid, payload)
+            case CMDs.NEW_INGAME_CHAT_MESSAGE:
+                await game_vars.get_ingame_chat_mgr().on_chat_message(uid, payload)
         pass
     
     async def _handle_quick_play(self, uid: int):

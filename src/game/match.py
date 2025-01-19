@@ -508,6 +508,15 @@ class Match:
         if self.check_room_full():
             await self._prepare_start_game()
 
+    async def broadcast_chat_message(self, uid, message):
+        pkg = packet_pb2.InGameChatMessage()
+        pkg.uid = uid
+        pkg.chat_message = message
+        for player in self.players:
+            if player.uid == uid:
+                continue
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_INGAME_CHAT_MESSAGE, pkg)
+
 
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
 CARD_VALUES = {
