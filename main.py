@@ -3,6 +3,7 @@ import logging
 from fastapi import FastAPI, WebSocket
 from fastapi.responses import HTMLResponse
 from src.base.network.connection_manager import connection_manager
+from src.base.payment.google_pay import verify_purchase
 import src.game.game_client as game_client
 
 

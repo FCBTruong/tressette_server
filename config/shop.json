@@ -1,0 +1,34 @@
+{
+    "packs": [
+        {
+            "pack_id": "pack_01",
+            "gold": 1000000,
+            "price": 1,
+            "currency": "€"
+        },
+        {
+            "pack_id": "pack_02",
+            "gold": 3000000,
+            "price": 3,
+            "currency": "€"
+        },
+        {
+            "pack_id": "pack_03",
+            "gold": 8000000,
+            "price": 8,
+            "currency": "€"
+        },
+        {
+            "pack_id": "pack_04",
+            "gold": 12000000,
+            "price": 12,
+            "currency": "€"
+        },
+        {
+            "pack_id": "pack_05",
+            "gold": 20000000,
+            "price": 20,
+            "currency": "€"
+        }
+    ]
+}

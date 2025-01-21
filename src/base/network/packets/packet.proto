@@ -129,3 +129,19 @@ message InGameChatMessage {
   int32 uid = 1;
   string chat_message = 2;
 }
+
+message PaymentGoogleConsume {
+  string purchase_token = 1;
+  int32 quantity = 2;
+  repeated string skus = 3;
+  string signature = 4;
+  string sku = 5;
+}
+
+message PaymentSuccess {
+  int32 gold = 1;
+}
+
+message UpdateMoney {
+  int32 gold = 1;
+}

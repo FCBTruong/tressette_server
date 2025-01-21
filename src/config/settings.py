@@ -37,10 +37,14 @@ class RedisSettings(DatabaseSettings):
     REDIS_PORT: Optional[str] = os.getenv("REDIS_PORT", "6379")
     REDIS_TTL: Optional[int] = os.getenv("REDIS_TTL", 3600)
 
+class CommonSettings(BaseSettings):
+    ENABLE_CHEAT: Optional[bool] = os.getenv("ENABLE_CHEAT") == "true"
+    
 class Settings(
     EnvironmentSettings,
     PostgresSettings,
-    RedisSettings
+    RedisSettings,
+    CommonSettings,
 ):
     pass
 

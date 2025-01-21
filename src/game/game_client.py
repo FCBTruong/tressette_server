@@ -1,6 +1,7 @@
 from datetime import datetime
 import logging
 from src.base.network.packets import packet_pb2
+from src.base.payment import payment_mgr
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
@@ -17,19 +18,12 @@ class GameClient:
         pass
 
     async def on_receive_packet(self, uid, cmd_id, payload):
+        if cmd_id >= 4000 and cmd_id < 5000:
+            # PAYMENT
+            await payment_mgr.on_receive_packet(uid, cmd_id, payload)
+            return 
         await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
         match cmd_id:
-            case CMDs.TEST_MESSAGE:
-                print("Received TEST_MESSAGE packet")
-                
-                # Deserialize payload into a ChatMessage object
-                chat_message = ChatMessage()
-                try:
-                    chat_message.ParseFromString(payload)
-                    print(f"Message from {chat_message}")
-                except Exception as e:
-                    print(f"Failed to parse ChatMessage: {e}")
-            
             case CMDs.LOGOUT:
                 print("Received LOGOUT packet")
             case _:
