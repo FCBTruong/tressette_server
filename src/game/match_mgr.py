@@ -96,11 +96,15 @@ class MatchManager:
             return LeaveMatchErrors.NOT_IN_MATCH
         
         match = await self.get_match_of_user(uid)
-        if match.state != MatchState.WAITING:
+        if not match.can_quit_game():
             return LeaveMatchErrors.MATCH_STARTED
         
         await match.user_leave(uid)
         self.user_matchids.pop(uid)
+
+        if match.check_room_empty():
+            await self.destroy_match(match_id)
+            
         return LeaveMatchErrors.SUCCESS
             
     async def user_disconnect(self, uid: int):

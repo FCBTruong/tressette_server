@@ -12,10 +12,11 @@ from src.game.game_vars import game_vars
 from datetime import datetime, timedelta
 
 class MatchState(Enum):
-	WAITING = 0
-	PLAYING = 1
-	ENDING = 2
-	ENDED = 3
+    WAITING = 0
+    PREPARING_START = 1
+    PLAYING = 2
+    ENDING = 3
+    ENDED = 4
 
 PLAYER_SOLO_MODE = 2
 PLAYER_DUO_MODE = 4
@@ -85,16 +86,19 @@ class Match:
         try:
             if self.state == MatchState.PLAYING:
                 if self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
-                    card_id = self.players[self.current_turn].cards[0]
+                    player = self.players[self.current_turn]
+                    if len(player.cards) == 0:
+                        return
+                    card_id = player.cards[0]
                     if self.hand_suit != -1:
                         # find suitable card
-                        for card in self.players[self.current_turn].cards:
+                        for card in player.cards:
                             if card % 4 == self.hand_suit:
                                 card_id = card
                                 break
 
-                    await self._play_card(self.players[self.current_turn].uid, card_id, auto=True)
-            elif self.state == MatchState.WAITING:
+                    await self._play_card(player.uid, card_id, auto=True)
+            elif self.state == MatchState.PREPARING_START:
                 if self.check_room_full() and self.time_start != -1 and datetime.now().timestamp() > self.time_start:
                     await self.start_game()
         except Exception as e:
@@ -155,6 +159,7 @@ class Match:
             await self._prepare_start_game()
 
     async def _prepare_start_game(self):
+        self.state = MatchState.PREPARING_START
         self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
         pkg = packet_pb2.PrepareStartGame()
@@ -208,15 +213,10 @@ class Match:
 
     # ALERT: This function is called from match_mgr
     async def user_leave(self, uid): 
-        for i, player in enumerate(self.players):
-            if player.uid == uid:
-                self.players[i].uid = -1
-                break
-
         # noti to others
         for player in self.players:
-            # if player.uid == -1:
-            #     continue
+            if player.uid == -1:
+                continue
 
             print(f"Send to user {player.uid} that user {uid} has left")
 
@@ -224,11 +224,15 @@ class Match:
             pkg.uid = uid
             await game_vars.get_game_client().send_packet(player.uid, CMDs.USER_LEAVE_MATCH, pkg)
 
-        # Destroy the room if no one in room
-        if self.check_room_empty():
-            await game_vars.get_match_mgr().destroy_match(self.match_id)
+        # remove user from match
+        for i, player in enumerate(self.players):
+            if player.uid == uid:
+                self.players[i].uid = -1
+                break
+
     
     async def start_game(self):
+        print('Start game')
         self.time_start = -1
         self.state = MatchState.PLAYING
         self.start_time = datetime.now()
@@ -412,9 +416,9 @@ class Match:
             else:
                 score_team2 += player.points
 
-        # test
-        if score_team1 >= 5 or score_team2 >= 5:
-            return True
+        # # test
+        # if score_team1 >= 5 or score_team2 >= 5:
+        #     return True
         
         if score_team1 >= 63 or score_team2 >= 63:
             return True
@@ -454,7 +458,9 @@ class Match:
         card = self.cards.pop(0)
         return card
 
-
+    def can_quit_game(self):
+        return self.state == MatchState.WAITING or self.state == MatchState.PREPARING_START
+    
     def get_win_card_in_hand(self):
         # valid cards in hand, same defined suit
         cards_valid = []
