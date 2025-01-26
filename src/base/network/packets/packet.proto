@@ -27,6 +27,10 @@ message Login {
   int32 uid = 1;
 }
 
+message Logout {
+  
+}
+
 message LoginResponse {
   int32 uid = 1;
   string token = 2;

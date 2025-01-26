@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.base.payment import payment_mgr
 from src.game.game_vars import game_vars
@@ -22,12 +23,15 @@ class GameClient:
             # PAYMENT
             await payment_mgr.on_receive_packet(uid, cmd_id, payload)
             return 
-        await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
         match cmd_id:
             case CMDs.LOGOUT:
-                print("Received LOGOUT packet")
+                logout_pkg = packet_pb2.Logout()
+                # send logout packet
+                await self.send_packet(uid, CMDs.LOGOUT, logout_pkg)
+                print("Accepted logout")
+                await connection_manager.user_logout(uid)
             case _:
-                pass
+                await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
 
     async def user_login_success(self, uid):
         from src.base.network.connection_manager import connection_manager

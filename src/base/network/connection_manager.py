@@ -157,7 +157,7 @@ class ConnectionManager:
                     print(f"User with ID {uid} is already logged in. Disconnecting old connection.")
                 
                     if old_websocket.application_state == WebSocketState.CONNECTED:
-                        await  old_websocket.close()
+                        await old_websocket.close()
 
                 logger.info('create access token')
                 new_token = create_access_token(user_info)
@@ -199,6 +199,11 @@ class ConnectionManager:
         else:
             print(f"User with ID {uid} not has no active WebSocket connection")
         pass
+
+    async def user_logout(self, uid: int):
+        # remove from user_websockets
+        if uid in self.user_websockets:
+            del self.user_websockets[uid]
 
 # Instantiate the ConnectionManager for usage
 connection_manager = ConnectionManager()
