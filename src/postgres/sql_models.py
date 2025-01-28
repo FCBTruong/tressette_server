@@ -13,3 +13,4 @@ class UserInfoSchema(Base):
     name = Column(String)  # Text column for name
     gold = Column(Integer)  # Integer column for gold
     level = Column(Integer)  # Integer column for level
+    avatar = Column(String)  # Text column for avatar

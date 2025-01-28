@@ -3,7 +3,11 @@
 import asyncio
 import logging
 
+from src.base.network.packets import packet_pb2
+from src.game.game_vars import game_vars
+from src.game.cmds import CMDs
 from src.game.match import LeaveMatchErrors, Match, MatchState
+from src.game.users_info_mgr import users_info_mgr
 
 
 logging.basicConfig(
@@ -45,7 +49,7 @@ class MatchManager:
         except Exception as e:
             logger.error(f"Unexpected error in MatchManager loop: {e}")
 
-    async def create_match(self) -> Match:
+    async def create_match(self, uid) -> Match:
         match_id = self.start_match_id
         logger.info(f"Creating match {match_id}")
         match = Match(match_id)
@@ -78,9 +82,12 @@ class MatchManager:
     async def is_user_in_match(self, user_id):
         return user_id in self.user_matchids
     
-    async def get_free_match(self) -> Match:
+    async def get_free_match(self, uid) -> Match:
         print(f"Number match current: {len(self.matches.items())}")
         for match_id, match in self.matches.items():
+            if not match.check_user_can_join_gold(uid):
+                continue # Not enough gold
+            
             if match.state == MatchState.WAITING and not match.check_room_full():
                 return match
         return None
@@ -103,8 +110,9 @@ class MatchManager:
         self.user_matchids.pop(uid)
 
         if match.check_room_empty():
+            print('Destroy match')
             await self.destroy_match(match_id)
-            
+
         return LeaveMatchErrors.SUCCESS
             
     async def user_disconnect(self, uid: int):
@@ -119,3 +127,37 @@ class MatchManager:
         match = await self.get_match_of_user(uid)
         if match:
             await match.user_play_card(uid, payload)
+
+    async def on_table_list(self, uid):
+        matches = await self.prioritize_matches(self.matches, uid)  # Get the 20 matches closest to the user's gold
+        # priority table is waiting
+        match_ids = []
+        bets = []
+        for match in matches:
+            match_ids.append(match.match_id)
+            bets.append(match.bet)
+        
+        print(f"Table list: {match_ids}")
+        pkg = packet_pb2.TableList()
+        pkg.table_ids.extend(match_ids)
+        pkg.bets.extend(bets)
+        await game_vars.get_game_client().send_packet(uid, CMDs.TABLE_LIST, pkg)
+
+    async def prioritize_matches(self, matches: dict[int, Match], uid: int) -> list[Match]:
+        max_matches = 20  # Limit of prioritized matches
+        user = await users_info_mgr.get_user_info(uid)
+        user_gold = user.gold
+
+        # Separate matches by state
+        waiting_matches = [match for match in matches.values() if match.state == MatchState.WAITING]
+        other_matches = [match for match in matches.values() if match.state != MatchState.WAITING]
+
+        # Sort matches by bet proximity to user's gold
+        waiting_matches.sort(key=lambda match: abs(match.bet - user_gold))
+        other_matches.sort(key=lambda match: abs(match.bet - user_gold))
+
+        # Combine matches, prioritizing waiting matches
+        prioritized_matches = waiting_matches + other_matches
+
+        # Return the top matches, limited to `max_matches`
+        return prioritized_matches[:max_matches]

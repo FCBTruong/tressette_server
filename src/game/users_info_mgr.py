@@ -13,6 +13,7 @@ logging.basicConfig(
 logger = logging.getLogger("user_info_mgr")  # Name your logger
 
 class UsersInfoMgr:
+    users : dict[int, UserInfo] = {} # Store user info in memory for quick access uid -> UserInfo
     async def create_new_user(self) -> UserInfo:
         user_model = UserInfoSchema()
         user_model.name = "tressette player"
@@ -25,15 +26,10 @@ class UsersInfoMgr:
             return user_model
 
     async def get_user_info(self, uid: int) -> UserInfo:
-        # redis_cache.clear_cache()
-        # First get from Redis cache
-        # If not found, get from Postgres and cache it
-        cache_key = 'user' + str(uid)
-        cached_user_info = None #redis_cache.get_from_cache(cache_key)
+        # cache_key = 'user' + str(uid)
+        cached_user_info = self.users.get(uid)
         if cached_user_info:
-            logger.info("Cache hit")
-            user_info_data = json.loads(cached_user_info)
-            return UserInfo(**user_info_data)
+            return cached_user_info
         async with PsqlOrm.get().session() as session:
             user_info = await session.get(UserInfoSchema, uid)
             if user_info:
@@ -41,10 +37,12 @@ class UsersInfoMgr:
                     "uid": user_info.uid,
                     "name": user_info.name,
                     "gold": user_info.gold,
-                    "level": user_info.level
+                    "level": user_info.level,
+                    "avatar": user_info.avatar,
                 }
-                #redis_cache.set_to_cache(cache_key, json.dumps(user_info_data))
-                return UserInfo(**user_info_data)
+                user_inf = UserInfo(**user_info_data)
+                self.users[uid] = user_inf
+                return user_inf
             return user_info
 
 

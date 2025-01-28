@@ -7,7 +7,7 @@ from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.base.network.packets.packet_pb2 import ChatMessage  # Import ChatMessage from the protobuf module
-
+from src.game.tressette_config import config as tress_config
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
@@ -37,6 +37,7 @@ class GameClient:
         from src.base.network.connection_manager import connection_manager
         logger.info(f"User with ID {uid} has successfully logged in")
         general_pkg = packet_pb2.GeneralInfo()
+        general_pkg.min_gold_play = tress_config.get("min_gold_play")
         general_pkg.timestamp = int(datetime.now().timestamp())
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
@@ -47,9 +48,7 @@ class GameClient:
         user_pkg.uid = user_info.uid
         user_pkg.name = user_info.name
         user_pkg.gold = user_info.gold
-        user_pkg.scores.extend([1, 2, 3, 4, 5])
-        user_pkg.names.extend(["a", "", "c", "d", "e"])
-        user_pkg.abc = 999
+        user_pkg.avatar = user_info.avatar
         logger.info(f"User info: {user_info.gold}")
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)

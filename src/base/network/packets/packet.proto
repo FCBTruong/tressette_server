@@ -28,7 +28,7 @@ message Login {
 }
 
 message Logout {
-  
+
 }
 
 message LoginResponse {
@@ -43,6 +43,7 @@ message UserInfo {
   repeated int32 scores = 4;
   repeated string names = 5;
   int32 abc = 6;
+  string avatar = 7;
 }
 
 message GameInfo {
@@ -60,6 +61,7 @@ message GameInfo {
   repeated int32 user_points = 12;
   repeated int32 team_ids = 13;
   int32 hand_suit = 14;
+  repeated string avatars = 15;
 }
 
 message LeaveGame {
@@ -72,6 +74,7 @@ message NewUserJoinMatch {
   string name = 3;
   int32 seat_server = 4;
   int32 team_id = 5;
+  string avatar = 6;
 }
 
 message UserLeaveMatch {
@@ -108,6 +111,7 @@ message EndHand {
   int32 win_uid = 1;
   int32 win_card = 2;
   repeated int32 user_points = 3;
+  int32 win_point = 4;
 }
 
 message DrawCard {
@@ -116,6 +120,7 @@ message DrawCard {
 
 message GeneralInfo {
   int64 timestamp = 1;
+  int32 min_gold_play = 2;
 }
 
 message EndGame {
@@ -148,4 +153,11 @@ message PaymentSuccess {
 
 message UpdateMoney {
   int32 gold = 1;
+}
+
+message TableList {
+  repeated int32 table_ids = 1;
+  repeated int32 bets = 2;
+  repeated int32 cur_player = 3;
+  repeated int32 max_player = 4;
 }

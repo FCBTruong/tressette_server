@@ -5,3 +5,5 @@ cd /Users/huytruong/Workspace/Games/apks/
 adb install /Users/huytruong/Workspace/Games/apks/output.apk
 
 huytruong8765
+
+adb install /Users/huytruong/Workspace/Games/apks/Tressette.apk

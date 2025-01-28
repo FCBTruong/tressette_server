@@ -45,6 +45,7 @@ class MatchPlayer:
     def __init__(self, uid):
         self.uid = uid
         self.name = ""
+        self.avatar = ""
         self.gold = 0
         self.cards = [] # id of cards
         self.points = 0
@@ -69,6 +70,7 @@ class Match:
         self.win_player = None
         self.hand_suit = -1
         self.auto_play_time_by_uid = {}
+        self.bet = 10000
 
         if player_mode == PLAYER_SOLO_MODE:
             for i in range(2):
@@ -99,8 +101,12 @@ class Match:
 
                     await self._play_card(player.uid, card_id, auto=True)
             elif self.state == MatchState.PREPARING_START:
-                if self.check_room_full() and self.time_start != -1 and datetime.now().timestamp() > self.time_start:
-                    await self.start_game()
+                if self.time_start != -1 and datetime.now().timestamp() > self.time_start:
+                    if self.check_room_full():
+                        await self.start_game()
+                    else:
+                        self.state = MatchState.WAITING
+                        self.time_start = -1
         except Exception as e:
             traceback.print_exc()
             raise e
@@ -136,6 +142,7 @@ class Match:
                 self.players[i].uid = user_data.uid
                 self.players[i].name = user_data.name
                 self.players[i].gold = user_data.gold
+                self.players[i].avatar = user_data.avatar
                 seat_server_id = i
                 team_id = self.players[i].team_id
                 break
@@ -150,6 +157,7 @@ class Match:
             pkg.name = user_data.name
             pkg.seat_server = seat_server_id
             pkg.team_id = team_id
+            pkg.avatar = user_data.avatar
 
             await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_USER_JOIN_MATCH, pkg)
         
@@ -204,6 +212,7 @@ class Match:
             game_info.user_names.append(player.name)
             game_info.user_points.append(player.points)
             game_info.team_ids.append(player.team_id)
+            game_info.avatars.append(player.avatar)
 
             if player.uid == uid:
                 game_info.my_cards.extend(player.cards)
@@ -230,7 +239,10 @@ class Match:
                 self.players[i].uid = -1
                 break
 
-    
+        if not self.check_room_full() and self.state == MatchState.PREPARING_START:
+            self.state = MatchState.WAITING
+            self.time_start = -1
+
     async def start_game(self):
         print('Start game')
         self.time_start = -1
@@ -385,6 +397,7 @@ class Match:
         pkg = packet_pb2.EndHand()
         pkg.win_uid = win_player.uid
         pkg.win_card = win_card
+        pkg.win_point = win_score
         for player in self.players:
             pkg.user_points.append(player.points)
 
@@ -438,6 +451,11 @@ class Match:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DRAW_CARD, pkg)
 
     async def _handle_new_hand(self):
+        # check if cards of players are empty
+        if self.players[0].cards == []:
+            await self.deal_card()
+            await asyncio.sleep(2)
+
         self.current_hand += 1
         self.hand_suit = -1
 
@@ -522,7 +540,12 @@ class Match:
             if player.uid == uid:
                 continue
             await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_INGAME_CHAT_MESSAGE, pkg)
-
+ 
+    async def check_user_can_join_gold(self, uid):
+        user_inf = await users_info_mgr.get_user_info(uid)
+        if user_inf.gold < self.bet * 3:
+            return False
+        return True
 
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
 CARD_VALUES = {
