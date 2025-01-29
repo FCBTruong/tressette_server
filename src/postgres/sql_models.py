@@ -1,6 +1,6 @@
 
-from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
     pass
@@ -14,3 +14,13 @@ class UserInfoSchema(Base):
     gold = Column(Integer)  # Integer column for gold
     level = Column(Integer)  # Integer column for level
     avatar = Column(String)  # Text column for avatar
+    login_type = Column(Integer)  # Integer column for login type
+    guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
+
+class GuestsSchema(Base):
+    __tablename__ = 'guests'
+    
+    guest_id = Column(String(255), primary_key=True)
+    uid = Column(Integer, ForeignKey('user_info.uid'))
+  
+    user_info = relationship("UserInfoSchema", back_populates="guests")

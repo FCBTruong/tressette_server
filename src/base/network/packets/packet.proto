@@ -24,7 +24,8 @@ message PingPong {
 }
 
 message Login {
-  int32 uid = 1;
+  int32 type = 1;
+  string token = 2;
 }
 
 message Logout {
@@ -167,4 +168,8 @@ message ShopConfig {
   repeated int32 golds = 2;
   repeated double prices = 3;
   repeated string currencies = 4;
+}
+
+message GuestAccount {
+  string guest_id = 1;
 }

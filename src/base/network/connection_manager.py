@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 import traceback
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
@@ -17,7 +18,9 @@ MAX_RETRY_PINGS = 3
 
 CMD_PING_PONG = 0
 CMD_LOGIN = 1
+CMD_CREATE_GUEST_ACCOUNT = 2
 PING_INTERVAL = 10  # Interval between pings
+
 
 class ConnectionManager:
     def __init__(self):
@@ -25,6 +28,7 @@ class ConnectionManager:
         self.ping_tasks: dict[WebSocket, asyncio.Task] = {}
         self.ping_responses: dict[WebSocket, int] = {}  # Track pongs received per connection
         self.user_websockets: dict[int, WebSocket] = {}  # Track user IDs to WebSockets
+        self.guest_create_times: dict[WebSocket, int] = {} # timestamp of guest account creation, to prevent spam
 
     async def handle_new_connection(self, websocket: WebSocket):
         """Handles a new WebSocket connection."""
@@ -135,16 +139,32 @@ class ConnectionManager:
 
             if cmd_id == CMD_PING_PONG:
                 self.ping_responses[websocket] += 1  # Increment pong counter
+            elif cmd_id == CMD_CREATE_GUEST_ACCOUNT:
+                if websocket in self.guest_create_times:
+                    last_create_time = self.guest_create_times[websocket]
+                    if last_create_time + 300 > int(time.time()): # 5 minutes
+                        print(f"Guest account creation too fast. Disconnecting WebSocket: {websocket}")
+                        return
+                self.guest_create_times[websocket] = int(time.time())
+                guest_id = await game_vars.get_guest_mgr().create_guest_account()
+                guest_account = packet_pb2.GuestAccount()
+                guest_account.guest_id = guest_id
+                p = guest_account.SerializeToString()
+                await self.send_packet(websocket, CMD_CREATE_GUEST_ACCOUNT, p)
+                    
             elif cmd_id == CMD_LOGIN:
                 login_client_pkg = packet_pb2.Login()
                 login_client_pkg.ParseFromString(payload)
-                uid = login_client_pkg.uid
-                logger.info(f"Login packet received: uid={uid}")
+                token = login_client_pkg.token
+                login_type = login_client_pkg.type
+                print(f"Login packet received: token={token}, login_type={login_type}")
 
                 # authenticate user
-                if not self._authenticate_user():
-                    logger.info("user not authenticated")
+                uid = await game_vars.get_login_mgr().authenticate_user(login_type, token)
+                if uid == -1:
+                    logger.info("Unauthorized")
                     return
+                logger.info(f"Login packet received: uid={uid}")
 
                 user_info = {
                     "uid": uid,
