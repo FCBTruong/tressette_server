@@ -161,3 +161,10 @@ message TableList {
   repeated int32 cur_player = 3;
   repeated int32 max_player = 4;
 }
+
+message ShopConfig {
+  repeated string pack_ids = 1;
+  repeated int32 golds = 2;
+  repeated double prices = 3;
+  repeated string currencies = 4;
+}

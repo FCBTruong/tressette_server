@@ -75,3 +75,26 @@ def get_pack_info(pack_id):
         if pack.get("pack_id") == pack_id:
             return pack
     return None
+
+def get_shop_config():
+    return config
+
+async def send_shop_config(uid):
+    pkg = packet_pb2.ShopConfig()
+    shop_config = get_shop_config()
+    pack_ids = []
+    golds = []
+    prices = []
+    currencies = []
+    for p in shop_config.get('packs'):
+        pack_ids.append(p.get("pack_id"))
+        golds.append(p.get("gold"))
+        prices.append(p.get("price"))
+        currencies.append(p.get("currency"))
+
+    pkg.pack_ids.extend(pack_ids)
+    pkg.golds.extend(golds)
+    pkg.prices.extend(prices)
+    pkg.currencies.extend(currencies)
+    await game_vars.get_game_client().send_packet(uid, CMDs.SHOP_CONFIG, pkg)
+    print(f"Send shop config to user {uid}", CMDs.SHOP_CONFIG)

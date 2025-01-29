@@ -53,6 +53,8 @@ class GameClient:
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
 
+        # SEND SHOP CONFIG
+        await payment_mgr.send_shop_config(uid)
         # check if user is in a match
         await game_vars.get_game_mgr().on_user_login(uid)
 
