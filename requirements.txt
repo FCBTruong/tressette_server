@@ -12,3 +12,4 @@ websockets==14.1
 pydispatcher==2.0.7
 google-auth==2.37.0
 google-api-python-client==2.159.0
+firebase-admin==6.6.0
