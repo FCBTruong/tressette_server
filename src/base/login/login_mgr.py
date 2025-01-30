@@ -1,4 +1,5 @@
 import random
+from src.base.security.jwt import create_login_token, verify_token
 from src.constants import *
 from src.postgres.orm import PsqlOrm
 from src.postgres.sql_models import FirebaseAuthSchema, GuestsSchema, UserInfoSchema
@@ -21,20 +22,41 @@ class LoginMgr:
                 if guest:
                     return guest.uid
         elif login_type == LOGIN_FACEBOOK or login_type == LOGIN_GOOGLE:
+            # verify the token
             try:
-                decoded_token = auth.verify_id_token(token)
-                firebase_uid = decoded_token.get("user_id")
-                sign_in_provider = decoded_token.get("firebase").get("sign_in_provider")
+                payload = verify_token(token)
+                return payload.get("uid")
             except Exception as e:
                 print(e)
-                return -1
-            
-            print(f"Decoded token: {decoded_token}")
-            async with PsqlOrm.get().session() as session:
-                firebase_auth = await session.get(FirebaseAuthSchema, firebase_uid)
-                if firebase_auth:
-                    return firebase_auth.uid
-                
+        return -1
+    
+    def create_new_basic_user(self) -> UserInfoSchema:
+        user_model = UserInfoSchema()
+        user_model.gold = 0 
+        user_model.level = 1
+
+        # random avatar 1 -> 8
+        avatar_id = random.randint(1, 8)
+        user_model.avatar = str(avatar_id)
+        return user_model
+
+    async def login_firebase(self, token):
+        try:
+            print("Verifying token Firebase")
+            decoded_token = auth.verify_id_token(token)
+            firebase_uid = decoded_token.get("user_id")
+            sign_in_provider = decoded_token.get("firebase").get("sign_in_provider")
+        except Exception as e:
+            print(e)
+            return None
+        
+        print(f"Decoded token: {decoded_token}")
+        async with PsqlOrm.get().session() as session:
+            uid = -1
+            firebase_auth = await session.get(FirebaseAuthSchema, firebase_uid)
+            if firebase_auth:
+                uid = firebase_auth.uid
+            else:
                 # Create a new user
                 basic_user = self.create_new_basic_user()
 
@@ -60,18 +82,10 @@ class LoginMgr:
 
                 session.add(firebase_auth)
                 await session.commit()
-                return basic_user.uid
-            
-        return -1
-    
-    def create_new_basic_user(self) -> UserInfoSchema:
-        user_model = UserInfoSchema()
-        user_model.gold = 0 
-        user_model.level = 1
-
-        # random avatar 1 -> 8
-        avatar_id = random.randint(1, 8)
-        user_model.avatar = str(avatar_id)
-        return user_model
-
-
+                uid = basic_user.uid
+        
+        # generate a new token
+        new_token = create_login_token({
+            "uid": uid
+        })
+        return new_token

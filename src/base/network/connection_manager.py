@@ -4,7 +4,8 @@ import time
 import traceback
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
-from src.base.security.jwt import create_access_token, verify_token
+from src.base.security.jwt import create_session_token, verify_token
+from src.constants import *
 from src.game.game_vars import game_vars
 from src.base.network.packets import packet_pb2
 from src.game.cmds import CMDs
@@ -19,6 +20,7 @@ MAX_RETRY_PINGS = 3
 CMD_PING_PONG = 0
 CMD_LOGIN = 1
 CMD_CREATE_GUEST_ACCOUNT = 2
+CMD_LOGIN_FIREBASE = 3
 PING_INTERVAL = 10  # Interval between pings
 
 
@@ -151,18 +153,33 @@ class ConnectionManager:
                 guest_account.guest_id = guest_id
                 p = guest_account.SerializeToString()
                 await self.send_packet(websocket, CMD_CREATE_GUEST_ACCOUNT, p)
-                    
+            elif cmd_id == CMD_LOGIN_FIREBASE:
+                login_firebase_pkg = packet_pb2.LoginFirebase()
+                login_firebase_pkg.ParseFromString(payload)
+                token = login_firebase_pkg.login_token
+                game_token = await game_vars.get_login_mgr().login_firebase(token)
+                if not game_token:
+                    print("Unauthorized")
+                    return
+                login_response = packet_pb2.LoginFirebase()
+                login_response.login_token = str(game_token)
+                p = login_response.SerializeToString()
+                await self.send_packet(websocket, CMD_LOGIN_FIREBASE, p)      
             elif cmd_id == CMD_LOGIN:
                 login_client_pkg = packet_pb2.Login()
                 login_client_pkg.ParseFromString(payload)
                 token = login_client_pkg.token
                 login_type = login_client_pkg.type
                 print(f"Login packet received: token={token}, login_type={login_type}")
+                login_response = packet_pb2.LoginResponse()
 
                 # authenticate user
                 uid = await game_vars.get_login_mgr().authenticate_user(login_type, token)
                 if uid == -1:
                     logger.info("Unauthorized")
+                    login_response.error = LOGIN_ERROR_UNAUTHORIZED
+                    p = login_response.SerializeToString()
+                    await self.send_packet(websocket, CMD_LOGIN, p)
                     return
                 logger.info(f"Login packet received: uid={uid}")
 
@@ -180,10 +197,10 @@ class ConnectionManager:
                         await old_websocket.close()
 
                 logger.info('create access token')
-                new_token = create_access_token(user_info)
-                login_response = packet_pb2.LoginResponse()
+                new_token = create_session_token(user_info)
                 login_response.token = new_token
                 login_response.uid = uid
+                login_response.error = LOGIN_ERROR_SUCCESS
 
                 p = login_response.SerializeToString()
 
