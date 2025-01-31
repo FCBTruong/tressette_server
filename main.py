@@ -1,9 +1,13 @@
 
 import logging
-from fastapi import FastAPI, WebSocket
+import traceback
+from typing import Optional
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import HTMLResponse
 from src.base.network.connection_manager import connection_manager
 from src.base.payment.google_pay import verify_purchase
+from src.game.users_info_mgr import users_info_mgr
+from src.game.game_vars import game_vars
 import src.game.game_client as game_client
 
 
@@ -68,13 +72,18 @@ async def websocket_endpoint(websocket: WebSocket):
     await connection_manager.handle_new_connection(websocket)
 
 @app.get("/commands/{password}/{cmd}")
-async def get_data_cmds(password, cmd):
+async def get_data_cmds(password, cmd, data: Optional[str] = None):
     try:
         if password != "tzPuys0cPIHKfgA":
             return "Invalid password"
         if cmd == 'ccu':
             return len(connection_manager.active_connections)
-        
+        if cmd == 'cheat_refresh':
+            if data is None:
+                raise HTTPException(status_code=400, detail="Missing data for cheat command")
+            await users_info_mgr.remove_cache_user(int(data))
+            return 'cheat ok'
         return "hello"
     except Exception as e:
+        traceback.print_exc()
         return str(e)

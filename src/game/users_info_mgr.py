@@ -24,6 +24,9 @@ class UsersInfoMgr:
             session.add(user_model)
             await session.commit()
             return user_model
+        
+    async def remove_cache_user(self, uid: int):
+        self.users.pop(uid, None)
 
     async def get_user_info(self, uid: int) -> UserInfo:
         # cache_key = 'user' + str(uid)

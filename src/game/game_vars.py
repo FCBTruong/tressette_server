@@ -7,6 +7,7 @@ class GameVars:
         self.ingame_chat_mgr = None
         self.guest_mgr = None
         self.login_mgr = None
+        self.user_info_mgr = None
         
     def get_game_client(self):
         if self.game_client is None:
@@ -45,5 +46,6 @@ class GameVars:
             from src.base.login.login_mgr import LoginMgr
             self.login_mgr = LoginMgr()
         return self.login_mgr
+    
     
 game_vars = GameVars()
