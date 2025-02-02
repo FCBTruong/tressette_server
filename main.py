@@ -83,6 +83,10 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
                 raise HTTPException(status_code=400, detail="Missing data for cheat command")
             await users_info_mgr.remove_cache_user(int(data))
             return 'cheat ok'
+        elif cmd == 'cheat_refresh_all_cache':
+            for uid in users_info_mgr.users:
+                await users_info_mgr.remove_cache_user(uid)
+            return 'cheat ok'
         return "hello"
     except Exception as e:
         traceback.print_exc()

@@ -35,8 +35,7 @@ class LoginMgr:
         user_model.gold = 0 
         user_model.level = 1
 
-        # random avatar 1 -> 8
-        avatar_id = random.randint(1, 8)
+        avatar_id = random.choice(AVATAR_IDS)
         user_model.avatar = str(avatar_id)
         return user_model
 

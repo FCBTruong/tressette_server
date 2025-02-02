@@ -3,6 +3,7 @@
 import json
 from src.base.network.packets import packet_pb2
 from src.base.payment import google_pay
+from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
 from src.postgres.sql_models import UserInfoSchema
@@ -56,15 +57,15 @@ async def _purchase_success(uid, pack_id):
     pkg = packet_pb2.PaymentSuccess()
     pkg.gold = pack_info.get("gold")
 
-    async with PsqlOrm.get().session() as session:
-        user_model = await session.get(UserInfoSchema, uid)
-        if user_model:
-            user_model.gold += pack_info.get("gold")
-        await session.commit()
-        # send packet update money
-        pkg_money = packet_pb2.UpdateMoney()
-        pkg_money.gold = user_model.gold
-        await game_vars.get_game_client().send_packet(uid, CMDs.UPDATE_MONEY, pkg)
+    user_info = await users_info_mgr.get_user_info(uid)
+    user_info.add_gold(pack_info.get("gold"))
+
+    # save to database
+    await user_info.commit_gold()
+    
+    pkg_money = packet_pb2.UpdateMoney()
+    pkg_money.gold = user_info.gold
+    await game_vars.get_game_client().send_packet(uid, CMDs.UPDATE_MONEY, pkg)
 
     # send to user
     await game_vars.get_game_client().send_packet(uid, CMDs.PAYMENT_SUCCESS, pkg)

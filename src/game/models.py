@@ -30,6 +30,27 @@ class UserInfo:
     def update_avatar(self, avatar: str):
         self.avatar = avatar
 
+    def update_gold(self, gold: int):
+        if gold < 0:
+            # Do not allow negative gold
+            print("Cannot set gold to negative value")
+            return
+        self.gold = gold
+
+    def add_gold(self, gold: int):
+        self.gold += gold
+        if self.gold < 0:
+            self.gold = 0
+
+    async def commit_gold(self):
+        async with PsqlOrm.get().session() as session:
+            await session.execute(
+                sa_update(UserInfoSchema)
+                .where(UserInfoSchema.uid == self.uid)
+                .values(gold=self.gold)
+            )
+            await session.commit()
+
     async def commit_avatar(self):
         async with PsqlOrm.get().session() as session:
             await session.execute(
