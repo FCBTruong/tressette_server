@@ -50,6 +50,8 @@ message UserInfo {
   repeated string names = 5;
   int32 abc = 6;
   string avatar = 7;
+  string avatar_third_party = 8;
+  int32 level = 9;
 }
 
 message GameInfo {
@@ -177,4 +179,8 @@ message ShopConfig {
 
 message GuestAccount {
   string guest_id = 1;
+}
+
+message ChangeAvatar {
+  int32 avatar_id = 1;
 }

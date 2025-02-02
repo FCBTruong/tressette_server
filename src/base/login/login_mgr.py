@@ -67,6 +67,8 @@ class LoginMgr:
                 
                 basic_user.name = decoded_token.get("name")
                 basic_user.avatar = decoded_token.get("picture")
+                basic_user.avatar_third_party = decoded_token.get("picture")
+
 
                 session.add(basic_user)
                 await session.commit()

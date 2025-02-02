@@ -32,6 +32,7 @@ class GameClient:
                 await connection_manager.user_logout(uid)
             case _:
                 await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
+                await users_info_mgr.on_receive_packet(uid, cmd_id, payload)
 
     async def user_login_success(self, uid):
         from src.base.network.connection_manager import connection_manager
@@ -49,6 +50,8 @@ class GameClient:
         user_pkg.name = user_info.name
         user_pkg.gold = user_info.gold
         user_pkg.avatar = user_info.avatar
+        user_pkg.level = user_info.level
+        user_pkg.avatar_third_party = user_info.avatar_third_party
         logger.info(f"User info: {user_info.gold}")
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
@@ -58,8 +61,6 @@ class GameClient:
         # check if user is in a match
         await game_vars.get_game_mgr().on_user_login(uid)
 
-
-    
     async def send_packet(self, uid, cmd_id, pkt):
         from src.base.network.connection_manager import connection_manager
         await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())

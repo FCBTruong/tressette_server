@@ -2,9 +2,12 @@
 import json
 import logging
 # from src.cache import redis_cache
+from src.base.network.packets import packet_pb2
 from src.game.models import UserInfo
 from src.postgres.sql_models import UserInfoSchema
 from src.postgres.orm import PsqlOrm
+from src.game.cmds import CMDs
+from src.constants import *
 
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
@@ -42,11 +45,39 @@ class UsersInfoMgr:
                     "gold": user_info.gold,
                     "level": user_info.level,
                     "avatar": user_info.avatar,
+                    "avatar_third_party": user_info.avatar_third_party,
                 }
                 user_inf = UserInfo(**user_info_data)
                 self.users[uid] = user_inf
                 return user_inf
             return user_info
 
+    async def on_receive_packet(self, uid, cmd_id, payload):
+        match cmd_id:
+            case CMDs.CHANGE_AVATAR:
+                await self._handle_change_avatar(uid, payload)
+            case _:
+                pass
+
+    async def _handle_change_avatar(self, uid: int, payload):
+        pkg = packet_pb2.ChangeAvatar()
+        pkg.ParseFromString(payload)
+        avatar_id = pkg.avatar_id
+        user = await self.get_user_info(uid)
+
+        # verify avatar id
+        if avatar_id == -1:
+            if not user.avatar_third_party:
+                logger.error(f"User {uid} try to change to invalid avatar {avatar_id}")
+                return
+            user.update_avatar(user.avatar_third_party)
+        else:
+            if avatar_id not in AVATAR_IDS:
+                logger.error(f"User {uid} try to change to invalid avatar {avatar_id}")
+                return
+            user.update_avatar(str(avatar_id))
+
+        # update changes to database
+        await user.commit_avatar()
 
 users_info_mgr = UsersInfoMgr()

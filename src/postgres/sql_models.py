@@ -14,6 +14,7 @@ class UserInfoSchema(Base):
     gold = Column(Integer)  # Integer column for gold
     level = Column(Integer)  # Integer column for level
     avatar = Column(String)  # Text column for avatar
+    avatar_third_party = Column(String)  # Text column for third party avatar
     login_type = Column(Integer)  # Integer column for login type
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user

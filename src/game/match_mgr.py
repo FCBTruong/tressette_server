@@ -161,3 +161,11 @@ class MatchManager:
 
         # Return the top matches, limited to `max_matches`
         return prioritized_matches[:max_matches]
+
+    async def join_match(self, uid, match_id):
+        match = await self.get_match(match_id)
+
+        # check other conditions to join match
+        if not match:
+            return
+        await self.user_join_match(match, uid)
