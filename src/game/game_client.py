@@ -33,6 +33,7 @@ class GameClient:
             case _:
                 await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
                 await users_info_mgr.on_receive_packet(uid, cmd_id, payload)
+                await game_vars.get_friend_mgr().on_receive_packet(uid, cmd_id, payload)
 
     async def user_login_success(self, uid):
         from src.base.network.connection_manager import connection_manager

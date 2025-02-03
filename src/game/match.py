@@ -541,6 +541,15 @@ class Match:
                 continue
             await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_INGAME_CHAT_MESSAGE, pkg)
  
+    async def broadcast_chat_emoticon(self, uid, emoticon):
+        pkg = packet_pb2.InGameChatEmoticon()
+        pkg.uid = uid
+        pkg.emoticon = emoticon
+        for player in self.players:
+            if player.uid == -1:
+                continue
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.CHAT_EMOTICON, pkg)
+
     async def check_user_can_join_gold(self, uid):
         user_inf = await users_info_mgr.get_user_info(uid)
         if user_inf.gold < self.bet * 3:

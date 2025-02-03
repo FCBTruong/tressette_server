@@ -184,3 +184,23 @@ message GuestAccount {
 message ChangeAvatar {
   int32 avatar_id = 1;
 }
+
+message InGameChatEmoticon {
+  int32 uid = 1;
+  int32 emoticon = 2;
+}
+
+message SearchFriend {
+  int32 uid = 1;
+}
+
+message SearchFriendResponse {
+  int32 uid = 1;
+  int32 gold = 2;
+  string name = 3;
+  string avatar = 4;
+  int32 win_count = 5;
+  double win_rate = 6;
+  int32 error = 7;
+  int32 level = 8;
+}

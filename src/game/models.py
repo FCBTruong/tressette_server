@@ -24,6 +24,9 @@ class UserInfo:
         if self.avatar_third_party is None:
             self.avatar_third_party = ""
 
+        if self.level is None:
+            self.level = 1
+            
     async def commit_to_database():
         pass
 

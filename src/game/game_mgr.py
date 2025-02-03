@@ -21,6 +21,8 @@ class GameMgr:
                 await game_vars.get_match_mgr().user_play_card(uid, payload)
             case CMDs.NEW_INGAME_CHAT_MESSAGE:
                 await game_vars.get_ingame_chat_mgr().on_chat_message(uid, payload)
+            case CMDs.CHAT_EMOTICON:
+                await game_vars.get_ingame_chat_mgr().on_chat_emoticon(uid, payload)
             case CMDs.TABLE_LIST:
                 await game_vars.get_match_mgr().on_table_list(uid)
         pass

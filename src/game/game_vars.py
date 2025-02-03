@@ -8,6 +8,7 @@ class GameVars:
         self.guest_mgr = None
         self.login_mgr = None
         self.user_info_mgr = None
+        self.friend_mgr = None
         
     def get_game_client(self):
         if self.game_client is None:
@@ -47,5 +48,10 @@ class GameVars:
             self.login_mgr = LoginMgr()
         return self.login_mgr
     
+    def get_friend_mgr(self):
+        if self.friend_mgr is None:
+            from src.game.friend_mgr import FriendMgr
+            self.friend_mgr = FriendMgr()
+        return self.friend_mgr
     
 game_vars = GameVars()

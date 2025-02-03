@@ -50,7 +50,7 @@ class UsersInfoMgr:
                 user_inf = UserInfo(**user_info_data)
                 self.users[uid] = user_inf
                 return user_inf
-            return user_info
+        return None
 
     async def on_receive_packet(self, uid, cmd_id, payload):
         match cmd_id:
