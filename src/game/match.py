@@ -5,6 +5,7 @@ import logging
 import random
 import traceback
 
+from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
@@ -71,6 +72,9 @@ class Match:
         self.hand_suit = -1
         self.auto_play_time_by_uid = {}
         self.bet = 10000
+        self.auto_play_count_by_uid = {} # consecutive auto play count
+        self.state = MatchState.WAITING
+        self.current_turn = -1
 
         if player_mode == PLAYER_SOLO_MODE:
             for i in range(2):
@@ -82,7 +86,7 @@ class Match:
                 p = MatchPlayer(-1)
                 p.team_id = i % 2
                 self.players.append(p)
-        self.reset_logic_game()
+
     
     async def loop(self):
         try:
@@ -110,19 +114,7 @@ class Match:
         except Exception as e:
             traceback.print_exc()
             raise e
-    def reset_logic_game(self):
-        self.current_turn = -1
-        self.time_auto_play = -1
-        self.state = MatchState.WAITING
-        self.cards_compare.clear()
-        for i in range(self.player_mode):
-            self.cards_compare.append(-1)
 
-        self.current_hand = 0
-
-        print(f"Player mode: {self.player_mode}")
-        for i in range(self.player_mode):
-            self.cards_compare.append(-1)
 
     def end_match(self):
         self.state = MatchState.ENDED
@@ -255,6 +247,9 @@ class Match:
         self.auto_play_time_by_uid.clear()
         self.hand_suit = -1
         self.win_player = None
+        self.win_card = -1
+        self.win_score = 0
+        self.auto_play_count_by_uid.clear()
 
         # reset players scores:
         for player in self.players:
@@ -319,6 +314,11 @@ class Match:
         if not auto:
             # remove auto play time
             self.auto_play_time_by_uid.pop(uid, None)
+
+            # remove auto play count
+            self.auto_play_count_by_uid.pop(uid, None)
+        else:
+            self.auto_play_count_by_uid[uid] = self.auto_play_count_by_uid.get(uid, 0) + 1
             
         # remove card from player
         print('remove card id: ', card_id, ' auto: ', auto)
@@ -413,6 +413,7 @@ class Match:
         if self._is_end_game():
             await self.end_game()
             return
+        
         if len(self.cards) != 0:
             await self._handle_draw_card()
             await asyncio.sleep(3)
@@ -433,7 +434,7 @@ class Match:
         # if score_team1 >= 5 or score_team2 >= 5:
         #     return True
         
-        if score_team1 >= 63 or score_team2 >= 63:
+        if score_team1 >= 33 or score_team2 >= 33:
             return True
         return False
     
@@ -520,17 +521,41 @@ class Match:
         for player in self.players:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.END_GAME, pkg)
         
-        # User can quit the room now
         await asyncio.sleep(2)
-        self.state = MatchState.WAITING
-        # Kick users auto playing, or register exit room
-        for player in self.players:
-            await game_vars.get_match_mgr().handle_user_leave_match(player.uid)
+
+         # User can quit the room now
+        self.state = MatchState.WAITING 
+
+        # for user register exit room, or auto play, or disconnect
+        await self.update_users_staying_endgame()
+
+        # next game
         await asyncio.sleep(1)
-        # prepare for next game
         self.reset_logic_game()
         if self.check_room_full():
             await self._prepare_start_game()
+
+    async def update_users_staying_endgame(self):
+        # Kick users auto playing, or register exit room
+        for player in self.players:
+            if player.uid == -1:
+                continue
+            await game_vars.get_match_mgr().handle_user_leave_match(player.uid)
+
+        # kick user auto playing consecutively more than 3 times
+        for uid, count in self.auto_play_count_by_uid.items():
+            if count >= 3:
+                await game_vars.get_match_mgr().handle_user_leave_match(uid)
+    
+        # update user connection, kick user that is disconnected
+        for player in self.players:
+            uid = player.uid
+            if uid == -1:
+                continue
+            is_active = connection_manager.check_user_active(uid)
+            if not is_active:
+                await game_vars.get_match_mgr().handle_user_leave_match(uid)
+        
 
     async def broadcast_chat_message(self, uid, message):
         pkg = packet_pb2.InGameChatMessage()
@@ -583,3 +608,7 @@ CARD_STRONGS = {
     4: 92,
     3: 91
 }
+
+
+class MatchLogic:
+    pass

@@ -242,5 +242,13 @@ class ConnectionManager:
         if uid in self.user_websockets:
             del self.user_websockets[uid]
 
+    def check_user_active(self, uid: int):
+        is_active = False
+        if uid in self.user_websockets:
+            ws = self.user_websockets[uid]
+            if ws in self.active_connections:
+                is_active = True
+        return is_active
+
 # Instantiate the ConnectionManager for usage
 connection_manager = ConnectionManager()

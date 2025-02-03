@@ -70,7 +70,7 @@ class MatchManager:
             return self.matches.get(match_id)
         return None
 
-    async def destroy_match(self, match_id):
+    def destroy_match(self, match_id):
         print(f"End match {match_id}")
         match = self.matches.get(match_id)
         if match:
@@ -111,7 +111,7 @@ class MatchManager:
 
         if match.check_room_empty():
             print('Destroy match')
-            await self.destroy_match(match_id)
+            self.destroy_match(match_id)
 
         return LeaveMatchErrors.SUCCESS
             
