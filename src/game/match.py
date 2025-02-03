@@ -75,6 +75,7 @@ class Match:
         self.auto_play_count_by_uid = {} # consecutive auto play count
         self.state = MatchState.WAITING
         self.current_turn = -1
+        self.register_leave_uids = set()
 
         if player_mode == PLAYER_SOLO_MODE:
             for i in range(2):
@@ -196,6 +197,7 @@ class Match:
         game_info.cards_compare.extend(self.cards_compare)
         game_info.remain_cards = len(self.cards)
         game_info.hand_suit = self.hand_suit # current suit of hand
+        game_info.is_registered_leave = uid in self.register_leave_uids
 
         for player in self.players:
             game_info.uids.append(player.uid)
@@ -250,6 +252,7 @@ class Match:
         self.win_card = -1
         self.win_score = 0
         self.auto_play_count_by_uid.clear()
+        self.register_leave_uids.clear()
 
         # reset players scores:
         for player in self.players:
@@ -431,8 +434,8 @@ class Match:
                 score_team2 += player.points
 
         # # test
-        # if score_team1 >= 5 or score_team2 >= 5:
-        #     return True
+        if score_team1 >= 3 or score_team2 >= 3:
+            return True
         
         if score_team1 >= 33 or score_team2 >= 33:
             return True
@@ -531,16 +534,14 @@ class Match:
 
         # next game
         await asyncio.sleep(1)
-        self.reset_logic_game()
         if self.check_room_full():
             await self._prepare_start_game()
 
     async def update_users_staying_endgame(self):
         # Kick users auto playing, or register exit room
-        for player in self.players:
-            if player.uid == -1:
-                continue
-            await game_vars.get_match_mgr().handle_user_leave_match(player.uid)
+
+        for uid in self.register_leave_uids:
+            await game_vars.get_match_mgr().handle_user_leave_match(uid)    
 
         # kick user auto playing consecutively more than 3 times
         for uid, count in self.auto_play_count_by_uid.items():
@@ -580,6 +581,13 @@ class Match:
         if user_inf.gold < self.bet * 3:
             return False
         return True
+    
+    def register_leave(self, uid):
+        print(f"User {uid} register leave")
+        self.register_leave_uids.add(uid)
+
+    def deregister_leave(self, uid):
+        self.register_leave_uids.discard(uid)
 
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
 CARD_VALUES = {

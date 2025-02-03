@@ -96,6 +96,31 @@ class MatchManager:
         self.user_matchids[uid] = match.match_id
         await match.user_join(uid)
 
+    async def handle_register_leave_match(self, uid: int, payload):
+        leave_pkg = packet_pb2.RegisterLeaveGame()
+        leave_pkg.ParseFromString(payload)
+        status = leave_pkg.status
+        # print(f"User {uid} leave game with status {status}")
+        # leave_pkg.status = status.value
+        # await game_vars.get_game_client().send_packet(uid, CMDs.REGISTER_LEAVE_GAME, leave_pkg)
+
+        match = await self.get_match_of_user(uid)
+        if not match:
+            return
+        
+        if match.can_quit_game():
+            await self.handle_user_leave_match(uid)
+            return
+        
+        if status == 0:
+            match.register_leave(uid)
+        else:
+            match.deregister_leave(uid)
+
+        await game_vars.get_game_client().send_packet(uid, CMDs.REGISTER_LEAVE_GAME, leave_pkg)
+
+
+    # USER officially leave match
     async def handle_user_leave_match(self, uid: int) -> LeaveMatchErrors:
         match_id = self.user_matchids.get(uid)
 

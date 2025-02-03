@@ -15,8 +15,8 @@ class GameMgr:
         match cmd_id:
             case CMDs.QUICK_PLAY:
                 await self._handle_quick_play(uid)
-            case CMDs.LEAVE_GAME:
-                await self._handle_leave_game(uid)
+            case CMDs.REGISTER_LEAVE_GAME:
+                await game_vars.get_match_mgr().handle_register_leave_match(uid, payload)
             case CMDs.PLAY_CARD:
                 await game_vars.get_match_mgr().user_play_card(uid, payload)
             case CMDs.NEW_INGAME_CHAT_MESSAGE:
@@ -48,13 +48,6 @@ class GameMgr:
         
         print(f"User {uid} join match {match.match_id}")
         await game_vars.get_match_mgr().user_join_match(match, uid=uid)
-
-    async def _handle_leave_game(self, uid: int):  
-        status = await game_vars.get_match_mgr().handle_user_leave_match(uid)
-        leave_pkg = packet_pb2.LeaveGame()
-        print(f"User {uid} leave game with status {status}")
-        leave_pkg.status = status.value
-        await game_vars.get_game_client().send_packet(uid, CMDs.LEAVE_GAME, leave_pkg)
         
         
     async def on_user_login(self, uid: int):

@@ -70,9 +70,10 @@ message GameInfo {
   repeated int32 team_ids = 13;
   int32 hand_suit = 14;
   repeated string avatars = 15;
+  bool is_registered_leave = 16;
 }
 
-message LeaveGame {
+message RegisterLeaveGame {
   int32 status = 1;
 }
 
