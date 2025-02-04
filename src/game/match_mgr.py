@@ -78,6 +78,7 @@ class MatchManager:
                 if player.uid in self.user_matchids:
                     self.user_matchids.pop(player.uid)
             self.matches.pop(match_id)
+            del match
 
     async def is_user_in_match(self, user_id):
         return user_id in self.user_matchids

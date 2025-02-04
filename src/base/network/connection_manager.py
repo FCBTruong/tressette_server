@@ -38,7 +38,7 @@ class ConnectionManager:
         try:
             while websocket in self.active_connections:
                 raw_data = await websocket.receive_bytes()
-                await self.handle_received_packet(websocket, raw_data)
+                asyncio.create_task(self.handle_received_packet(websocket, raw_data))
         except WebSocketDisconnect:
             await self.disconnect(websocket)
             print(f"WebSocket disconnected: {websocket}")
@@ -117,7 +117,7 @@ class ConnectionManager:
 
     async def send_packet(self, websocket: WebSocket, cmd_id: int, payload: bytes):
         """Sends a serialized packet to the WebSocket."""
-        print(f"Sending packet: cmd_id={cmd_id}")
+        logger.info(f"Sending packet: cmd_id={cmd_id}")
         
         packet = packet_pb2.Packet(cmd_id=cmd_id, payload=payload)
         serialized_packet = packet.SerializeToString()

@@ -209,7 +209,7 @@ class Match:
         else:
             # add a bot
             # wait for 1 second
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)
             await self.add_bot()
 
     async def add_bot(self):
@@ -408,20 +408,21 @@ class Match:
             self.current_turn = -1
     
         # send to others
+        pkg = packet_pb2.PlayCard()
+        pkg.uid = uid
+        pkg.card_id = card_id
+        pkg.auto = auto
+        pkg.current_turn = self.current_turn
+        pkg.hand_suit = self.hand_suit
         for i, player in enumerate(self.players):
             # do not send to bots
             if player.is_bot:
                 continue
-            pkg = packet_pb2.PlayCard()
-            pkg.uid = uid
-            pkg.card_id = card_id
-            pkg.auto = auto
-            pkg.current_turn = self.current_turn
-            pkg.hand_suit = self.hand_suit
             await game_vars.get_game_client().send_packet(player.uid, CMDs.PLAY_CARD, pkg)
 
         # Check done hand
         if is_finish_hand:
+            print('Finishhand, end hand')
             await self.end_hand()
         else:
             # next uid
@@ -516,8 +517,8 @@ class Match:
                 score_team2 += player.points
 
         # # test
-        if score_team1 >= 3 or score_team2 >= 3:
-            return True
+        # if score_team1 >= 3 or score_team2 >= 3:
+        #     return True
         
         if score_team1 >= 33 or score_team2 >= 33:
             return True
@@ -554,9 +555,9 @@ class Match:
         else:
             self.current_turn = 0
 
-        await self.players[self.current_turn].on_turn()
         self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
+        print(f"New hand")
         pkg = packet_pb2.NewHand()
         pkg.current_turn = self.current_turn
         for player in self.players:
@@ -564,6 +565,8 @@ class Match:
             if player.is_bot:
                 continue
             await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_HAND, pkg)
+
+        await self.players[self.current_turn].on_turn()
 
     def _draw_card(self):
         card = self.cards.pop(0)
