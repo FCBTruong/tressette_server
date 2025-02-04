@@ -63,6 +63,20 @@ class MatchPlayer:
     async def on_turn(self):
         pass
 
+    async def auto_play(self):
+        if len(self.cards) == 0:
+            return
+        card_id = self.cards[0]
+        cur_hand_suit = self.match_mgr.hand_suit
+        if cur_hand_suit != -1:
+            # find suitable card
+            for card in self.cards:
+                if card % 4 == cur_hand_suit:
+                    card_id = card
+                    break
+
+        await self.match_mgr._play_card(self.uid, card_id=card_id, auto=True)
+
 class MatchBot(MatchPlayer):
     def __init__(self, uid, match_mgr):
         super().__init__(uid, match_mgr)
@@ -71,9 +85,19 @@ class MatchBot(MatchPlayer):
     async def on_turn(self):
         print('Bot on turn')
         # play a card
-        card = self.cards[0]
-        await self.match_mgr._play_card(self.uid, card, auto=False)
-        pass
+        if len(self.cards) == 0:
+            return
+        card_id = self.cards[0]
+        cur_hand_suit = self.match_mgr.hand_suit
+        if cur_hand_suit != -1:
+            # find suitable card
+            for card in self.cards:
+                if card % 4 == cur_hand_suit:
+                    card_id = card
+                    break
+        # wait for 1 second
+        await asyncio.sleep(1)
+        await self.match_mgr._play_card(self.uid, card_id=card_id, auto=False)
 
 class Match:
     cards_compare = []
@@ -103,19 +127,10 @@ class Match:
     async def loop(self):
         try:
             if self.state == MatchState.PLAYING:
-                if self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
+                if self.current_turn != -1 and self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
                     player = self.players[self.current_turn]
-                    if len(player.cards) == 0:
-                        return
-                    card_id = player.cards[0]
-                    if self.hand_suit != -1:
-                        # find suitable card
-                        for card in player.cards:
-                            if card % 4 == self.hand_suit:
-                                card_id = card
-                                break
-
-                    await self._play_card(player.uid, card_id, auto=True)
+                    if player:
+                        await player.auto_play()
             elif self.state == MatchState.PREPARING_START:
                 if self.time_start != -1 and datetime.now().timestamp() > self.time_start:
                     if self.check_room_full():
@@ -156,7 +171,7 @@ class Match:
             match_player = MatchBot(user_id, self)
         else:
             match_player = MatchPlayer(user_id, self)
-            
+
         match_player.name = user_data.name
         match_player.gold = user_data.gold
         match_player.avatar = user_data.avatar
@@ -330,6 +345,7 @@ class Match:
         await self._handle_new_hand()
 
     async def user_play_card(self, uid, payload):
+        print(f"Receive play card from user {uid}")
         pkg = packet_pb2.PlayCard()
         pkg.ParseFromString(payload)
         card_id = pkg.card_id
@@ -349,8 +365,8 @@ class Match:
     
 
         # check whether it is user turn
-        if self.players[self.current_turn].uid != uid:
-            logger.error(f"User {uid} is not in turn")
+        if self.current_turn == -1 or self.players[self.current_turn].uid != uid:
+            logger.error(f"User {uid} is not in turn, current turn: {self.current_turn}, user turn: {self.players[self.current_turn].uid}")
             return
         
         # check whether user has the card
@@ -617,8 +633,8 @@ class Match:
         # Remove all bots
         for i, player in enumerate(self.players):
             if player.is_bot:
-                self.players[i] = MatchPlayer(-1, self)
-
+                await self.user_leave(player.uid)
+                
         # Kick users auto playing, or register exit room
         for uid in self.register_leave_uids:
             await game_vars.get_match_mgr().handle_user_leave_match(uid)    
