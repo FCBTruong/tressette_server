@@ -43,7 +43,7 @@ logging.basicConfig(
 logger = logging.getLogger("game_match")  # Name your logger
 
 class MatchPlayer:
-    def __init__(self, uid):
+    def __init__(self, uid: int, match_mgr: "Match"):
         self.uid = uid
         self.name = ""
         self.avatar = ""
@@ -52,11 +52,28 @@ class MatchPlayer:
         self.points = 0
         self.score_last_trick = 0
         self.team_id = -1
+        self.is_bot = False
+        self.match_mgr = match_mgr
     
     def reset_game(self):
         self.cards.clear()
         self.points = 0
         self.score_last_trick = 0
+
+    async def on_turn(self):
+        pass
+
+class MatchBot(MatchPlayer):
+    def __init__(self, uid, match_mgr):
+        super().__init__(uid, match_mgr)
+        self.is_bot = True
+
+    async def on_turn(self):
+        print('Bot on turn')
+        # play a card
+        card = self.cards[0]
+        await self.match_mgr._play_card(self.uid, card, auto=False)
+        pass
 
 class Match:
     cards_compare = []
@@ -77,16 +94,10 @@ class Match:
         self.current_turn = -1
         self.register_leave_uids = set()
 
-        if player_mode == PLAYER_SOLO_MODE:
-            for i in range(2):
-                p = MatchPlayer(-1)
-                self.players.append(p)
-                p.team_id = i
-        elif player_mode == PLAYER_DUO_MODE:
-            for i in range(4):
-                p = MatchPlayer(-1)
-                p.team_id = i % 2
-                self.players.append(p)
+        # init slots
+        for i in range(player_mode):
+            p = MatchPlayer(-1, self)
+            self.players.append(p)
 
     
     async def loop(self):
@@ -121,28 +132,48 @@ class Match:
         self.state = MatchState.ENDED
         self.end_time = datetime.now()
 
-    async def user_join(self, user_id):
+    async def user_join(self, user_id, is_bot=False):
         # check user in match
         for player in self.players:
             if player.uid == user_id:
                 print('User already in match, can not jion')
                 return
-        
-        user_data = await users_info_mgr.get_user_info(user_id)
+        if not is_bot:
+            user_data = await users_info_mgr.get_user_info(user_id)
+        else:
+            user_data = await game_vars.get_bots_mgr().get_a_bot()
+
         # find empty slot
+        slot_idx = -1   
         for i, player in enumerate(self.players):
             if player.uid == -1:
-                self.players[i].uid = user_data.uid
-                self.players[i].name = user_data.name
-                self.players[i].gold = user_data.gold
-                self.players[i].avatar = user_data.avatar
-                seat_server_id = i
-                team_id = self.players[i].team_id
+                slot_idx = i
                 break
+        if slot_idx == -1:
+            print('Match is full')
+            return
+        if is_bot:
+            match_player = MatchBot(user_id, self)
+        else:
+            match_player = MatchPlayer(user_id, self)
+            
+        match_player.name = user_data.name
+        match_player.gold = user_data.gold
+        match_player.avatar = user_data.avatar
+        # calculate team id
+        if self.player_mode == PLAYER_SOLO_MODE:
+            match_player.team_id = slot_idx
+        else:
+            match_player.team_id = slot_idx % 2
+
+        seat_server_id = slot_idx
+        self.players[slot_idx] = match_player
+        team_id = match_player.team_id
+ 
 
         # send to others that user has joined
         for i, player in enumerate(self.players):
-            if player.uid == -1 or player.uid == user_id:
+            if player.is_bot or player.uid == -1 or player.uid == user_id:
                 continue
             print(f"Send to user {player.uid} that user {user_id} has joined")
             pkg = packet_pb2.NewUserJoinMatch()
@@ -154,10 +185,23 @@ class Match:
 
             await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_USER_JOIN_MATCH, pkg)
         
-        await self._send_game_info(user_id)
+        if not is_bot:
+            # send game info to user
+            await self._send_game_info(user_id)
 
         if self.check_room_full():
             await self._prepare_start_game()
+        else:
+            # add a bot
+            # wait for 1 second
+            await asyncio.sleep(1)
+            await self.add_bot()
+
+    async def add_bot(self):
+        print('Add bot')
+        # random uid from 2M - 3M
+        bot_uid = random.randint(2000000, 3000000)
+        await self.user_join(bot_uid, is_bot=True)
 
     async def _prepare_start_game(self):
         self.state = MatchState.PREPARING_START
@@ -167,6 +211,8 @@ class Match:
         pkg.time_start = int(self.time_start)
         print('Game is starting, wait for 3 seconds')
         for player in self.players:
+            if player.is_bot or player.uid == -1:
+                continue
             await game_vars.get_game_client().send_packet(player.uid, CMDs.PREPARE_START_GAME, pkg)
 
     def check_can_join(self, uid: int):
@@ -185,6 +231,12 @@ class Match:
             if player.uid != -1:
                 return False
         return True
+    
+    def check_has_real_players(self):
+        for player in self.players:
+            if player.uid != -1 and not player.is_bot:
+                return True
+        return False
     
     async def _send_game_info(self, uid):
         logger.info(f"Sending game info to user {uid}")
@@ -218,7 +270,7 @@ class Match:
     async def user_leave(self, uid): 
         # noti to others
         for player in self.players:
-            if player.uid == -1:
+            if player.uid == -1 or player.is_bot:
                 continue
 
             print(f"Send to user {player.uid} that user {uid} has left")
@@ -230,7 +282,7 @@ class Match:
         # remove user from match
         for i, player in enumerate(self.players):
             if player.uid == uid:
-                self.players[i].uid = -1
+                self.players[i] = MatchPlayer(-1, self)
                 break
 
         if not self.check_room_full() and self.state == MatchState.PREPARING_START:
@@ -265,10 +317,14 @@ class Match:
 
         pkg = packet_pb2.StartGame()
         for player in self.players:
+            if player.is_bot or player.uid == -1:
+                continue
             await game_vars.get_game_client().send_packet(player.uid, CMDs.START_GAME, pkg)
+
         # # wait for 3 seconds
         # await asyncio.sleep(TIME_START_TO_DEAL)
         await self.deal_card()
+
         # wait for 2 seconds
         await asyncio.sleep(2)
         await self._handle_new_hand()
@@ -337,6 +393,9 @@ class Match:
     
         # send to others
         for i, player in enumerate(self.players):
+            # do not send to bots
+            if player.is_bot:
+                continue
             pkg = packet_pb2.PlayCard()
             pkg.uid = uid
             pkg.card_id = card_id
@@ -351,6 +410,7 @@ class Match:
         else:
             # next uid
             next_uid = self.players[self.current_turn].uid
+            await self.players[self.current_turn].on_turn()
             if self.auto_play_time_by_uid.get(next_uid):
                 self.time_auto_play = self.auto_play_time_by_uid[next_uid] + TIME_AUTO_PLAY
             else:
@@ -377,6 +437,9 @@ class Match:
 
         # send to users
         for player in self.players:
+            # do not send to bots
+            if player.is_bot:
+                continue
             pkg = packet_pb2.DealCard()
             pkg.cards.extend(player.cards)
             pkg.remain_cards = len(self.cards)
@@ -407,6 +470,9 @@ class Match:
         # send to others
         await asyncio.sleep(0.5)
         for player in self.players:
+            # do not send to bots
+            if player.is_bot:
+                continue
             await game_vars.get_game_client().send_packet(player.uid, CMDs.END_HAND, pkg)
 
         # effect show win cards
@@ -452,6 +518,9 @@ class Match:
         pkg = packet_pb2.DrawCard()
         pkg.cards.extend(draw_cards)
         for player in self.players:
+            # do not send to bots
+            if player.is_bot:
+                continue
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DRAW_CARD, pkg)
 
     async def _handle_new_hand(self):
@@ -464,16 +533,20 @@ class Match:
         self.hand_suit = -1
 
         # next turn is the winner of last hand
-        if self.win_player:
+        if self.win_player is not None:
             self.current_turn = self.players.index(self.win_player)
         else:
             self.current_turn = 0
 
+        await self.players[self.current_turn].on_turn()
         self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
         pkg = packet_pb2.NewHand()
         pkg.current_turn = self.current_turn
         for player in self.players:
+            # do not send to bots
+            if player.is_bot:
+                continue
             await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_HAND, pkg)
 
     def _draw_card(self):
@@ -522,6 +595,9 @@ class Match:
         pkg.score_last_tricks.extend(score_last_tricks)
         pkg.score_totals.extend(score_totals)
         for player in self.players:
+            if player.is_bot:
+                continue
+
             await game_vars.get_game_client().send_packet(player.uid, CMDs.END_GAME, pkg)
         
         await asyncio.sleep(2)
@@ -538,8 +614,12 @@ class Match:
             await self._prepare_start_game()
 
     async def update_users_staying_endgame(self):
-        # Kick users auto playing, or register exit room
+        # Remove all bots
+        for i, player in enumerate(self.players):
+            if player.is_bot:
+                self.players[i] = MatchPlayer(-1, self)
 
+        # Kick users auto playing, or register exit room
         for uid in self.register_leave_uids:
             await game_vars.get_match_mgr().handle_user_leave_match(uid)    
 
@@ -550,6 +630,9 @@ class Match:
     
         # update user connection, kick user that is disconnected
         for player in self.players:
+            # not check for bots
+            if player.is_bot:
+                continue
             uid = player.uid
             if uid == -1:
                 continue

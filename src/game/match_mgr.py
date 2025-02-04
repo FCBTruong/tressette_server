@@ -85,7 +85,9 @@ class MatchManager:
     async def get_free_match(self, uid) -> Match:
         print(f"Number match current: {len(self.matches.items())}")
         for match_id, match in self.matches.items():
-            if not match.check_user_can_join_gold(uid):
+            enought_gold = await match.check_user_can_join_gold(uid)
+
+            if not enought_gold:
                 continue # Not enough gold
             
             if match.state == MatchState.WAITING and not match.check_room_full():
@@ -133,9 +135,10 @@ class MatchManager:
         
         await match.user_leave(uid)
         self.user_matchids.pop(uid)
+        print("User leave match", match.check_has_real_players())
 
-        if match.check_room_empty():
-            print('Destroy match')
+        if not match.check_has_real_players():
+            print('Destroy match', match_id)
             self.destroy_match(match_id)
 
         return LeaveMatchErrors.SUCCESS

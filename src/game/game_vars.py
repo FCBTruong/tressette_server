@@ -9,6 +9,7 @@ class GameVars:
         self.login_mgr = None
         self.user_info_mgr = None
         self.friend_mgr = None
+        self.bots_mgr = None
         
     def get_game_client(self):
         if self.game_client is None:
@@ -53,5 +54,11 @@ class GameVars:
             from src.game.friend_mgr import FriendMgr
             self.friend_mgr = FriendMgr()
         return self.friend_mgr
+    
+    def get_bots_mgr(self):
+        if self.bots_mgr is None:
+            from src.game.bots_mgr import BotsMgr
+            self.bots_mgr = BotsMgr()
+        return self.bots_mgr
     
 game_vars = GameVars()
