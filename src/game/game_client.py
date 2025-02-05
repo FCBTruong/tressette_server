@@ -62,7 +62,8 @@ class GameClient:
 
         # Send friend list
         await game_vars.get_friend_mgr().send_list_friends(uid)
-        
+        await game_vars.get_friend_mgr().send_friend_requests(uid) # friend requests
+
         # check if user is in a match
         await game_vars.get_game_mgr().on_user_login(uid)
 

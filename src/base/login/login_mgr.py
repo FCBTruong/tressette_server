@@ -1,5 +1,6 @@
 import random
 from src.base.security.jwt import create_login_token, verify_token
+from src.config.settings import settings
 from src.constants import *
 from src.postgres.orm import PsqlOrm
 from src.postgres.sql_models import FirebaseAuthSchema, GuestsSchema, UserInfoSchema
@@ -28,6 +29,9 @@ class LoginMgr:
                 return payload.get("uid")
             except Exception as e:
                 print(e)
+        elif login_type == LOGIN_UID_CHEAT:
+            if settings.ENABLE_CHEAT:
+                return int(token)
         return -1
     
     def create_new_basic_user(self) -> UserInfoSchema:
@@ -39,6 +43,7 @@ class LoginMgr:
         user_model.avatar = str(avatar_id)
         return user_model
 
+    # Return permanent token (90days)
     async def login_firebase(self, token):
         try:
             print("Verifying token Firebase")

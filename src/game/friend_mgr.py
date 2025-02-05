@@ -1,5 +1,6 @@
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
@@ -24,22 +25,64 @@ class FriendMgr:
             return friend_ids
         return []
     
-    async def add_friend(self, uid: int, friend_id: int):
-        pass
 
-    async def remove_friend(self, uid: int, friend_id: int):
+    async def remove_friend(self, uid: int, payload):
+        pkg = packet_pb2.RemoveFriend()
+        pkg.ParseFromString(payload)
+        friend_id = pkg.uid
+        async with PsqlOrm.get().session() as session:
+            result = await session.execute(
+                select(Friendship).where(
+                    (Friendship.user1_id == uid) & (Friendship.user2_id == friend_id) |
+                    (Friendship.user1_id == friend_id) & (Friendship.user2_id == uid),
+                    Friendship.status == FRIENDSHIP_STATUS_ACCEPTED
+                )
+            )
+            row = result.scalars().first()
+            if row:
+                await session.delete(row)
+                await session.commit()
         pass
 
     async def get_friend_requests(self, uid: int) -> list:
         return []
     
-    async def accept_friend_request(self, uid: int, friend_id: int):
-        pass
+    async def accept_friend_request(self, uid: int, payload):
+        print(f"User {uid} accept friend request")
+        pkg = packet_pb2.RequestFriendAccept()
+        pkg.ParseFromString(payload)
+        friend_id = pkg.uid
+        action = pkg.action
+        async with PsqlOrm.get().session() as session:
+            result = await session.execute(
+                select(Friendship).where(
+                    (Friendship.user1_id == friend_id) & (Friendship.user2_id == uid)
+                )
+            )
+
+            row = result.scalars().first()
+            if row:
+                if action == ACTION_FRIEND_REQUEST_ACCEPT:
+                    row.status = FRIENDSHIP_STATUS_ACCEPTED
+                    await session.commit()
+                elif action == ACTION_FRIEND_REQUEST_REJECT:
+                    await session.delete(row)
+                    await session.commit()
 
     async def on_receive_packet(self, uid: int, cmd_id: int, payload):
         match cmd_id:
             case CMDs.SEARCH_FRIEND:
                 await self._handle_search_friend(uid, payload)
+                pass
+            case CMDs.ADD_FRIEND:
+                await self._handle_add_friend(uid, payload)
+            
+            case CMDs.ACCEPT_FRIEND_REQUEST:
+                await self.accept_friend_request(uid, payload)
+                pass
+
+            case CMDs.REMOVE_FRIEND:
+                await self.remove_friend(uid, payload)
                 pass
 
     async def send_list_friends(self, uid: int):
@@ -50,19 +93,25 @@ class FriendMgr:
         avatars = []
         levels = []
         golds = []
+        onlines = []
+        uids = []
         for friend_id in friend_ids:
             user_info = await users_info_mgr.get_user_info(friend_id)
             if user_info:
+                is_online = connection_manager.check_user_active_online(friend_id)
+                onlines.append(is_online)
+                uids.append(friend_id)
                 names.append(user_info.name)
                 avatars.append(user_info.avatar)
                 levels.append(user_info.level)
                 golds.append(user_info.gold)
 
+        pkg.uids.extend(uids)
         pkg.names.extend(names)
         pkg.avatars.extend(avatars)
         pkg.levels.extend(levels)
         pkg.golds.extend(golds)
-        pkg.uids.extend(friend_ids)
+        pkg.onlines.extend(onlines)
 
         await game_vars.get_game_client().send_packet(uid, CMDs.FRIEND_LIST, pkg)
                 
@@ -93,3 +142,109 @@ class FriendMgr:
         # send response
         await game_vars.get_game_client().send_packet(uid, CMDs.SEARCH_FRIEND, pkg_response)
 
+    # Requests need accept and sent requests to other users
+    async def send_friend_requests(self, uid: int):
+        print(f"Send friend requests to user {uid}")
+        async with PsqlOrm.get().session() as session:
+            result = await session.execute(
+                select(Friendship).where(
+                    (Friendship.user1_id == uid) | (Friendship.user2_id == uid),
+                    Friendship.status == FRIENDSHIP_STATUS_PENDING
+                ) 
+            )
+        # First ID is sender, second ID is who will accept
+        rows = result.scalars().all()
+        friend_requests = []
+        sent_requests = []
+        for row in rows:
+            if row.user1_id == uid:
+                sent_requests.append(row.user2_id)
+            else:
+                friend_requests.append(row.user1_id)
+
+        pkg = packet_pb2.FriendRequests()
+
+        request_uids = []
+        names = []
+        avatars = []
+        levels = []
+        golds = []
+        for rid in friend_requests:
+            user_info = await users_info_mgr.get_user_info(rid)
+            if user_info:
+                request_uids.append(user_info.uid)
+                names.append(user_info.name)
+                avatars.append(user_info.avatar)
+                levels.append(user_info.level)
+                golds.append(user_info.gold)
+
+        pkg.uids.extend(request_uids)
+        pkg.names.extend(names)
+        pkg.avatars.extend(avatars)
+        pkg.levels.extend(levels)
+        pkg.golds.extend(golds)
+
+        pkg.sent_uids.extend(sent_requests)
+
+        await game_vars.get_game_client().send_packet(uid, CMDs.FRIEND_REQUESTS, pkg)
+
+    async def _handle_add_friend(self, uid: int, payload):
+        count_friends = await self._count_friends(uid)
+
+        if count_friends >= MAX_FRIENDS_NUMBER:
+            print(f"User {uid} reach max friends number")
+            return
+        pkg = packet_pb2.AddFriend()
+        pkg.ParseFromString(payload)
+
+        friend_uid = pkg.uid
+        print(f"User {uid} add friend {friend_uid}")
+
+        # check if user exist
+        user_info = await users_info_mgr.get_user_info(friend_uid)
+        if not user_info:
+            print(f"User {uid} add friend {friend_uid} not found")
+            return
+
+        # check if already sent request
+        async with PsqlOrm.get().session() as session:
+            result = await session.execute(
+                select(Friendship).where(
+                    (Friendship.user1_id == uid) & (Friendship.user2_id == friend_uid) |
+                    (Friendship.user1_id == friend_uid) & (Friendship.user2_id == uid)
+                )
+            )
+
+            row = result.scalars().first()
+            if row:
+                if row.user1_id == uid:
+                    print(f"User {uid} add friend {friend_uid} already sent request")
+                    return
+                else:
+                    # BOTH user sent request to each other -> auto accept
+                    # update status
+                    row.status = FRIENDSHIP_STATUS_ACCEPTED
+                    await session.commit()
+                    # send friend requests to friend
+                    await self.send_friend_requests(friend_uid)
+                    return
+            
+        # Save to database
+        async with PsqlOrm.get().session() as session:
+            # User 1 send request to user 2
+            friendship = Friendship(user1_id=uid, user2_id=friend_uid, status=FRIENDSHIP_STATUS_PENDING)
+            session.add(friendship)
+            await session.commit()
+        
+
+    async def _count_friends(self, user_id):
+        async with PsqlOrm.get().session() as session:
+            result = await session.execute(
+                select(func.count())
+                .select_from(Friendship)
+                .where(
+                    ((Friendship.user1_id == user_id) | (Friendship.user2_id == user_id)) &
+                    (Friendship.status == FRIENDSHIP_STATUS_ACCEPTED)  # Assuming 'accepted' is the status
+                )
+            )
+            return result.scalar_one()

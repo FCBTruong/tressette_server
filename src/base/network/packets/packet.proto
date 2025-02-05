@@ -216,9 +216,28 @@ message FriendList {
   repeated string avatars = 3;
   repeated int32 levels = 4;
   repeated int32 golds = 5;
+  repeated bool onlines = 6;
 }
 
-message Friendship {
-  repeated int32 request_uids = 1;
-  repeated int32 sent_uids = 2;
+message FriendRequests {
+  repeated int32 uids = 1;
+  repeated string names = 2;
+  repeated string avatars = 3;
+  repeated int32 levels = 4;
+  repeated int32 golds = 5;
+  repeated int32 sent_uids = 6;
+}
+
+message AddFriend {
+  int32 error = 1;
+  int32 uid = 2;
+}
+
+message RequestFriendAccept {
+  int32 uid = 1;
+  int32 action = 2;
+}
+
+message RemoveFriend {
+  int32 uid = 1;
 }

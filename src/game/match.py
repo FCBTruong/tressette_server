@@ -655,7 +655,7 @@ class Match:
             uid = player.uid
             if uid == -1:
                 continue
-            is_active = connection_manager.check_user_active(uid)
+            is_active = connection_manager.check_user_active_online(uid)
             if not is_active:
                 await game_vars.get_match_mgr().handle_user_leave_match(uid)
         

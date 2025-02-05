@@ -247,7 +247,7 @@ class ConnectionManager:
         if uid in self.user_websockets:
             del self.user_websockets[uid]
 
-    def check_user_active(self, uid: int):
+    def check_user_active_online(self, uid: int):
         is_active = False
         if uid in self.user_websockets:
             ws = self.user_websockets[uid]
