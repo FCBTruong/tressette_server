@@ -50,5 +50,4 @@ class Settings(
 
 settings = Settings()
 
-print('hmmm')
 print('configlog: ', settings)

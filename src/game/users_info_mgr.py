@@ -3,6 +3,7 @@ import json
 import logging
 # from src.cache import redis_cache
 from src.base.network.packets import packet_pb2
+from src.config.settings import settings
 from src.game.models import UserInfo
 from src.postgres.sql_models import UserInfoSchema
 from src.postgres.orm import PsqlOrm
@@ -56,6 +57,9 @@ class UsersInfoMgr:
         match cmd_id:
             case CMDs.CHANGE_AVATAR:
                 await self._handle_change_avatar(uid, payload)
+
+            case CMDs.CHEAT_GOLD_USER:
+                await self._handle_cheat_gold_user(uid, payload)
             case _:
                 pass
 
@@ -79,5 +83,17 @@ class UsersInfoMgr:
 
         # update changes to database
         await user.commit_avatar()
+
+    async def _handle_cheat_gold_user(self, uid: int, payload):
+        if not settings.ENABLE_CHEAT:
+            return
+
+        pkg = packet_pb2.CheatGoldUser()
+        pkg.ParseFromString(payload)
+        gold = pkg.gold
+        user = await self.get_user_info(uid)
+        user.gold += gold
+        await user.commit_gold()
+        print(f"User {uid} cheat gold {gold}")
 
 users_info_mgr = UsersInfoMgr()

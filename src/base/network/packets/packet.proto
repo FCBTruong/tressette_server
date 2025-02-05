@@ -205,3 +205,7 @@ message SearchFriendResponse {
   int32 error = 7;
   int32 level = 8;
 }
+
+message CheatGoldUser {
+  int32 gold = 1;
+}

@@ -517,8 +517,8 @@ class Match:
                 score_team2 += player.points
 
         # # test
-        # if score_team1 >= 3 or score_team2 >= 3:
-        #     return True
+        if score_team1 >= 1 or score_team2 >= 1:
+            return True
         
         if score_team1 >= 33 or score_team2 >= 33:
             return True
