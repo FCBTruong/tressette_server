@@ -1,5 +1,8 @@
 
 
+from src.base.network.packets import packet_pb2
+from src.game.cmds import CMDs
+from src.game.game_vars import game_vars
 from src.postgres.orm import PsqlOrm
 from src.postgres.sql_models import UserInfoSchema
 from sqlalchemy import update as sa_update
@@ -62,3 +65,9 @@ class UserInfo:
                 .values(avatar=self.avatar)
             )
             await session.commit()
+
+
+    async def send_update_money(self):
+        pkg_money = packet_pb2.UpdateMoney()
+        pkg_money.gold = self.gold
+        await game_vars.get_game_client().send_packet(self.uid, CMDs.UPDATE_MONEY, pkg_money)

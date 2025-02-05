@@ -63,9 +63,7 @@ async def _purchase_success(uid, pack_id):
     # save to database
     await user_info.commit_gold()
     
-    pkg_money = packet_pb2.UpdateMoney()
-    pkg_money.gold = user_info.gold
-    await game_vars.get_game_client().send_packet(uid, CMDs.UPDATE_MONEY, pkg)
+    await user_info.send_update_money()
 
     # send to user
     await game_vars.get_game_client().send_packet(uid, CMDs.PAYMENT_SUCCESS, pkg)

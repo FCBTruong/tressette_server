@@ -92,8 +92,9 @@ class UsersInfoMgr:
         pkg.ParseFromString(payload)
         gold = pkg.gold
         user = await self.get_user_info(uid)
-        user.gold += gold
+        user.add_gold(gold)
         await user.commit_gold()
+        await user.send_update_money()
         print(f"User {uid} cheat gold {gold}")
 
 users_info_mgr = UsersInfoMgr()
