@@ -209,3 +209,16 @@ message SearchFriendResponse {
 message CheatGoldUser {
   int32 gold = 1;
 }
+
+message FriendList {
+  repeated int32 uids = 1;
+  repeated string names = 2;
+  repeated string avatars = 3;
+  repeated int32 levels = 4;
+  repeated int32 golds = 5;
+}
+
+message Friendship {
+  repeated int32 request_uids = 1;
+  repeated int32 sent_uids = 2;
+}

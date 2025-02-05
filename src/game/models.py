@@ -15,13 +15,15 @@ class UserInfo:
     level: int
     avatar: str
     avatar_third_party: str
-    def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str):
+    is_active: bool
+    def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool = True):
         self.uid = uid
         self.name = name
         self.gold = gold
         self.level = level
         self.avatar = avatar
         self.avatar_third_party = avatar_third_party
+        self.is_active = is_active
 
         # Set default values
         if self.avatar_third_party is None:

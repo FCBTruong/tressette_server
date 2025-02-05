@@ -6,6 +6,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
 from src.base.security.jwt import create_session_token, verify_token
 from src.constants import *
+from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 from src.base.network.packets import packet_pb2
 from src.game.cmds import CMDs
@@ -183,11 +184,15 @@ class ConnectionManager:
                     return
                 logger.info(f"Login packet received: uid={uid}")
 
-                user_info = {
+                user_cred = {
                     "uid": uid,
                     "active": True
                 }
 
+                user = await users_info_mgr.get_user_info(uid)
+                if not user or not user.is_active:
+                    logger.info("User inactive") # removed, or banned, disabled
+                    return
                 # Check if user is already logged in, if so, disconnect the old connection
                 old_websocket = self.user_websockets.get(uid)
                 if old_websocket:
@@ -197,7 +202,7 @@ class ConnectionManager:
                         await old_websocket.close()
 
                 logger.info('create access token')
-                new_token = create_session_token(user_info)
+                new_token = create_session_token(user_cred)
                 login_response.token = new_token
                 login_response.uid = uid
                 login_response.error = LOGIN_ERROR_SUCCESS

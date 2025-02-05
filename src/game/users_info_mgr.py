@@ -47,6 +47,7 @@ class UsersInfoMgr:
                     "level": user_info.level,
                     "avatar": user_info.avatar,
                     "avatar_third_party": user_info.avatar_third_party,
+                    "is_active": user_info.is_active
                 }
                 user_inf = UserInfo(**user_info_data)
                 self.users[uid] = user_inf

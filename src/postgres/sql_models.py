@@ -1,5 +1,5 @@
 
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
@@ -16,6 +16,7 @@ class UserInfoSchema(Base):
     avatar = Column(String)  # Text column for avatar
     avatar_third_party = Column(String)  # Text column for third party avatar
     login_type = Column(Integer)  # Integer column for login type
+    is_active = Column(Boolean, nullable=False, default=True)
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
 
@@ -38,3 +39,14 @@ class FirebaseAuthSchema(Base):
     picture = Column(String)
   
     user_info = relationship("UserInfoSchema", back_populates="firebase_auth")
+
+
+class Friendship(Base):
+    __tablename__ = 'friendships'
+
+    friendship_id = Column(Integer, primary_key=True, autoincrement=True)
+    user1_id = Column(Integer, ForeignKey('user_info.uid', ondelete='CASCADE'), nullable=False)
+    user2_id = Column(Integer, ForeignKey('user_info.uid', ondelete='CASCADE'), nullable=False)
+    status = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
