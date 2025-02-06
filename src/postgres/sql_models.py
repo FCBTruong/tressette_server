@@ -1,5 +1,5 @@
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, func
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
@@ -11,7 +11,7 @@ class UserInfoSchema(Base):
     # Define the columns based on the table structure
     uid = Column(Integer, primary_key=True, autoincrement=True)  # Auto-incrementing field
     name = Column(String)  # Text column for name
-    gold = Column(Integer)  # Integer column for gold
+    gold = Column(BigInteger)  # Integer column for gold
     level = Column(Integer)  # Integer column for level
     avatar = Column(String)  # Text column for avatar
     avatar_third_party = Column(String)  # Text column for third party avatar

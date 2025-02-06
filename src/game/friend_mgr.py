@@ -69,6 +69,17 @@ class FriendMgr:
                     await session.delete(row)
                     await session.commit()
 
+        user_info = await users_info_mgr.get_user_info(uid=uid)
+        # notify to the friend that the request is accepted
+        if action == ACTION_FRIEND_REQUEST_ACCEPT:
+            accepted_pkg = packet_pb2.FriendRequestAccepted()
+            accepted_pkg.uid = uid
+            accepted_pkg.name = user_info.name
+            accepted_pkg.avatar = user_info.avatar
+            accepted_pkg.level = user_info.level
+            accepted_pkg.gold = user_info.gold
+            await game_vars.get_game_client().send_packet(friend_id, CMDs.NEW_FRIEND_ACCEPTED, accepted_pkg)
+
     async def on_receive_packet(self, uid: int, cmd_id: int, payload):
         match cmd_id:
             case CMDs.SEARCH_FRIEND:
@@ -83,6 +94,9 @@ class FriendMgr:
 
             case CMDs.REMOVE_FRIEND:
                 await self.remove_friend(uid, payload)
+                pass
+            case CMDs.FRIEND_LIST:
+                await self.send_list_friends(uid)
                 pass
 
     async def send_list_friends(self, uid: int):
@@ -201,8 +215,8 @@ class FriendMgr:
         print(f"User {uid} add friend {friend_uid}")
 
         # check if user exist
-        user_info = await users_info_mgr.get_user_info(friend_uid)
-        if not user_info:
+        receiver = await users_info_mgr.get_user_info(friend_uid)
+        if not receiver:
             print(f"User {uid} add friend {friend_uid} not found")
             return
 
@@ -235,6 +249,17 @@ class FriendMgr:
             friendship = Friendship(user1_id=uid, user2_id=friend_uid, status=FRIENDSHIP_STATUS_PENDING)
             session.add(friendship)
             await session.commit()
+
+        # send to des user a notification
+        sender = await users_info_mgr.get_user_info(uid)
+        new_fr_pkg = packet_pb2.NewFriendRequest()
+        new_fr_pkg.uid = uid
+        new_fr_pkg.name = sender.name
+        new_fr_pkg.avatar = sender.avatar
+        new_fr_pkg.level = sender.level
+        new_fr_pkg.gold = sender.gold
+
+        await game_vars.get_game_client().send_packet(friend_uid, CMDs.NEW_FRIEND_REQUEST, new_fr_pkg)
         
 
     async def _count_friends(self, user_id):

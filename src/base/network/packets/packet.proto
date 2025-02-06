@@ -13,7 +13,7 @@ message ChatMessage {
   double abc = 1;
   string username = 2;     // User's name
   int64 level = 3;        // Level (using uint32 for single-byte values)
-  int32 gold = 4;         // Gold (using int32)
+  int64 gold = 4;         // Gold (using int32)
   string abcd = 5;      // Chat message
   bool is_active = 6;
 }
@@ -79,7 +79,7 @@ message RegisterLeaveGame {
 
 message NewUserJoinMatch {
   int32 uid = 1;
-  int32 gold = 2;
+  int64 gold = 2;
   string name = 3;
   int32 seat_server = 4;
   int32 team_id = 5;
@@ -129,7 +129,7 @@ message DrawCard {
 
 message GeneralInfo {
   int64 timestamp = 1;
-  int32 min_gold_play = 2;
+  int64 min_gold_play = 2;
 }
 
 message EndGame {
@@ -157,11 +157,11 @@ message PaymentGoogleConsume {
 }
 
 message PaymentSuccess {
-  int32 gold = 1;
+  int64 gold = 1;
 }
 
 message UpdateMoney {
-  int32 gold = 1;
+  int64 gold = 1;
 }
 
 message TableList {
@@ -173,7 +173,7 @@ message TableList {
 
 message ShopConfig {
   repeated string pack_ids = 1;
-  repeated int32 golds = 2;
+  repeated int64 golds = 2;
   repeated double prices = 3;
   repeated string currencies = 4;
 }
@@ -197,7 +197,7 @@ message SearchFriend {
 
 message SearchFriendResponse {
   int32 uid = 1;
-  int32 gold = 2;
+  int64 gold = 2;
   string name = 3;
   string avatar = 4;
   int32 win_count = 5;
@@ -207,7 +207,7 @@ message SearchFriendResponse {
 }
 
 message CheatGoldUser {
-  int32 gold = 1;
+  int64 gold = 1;
 }
 
 message FriendList {
@@ -215,7 +215,7 @@ message FriendList {
   repeated string names = 2;
   repeated string avatars = 3;
   repeated int32 levels = 4;
-  repeated int32 golds = 5;
+  repeated int64 golds = 5;
   repeated bool onlines = 6;
 }
 
@@ -224,7 +224,7 @@ message FriendRequests {
   repeated string names = 2;
   repeated string avatars = 3;
   repeated int32 levels = 4;
-  repeated int32 golds = 5;
+  repeated int64 golds = 5;
   repeated int32 sent_uids = 6;
 }
 
@@ -240,4 +240,20 @@ message RequestFriendAccept {
 
 message RemoveFriend {
   int32 uid = 1;
+}
+
+message NewFriendRequest {
+  int32 uid = 1;
+  string avatar = 2;
+  string name = 3;
+  int32 level = 4;
+  int64 gold = 5;
+}
+
+message FriendRequestAccepted {
+  int32 uid = 1;
+  string name = 2;
+  string avatar = 3;
+  int32 level = 4;
+  int64 gold = 5;
 }
