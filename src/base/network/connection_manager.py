@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import random
 import time
 import traceback
 from fastapi import WebSocket, WebSocketDisconnect
@@ -254,6 +255,13 @@ class ConnectionManager:
             if ws in self.active_connections:
                 is_active = True
         return is_active
+    
+    def get_random_user_online(self, size: int) -> list[int]:
+        users = list(self.user_websockets.keys())
+        if len(users) <= size:
+            return users
+        return random.sample(users, size)  # Randomly select `size` users
+            
 
 # Instantiate the ConnectionManager for usage
 connection_manager = ConnectionManager()

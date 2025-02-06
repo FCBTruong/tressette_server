@@ -61,7 +61,7 @@ class GameClient:
         await payment_mgr.send_shop_config(uid)
 
         # Send friend list
-        await game_vars.get_friend_mgr().send_list_friends(uid)
+        await game_vars.get_friend_mgr().send_list_friends(uid, send_recommend_if_empty=True)
         await game_vars.get_friend_mgr().send_friend_requests(uid) # friend requests
 
         # check if user is in a match

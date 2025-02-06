@@ -257,3 +257,11 @@ message FriendRequestAccepted {
   int32 level = 4;
   int64 gold = 5;
 }
+
+message RecommendFriends {
+  repeated int32 uids = 1;
+  repeated string names = 2;
+  repeated string avatars = 3;
+  repeated int32 levels = 4;
+  repeated int64 golds = 5;
+}

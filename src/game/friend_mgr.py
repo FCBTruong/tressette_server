@@ -6,7 +6,7 @@ from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.postgres.orm import PsqlOrm
-from src.postgres.sql_models import Friendship
+from src.postgres.sql_models import Friendship, UserInfoSchema
 from src.constants import *
 
 
@@ -99,8 +99,15 @@ class FriendMgr:
                 await self.send_list_friends(uid)
                 pass
 
-    async def send_list_friends(self, uid: int):
+    async def send_list_friends(self, uid: int, send_recommend_if_empty=False):
         friend_ids = await self.get_friends(uid)
+
+        if len(friend_ids) == 0 and send_recommend_if_empty:
+            # NO friends, so send recommend friends instead
+            print(f"User {uid} has no friends, send recommend friends")
+            await self.send_recommend_friends(uid)
+            return
+        
         pkg = packet_pb2.FriendList()
 
         names = []
@@ -273,3 +280,56 @@ class FriendMgr:
                 )
             )
             return result.scalar_one()
+        
+    async def send_recommend_friends(self, uid: int):
+        # get online UIDs first
+        online_uids = connection_manager.get_random_user_online(10)
+
+        # remove the user itself
+        if uid in online_uids:
+            online_uids.remove(uid)
+
+        recommend_uids = online_uids
+        # If not found user online, find from database
+        if len(online_uids) == 0:
+            async with PsqlOrm.get().session() as session:
+                result = await session.execute(
+                    select(UserInfoSchema.uid)
+                    .where(UserInfoSchema.is_active == True)
+                    .order_by(func.random())  # Order by a random value
+                    .limit(FRIEND_RECOMMENDED_SIZE)  # Limit to 10 results
+                )
+            recommend_uids = result.scalars().all()  # Get all 10 random uids
+
+        if uid in recommend_uids:
+            recommend_uids.remove(uid)
+
+        if len(recommend_uids) == 0:
+            print(f"User {uid} has no friends and no recommend friends")
+            return
+        
+        # get the user info and send to the user
+        uids = []
+        names = []
+        avatars = []
+        levels = []
+        golds = []
+        for rec_uid in recommend_uids:
+            user_info = await users_info_mgr.get_user_info(rec_uid)
+            if user_info:
+                uids.append(user_info.uid)
+                names.append(user_info.name)
+                avatars.append(user_info.avatar)
+                levels.append(user_info.level)
+                golds.append(user_info.gold)
+        
+        pkg = packet_pb2.RecommendFriends()
+        pkg.uids.extend(uids)   
+        pkg.names.extend(names)
+        pkg.avatars.extend(avatars)
+        pkg.levels.extend(levels)
+        pkg.golds.extend(golds)
+
+        await game_vars.get_game_client().send_packet(uid, CMDs.RECOMMEND_FRIENDS, pkg)
+
+FRIEND_RECOMMENDED_SIZE = 10
