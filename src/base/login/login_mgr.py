@@ -125,7 +125,7 @@ class LoginMgr:
 
                 return {"success": True, "firebase_token": firebase_token}
 
-    async def login_by_apple_token(token):
+    async def login_by_apple_token(self, token):
         API_KEY = "AIzaSyCZ7InUYNvLU_wVNEMciqWI9Aa0i-Nq5O8"  # Replace with your Firebase API key
         url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={API_KEY}"
 
@@ -138,6 +138,7 @@ class LoginMgr:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as response:
                 firebase_data = await response.json()
+                print("apple firebase_data:::", firebase_data)
 
                 # Check for errors in Firebase response
                 if response.status != 200:
