@@ -2,7 +2,7 @@
 
 import json
 from src.base.network.packets import packet_pb2
-from src.base.payment import google_pay
+from src.base.payment import apple_pay, google_pay
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
@@ -19,8 +19,27 @@ async def on_receive_packet(uid, cmd_id, payload):
         case CMDs.PAYMENT_GOOGLE_CONSUME:
             print("PAYMENT_GOOGLE_CONSUME")
             await _handle_google_consume(uid, payload)
+        case CMDs.PAYMENT_APPLE_CONSUME:
+            print("PAYMENT_APPLE_CONSUME")
+            await _handle_apple_consume(uid, payload)
         case _:
             pass
+
+async def _handle_apple_consume(uid, payload):
+    pkg = packet_pb2.PaymentAppleConsume()
+    pkg.ParseFromString(payload)
+    print(f"User {uid} consume apple payment {pkg.receipt_data}")
+    receipt_data = pkg.receipt_data
+    pack_id = pkg.pack_id
+
+    purchase_info = await apple_pay.verify_apple_receipt(receipt_data)
+
+    if not purchase_info or purchase_info.get("status") != 0: # not purchased yet
+        print("Invalid purchase")
+        return
+    print("Buy success: ", purchase_info)
+
+    await _purchase_success(uid, pack_id)
 
 async def _handle_google_consume(uid, payload):
     pkg = packet_pb2.PaymentGoogleConsume()

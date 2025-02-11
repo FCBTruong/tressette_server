@@ -142,6 +142,9 @@ class ConnectionManager:
             logger.info(f"Packet received: cmd_id={cmd_id}")
 
             if cmd_id == CMD_PING_PONG:
+                if websocket not in self.ping_responses:
+                    print(f"Received pong from untracked WebSocket: {websocket}")
+                    return
                 self.ping_responses[websocket] += 1  # Increment pong counter
             elif cmd_id == CMD_CREATE_GUEST_ACCOUNT:
                 if websocket in self.guest_create_times:
@@ -156,17 +159,7 @@ class ConnectionManager:
                 p = guest_account.SerializeToString()
                 await self.send_packet(websocket, CMD_CREATE_GUEST_ACCOUNT, p)
             elif cmd_id == CMD_LOGIN_FIREBASE:
-                login_firebase_pkg = packet_pb2.LoginFirebase()
-                login_firebase_pkg.ParseFromString(payload)
-                token = login_firebase_pkg.login_token
-                game_token = await game_vars.get_login_mgr().login_firebase(token)
-                if not game_token:
-                    print("Unauthorized")
-                    return
-                login_response = packet_pb2.LoginFirebase()
-                login_response.login_token = str(game_token)
-                p = login_response.SerializeToString()
-                await self.send_packet(websocket, CMD_LOGIN_FIREBASE, p)      
+                await self._handle_login_firebase(websocket, payload)   
             elif cmd_id == CMD_LOGIN:
                 login_client_pkg = packet_pb2.Login()
                 login_client_pkg.ParseFromString(payload)
@@ -177,6 +170,7 @@ class ConnectionManager:
 
                 # authenticate user
                 uid = await game_vars.get_login_mgr().authenticate_user(login_type, token)
+
                 if uid == -1:
                     logger.info("Unauthorized")
                     login_response.error = LOGIN_ERROR_UNAUTHORIZED
@@ -262,6 +256,38 @@ class ConnectionManager:
             return users
         return random.sample(users, size)  # Randomly select `size` users
             
+    async def _handle_login_firebase(self, websocket, payload):
+        login_firebase_pkg = packet_pb2.LoginFirebase()
+        login_firebase_pkg.ParseFromString(payload)
+        token = login_firebase_pkg.login_token
+
+        sub_type = login_firebase_pkg.sub_type
+        if sub_type != 0:
+            if sub_type == 1:  # Google
+                # Firebase Auth not working for iOS, so need to login through server
+                google_login_inf = await game_vars.get_login_mgr().login_by_google_token(token)
+                if not google_login_inf['success']:
+                    print("Unauthorized Google")
+                    return
+                token = google_login_inf['firebase_token']
+            elif sub_type == 2:  # Facebook
+                pass
+            elif sub_type == 3: # Apple
+                apple_login_inf = await game_vars.get_login_mgr().login_by_apple_token(token)
+                if not apple_login_inf['success']:
+                    print("Unauthorized Apple")
+                    return
+                token = apple_login_inf['firebase_token']
+
+
+        game_token = await game_vars.get_login_mgr().login_firebase(token)
+        if not game_token:
+            print("Unauthorized")
+            return
+        login_response = packet_pb2.LoginFirebase()
+        login_response.login_token = str(game_token)
+        p = login_response.SerializeToString()
+        await self.send_packet(websocket, CMD_LOGIN_FIREBASE, p)   
 
 # Instantiate the ConnectionManager for usage
 connection_manager = ConnectionManager()

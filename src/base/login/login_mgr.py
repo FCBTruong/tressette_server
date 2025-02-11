@@ -9,6 +9,8 @@ from firebase_admin import auth, credentials
 # Initialize Firebase Admin SDK
 cred = credentials.Certificate("secrets/firebase_auth.json")
 firebase_admin.initialize_app(cred)
+import aiohttp
+import json
 
 class LoginMgr:
     def __init__(self):
@@ -22,7 +24,7 @@ class LoginMgr:
                 print("token:::", token)
                 if guest:
                     return guest.uid
-        elif login_type == LOGIN_FACEBOOK or login_type == LOGIN_GOOGLE:
+        elif login_type == LOGIN_TOKEN:
             # verify the token
             try:
                 payload = verify_token(token)
@@ -95,3 +97,56 @@ class LoginMgr:
             "uid": uid
         })
         return new_token
+    
+    # IOS can not use firebase auth, so we need to use google auth -> login to firebase -> login to our server
+    async def login_by_google_token(self, token):
+        API_KEY = "AIzaSyCZ7InUYNvLU_wVNEMciqWI9Aa0i-Nq5O8"  # Found in Firebase Console > Project settings
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={API_KEY}"
+        
+        payload = {
+            "postBody": f"id_token={token}&providerId=google.com",
+            "requestUri": "http://localhost",  # Can be any valid URL
+            "returnSecureToken": True
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                firebase_data = await response.json()
+
+                # Check for errors in Firebase response
+                if response.status != 200:
+                    error_message = firebase_data.get("error", {}).get("message", "Unknown error")
+                    return {"success": False, "error": error_message}
+
+                # Extract the Firebase ID token
+                firebase_token = firebase_data.get("idToken")
+                if not firebase_token:
+                    return {"success": False, "error": "No ID token returned"}
+
+                return {"success": True, "firebase_token": firebase_token}
+
+    async def login_by_apple_token(token):
+        API_KEY = "AIzaSyCZ7InUYNvLU_wVNEMciqWI9Aa0i-Nq5O8"  # Replace with your Firebase API key
+        url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={API_KEY}"
+
+        payload = {
+            "postBody": f"id_token={token}&providerId=apple.com",
+            "requestUri": "http://localhost",  # Can be any valid URL
+            "returnSecureToken": True
+        }
+
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload) as response:
+                firebase_data = await response.json()
+
+                # Check for errors in Firebase response
+                if response.status != 200:
+                    error_message = firebase_data.get("error", {}).get("message", "Unknown error")
+                    return {"success": False, "error": error_message}
+
+                # Extract the Firebase ID token
+                firebase_token = firebase_data.get("idToken")
+                if not firebase_token:
+                    return {"success": False, "error": "No ID token returned"}
+
+                return {"success": True, "firebase_token": firebase_token}

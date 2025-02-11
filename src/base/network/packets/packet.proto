@@ -29,7 +29,8 @@ message Login {
 }
 
 message LoginFirebase {
-  string login_token = 3;
+  int32 sub_type = 1;
+  string login_token = 2;
 }
 
 message Logout {
@@ -264,4 +265,9 @@ message RecommendFriends {
   repeated string avatars = 3;
   repeated int32 levels = 4;
   repeated int64 golds = 5;
+}
+
+message PaymentAppleConsume {
+  string pack_id = 1;
+  string receipt_data = 2;
 }
