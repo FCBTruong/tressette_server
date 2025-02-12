@@ -50,3 +50,18 @@ class Friendship(Base):
     status = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+class AppleTransactions(Base):
+    __tablename__ = 'apple_transactions'
+
+    transaction_id = Column(String(255), primary_key=True)
+    original_transaction_id = Column(String(255), nullable=False)
+    user_id = Column(Integer, ForeignKey('user_info.uid'), nullable=False)
+    product_id = Column(String(255), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+    purchase_date = Column(String, nullable=False)
+    original_purchase_date = Column(String, nullable=False)
+    is_trial_period = Column(Boolean, nullable=False, default=False)
+    purchase_date_ms = Column(BigInteger, nullable=False)
+    original_purchase_date_ms = Column(BigInteger, nullable=False)
+    in_app_ownership_type = Column(String(255), nullable=False, default='PURCHASED')

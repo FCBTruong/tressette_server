@@ -1,12 +1,13 @@
 
 
+from datetime import datetime
 import json
 from src.base.network.packets import packet_pb2
 from src.base.payment import apple_pay, google_pay
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
-from src.postgres.sql_models import UserInfoSchema
+from src.postgres.sql_models import UserInfoSchema, AppleTransactions
 from src.postgres.orm import PsqlOrm
 
 # load json config
@@ -34,12 +35,59 @@ async def _handle_apple_consume(uid, payload):
 
     purchase_info = await apple_pay.verify_apple_receipt(receipt_data)
 
-    if not purchase_info or purchase_info.get("status") != 0: # not purchased yet
+    if not purchase_info: # not purchased yet
         print("Invalid purchase")
         return
+    
     print("Buy success: ", purchase_info)
 
-    await _purchase_success(uid, pack_id)
+    in_app = purchase_info.get("receipt").get("in_app")
+    for item in in_app:
+        buy_pack_id = item.get("product_id")
+        transaction_id = item.get("transaction_id")
+        original_transaction_id = item.get("original_transaction_id")
+        quantity = int(item.get("quantity", 1))
+        purchase_date = item.get("purchase_date")
+        original_purchase_date = item.get("original_purchase_date")
+        is_trial_period = item.get("is_trial_period", "false").lower() == "true"
+        in_app_ownership_type = item.get("in_app_ownership_type", "PURCHASED")
+
+        # tell client that server received the transaction, so client can finish the transaction
+        await _send_finished_apple_transaction(uid, buy_pack_id)
+        
+         # Check and marked transaction id to avoid duplicate consume
+        async with PsqlOrm.get().session() as session:
+            apple_transaction = await session.get(AppleTransactions, transaction_id)
+            if apple_transaction:
+                print("Transaction already consumed")
+                continue
+            
+            # Create a new AppleTransactions object with all fields
+            new_transaction = AppleTransactions(
+                transaction_id=transaction_id,
+                original_transaction_id=original_transaction_id,
+                user_id=uid,
+                product_id=buy_pack_id,
+                quantity=quantity,
+                purchase_date = purchase_date,
+                original_purchase_date = original_purchase_date,
+                is_trial_period=is_trial_period,
+                in_app_ownership_type=in_app_ownership_type,
+                purchase_date_ms=int(item.get("purchase_date_ms")),
+                original_purchase_date_ms=int(item.get("original_purchase_date_ms"))
+            )
+
+            # Add and commit the new transaction
+            session.add(new_transaction)
+            await session.commit()
+
+        await _purchase_success(uid, buy_pack_id)
+
+# To tell user that the transaction is finished, ios call native finish transaction
+async def _send_finished_apple_transaction(uid, product_id):
+    pkg = packet_pb2.PaymentFinishedAppleTransaction()
+    pkg.pack_id = product_id
+    await game_vars.get_game_client().send_packet(uid, CMDs.PAYMENT_APPLE_FINISHED_TRANSACTION, pkg)
 
 async def _handle_google_consume(uid, payload):
     pkg = packet_pb2.PaymentGoogleConsume()

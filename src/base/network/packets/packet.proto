@@ -271,3 +271,7 @@ message PaymentAppleConsume {
   string pack_id = 1;
   string receipt_data = 2;
 }
+
+message PaymentFinishedAppleTransaction {
+  string pack_id = 1;
+}

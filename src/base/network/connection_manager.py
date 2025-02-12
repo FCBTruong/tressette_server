@@ -17,7 +17,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
 )
 logger = logging.getLogger("connection_manager")  # Name your logger
-MAX_RETRY_PINGS = 3
+MAX_RETRY_PINGS = 10 # After 10 * 10 seconds = 1 minute, 30 secs, disconnect the WebSocket
 
 CMD_PING_PONG = 0
 CMD_LOGIN = 1

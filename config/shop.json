@@ -20,8 +20,8 @@
         },
         {
             "pack_id": "pack_04",
-            "gold": 12000000,
-            "price": 12,
+            "gold": 15000000,
+            "price": 15 ,
             "currency": "€"
         },
         {
@@ -29,6 +29,6 @@
             "gold": 20000000,
             "price": 20,
             "currency": "€"
-        }
+        }   
     ]
 }
