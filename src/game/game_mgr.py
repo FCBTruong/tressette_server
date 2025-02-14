@@ -48,6 +48,8 @@ class GameMgr:
         
         print(f"User {uid} join match {match.match_id}")
         await game_vars.get_match_mgr().user_join_match(match, uid=uid)
+
+        game_vars.get_logs_mgr().write_log(uid, "quick_play", "", [])
         
         
     async def on_user_login(self, uid: int):

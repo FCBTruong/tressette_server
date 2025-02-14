@@ -125,6 +125,8 @@ async def _purchase_success(uid, pack_id):
     pkg.gold = pack_info.get("gold")
 
     user_info = await users_info_mgr.get_user_info(uid)
+
+    before_gold = user_info.gold
     user_info.add_gold(pack_info.get("gold"))
 
     # save to database
@@ -134,6 +136,8 @@ async def _purchase_success(uid, pack_id):
 
     # send to user
     await game_vars.get_game_client().send_packet(uid, CMDs.PAYMENT_SUCCESS, pkg)
+
+    game_vars.get_logs_mgr().write_log(uid, "payment", "buy_success", [pack_id, before_gold, user_info.gold])
 
 def get_pack_info(pack_id):
     packs = config.get("packs")

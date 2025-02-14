@@ -30,6 +30,7 @@ class GameClient:
                 await self.send_packet(uid, CMDs.LOGOUT, logout_pkg)
                 print("Accepted logout")
                 await connection_manager.user_logout(uid)
+                game_vars.get_logs_mgr().write_log(uid, "logout", "", [])
             case _:
                 await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
                 await users_info_mgr.on_receive_packet(uid, cmd_id, payload)
@@ -40,6 +41,7 @@ class GameClient:
         logger.info(f"User with ID {uid} has successfully logged in")
         general_pkg = packet_pb2.GeneralInfo()
         general_pkg.min_gold_play = tress_config.get("min_gold_play")
+        general_pkg.time_thinking_in_turn = tress_config.get("time_thinking_in_turn")
         general_pkg.timestamp = int(datetime.now().timestamp())
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
@@ -66,6 +68,9 @@ class GameClient:
 
         # check if user is in a match
         await game_vars.get_game_mgr().on_user_login(uid)
+
+        # Write log login
+        game_vars.get_logs_mgr().write_log(uid, "login", "", [])
 
     async def send_packet(self, uid, cmd_id, pkt):
         from src.base.network.connection_manager import connection_manager

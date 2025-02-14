@@ -1,3 +1,4 @@
 {
-    "min_gold_play": 15000
+    "min_gold_play": 15000,
+    "time_thinking_in_turn": 15
 }

@@ -1,5 +1,5 @@
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, func
+from sqlalchemy import TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
@@ -65,3 +65,21 @@ class AppleTransactions(Base):
     purchase_date_ms = Column(BigInteger, nullable=False)
     original_purchase_date_ms = Column(BigInteger, nullable=False)
     in_app_ownership_type = Column(String(255), nullable=False, default='PURCHASED')
+
+
+class Logs(Base):
+    __tablename__ = 'logs'
+    log_id = Column(BigInteger, primary_key=True, autoincrement=True)
+    uid = Column(Integer, nullable=False)  
+    log_time = Column(TIMESTAMP, nullable=False)
+    action = Column(String, nullable=True)
+    sub_action = Column(String, nullable=True)
+    extra1 = Column(Text, nullable=True)
+    extra2 = Column(Text, nullable=True)
+    extra3 = Column(Text, nullable=True)
+    extra5 = Column(Text, nullable=True)
+    extra6 = Column(Text, nullable=True)
+    extra7 = Column(Text, nullable=True)
+    extra8 = Column(Text, nullable=True)
+    extra9 = Column(Text, nullable=True)
+    extra10 = Column(Text, nullable=True)

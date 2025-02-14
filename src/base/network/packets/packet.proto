@@ -72,6 +72,8 @@ message GameInfo {
   int32 hand_suit = 14;
   repeated string avatars = 15;
   bool is_registered_leave = 16;
+  int32 bet = 17;
+  int64 pot_value = 18;
 }
 
 message RegisterLeaveGame {
@@ -131,10 +133,12 @@ message DrawCard {
 message GeneralInfo {
   int64 timestamp = 1;
   int64 min_gold_play = 2;
+  int32 time_thinking_in_turn = 3;
 }
 
 message EndGame {
-  repeated int32 win_uids = 1;
+  repeated int32 uids = 1;
+  int32 win_team_id = 5;
   repeated int32 score_cards = 2;
   repeated int32 score_last_tricks = 3;
   repeated int32 score_totals = 4;

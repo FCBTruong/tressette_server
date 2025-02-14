@@ -11,6 +11,7 @@ from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
 from datetime import datetime, timedelta
+from src.game.tressette_config import config as tress_config
 
 class MatchState(Enum):
     WAITING = 0
@@ -24,7 +25,7 @@ PLAYER_DUO_MODE = 4
 TRESSETTE_MODE = 0
 BRISCOLA_MODE = 1
 
-TIME_AUTO_PLAY = 10 # seconds
+TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
 TIME_START_TO_DEAL = 3.5 # seconds
 
 
@@ -54,6 +55,7 @@ class MatchPlayer:
         self.team_id = -1
         self.is_bot = False
         self.match_mgr = match_mgr
+
     
     def reset_game(self):
         self.cards.clear()
@@ -117,6 +119,9 @@ class Match:
         self.state = MatchState.WAITING
         self.current_turn = -1
         self.register_leave_uids = set()
+        self.win_team = -1
+        self.team_scores = [0, 0]
+        self.pot_value = 0
 
         # init slots
         for i in range(player_mode):
@@ -197,6 +202,7 @@ class Match:
             pkg.seat_server = seat_server_id
             pkg.team_id = team_id
             pkg.avatar = user_data.avatar
+            pkg.gold = user_data.gold
 
             await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_USER_JOIN_MATCH, pkg)
         
@@ -265,10 +271,11 @@ class Match:
         game_info.remain_cards = len(self.cards)
         game_info.hand_suit = self.hand_suit # current suit of hand
         game_info.is_registered_leave = uid in self.register_leave_uids
+        game_info.bet = self.bet
+        game_info.pot_value = self.pot_value
 
         for player in self.players:
             game_info.uids.append(player.uid)
-            # game_info.user_names.append(player.user_name)
             game_info.user_golds.append(player.gold)
             game_info.user_names.append(player.name)
             game_info.user_points.append(player.points)
@@ -305,6 +312,12 @@ class Match:
             self.time_start = -1
 
     async def start_game(self):
+        # write logs
+        for player in self.players:
+            if player.is_bot or player.uid == -1:
+                continue
+            game_vars.get_logs_mgr().write_log(player.uid, "start_game", "", [self.match_id, self.bet])
+
         print('Start game')
         self.time_start = -1
         self.state = MatchState.PLAYING
@@ -320,6 +333,9 @@ class Match:
         self.win_score = 0
         self.auto_play_count_by_uid.clear()
         self.register_leave_uids.clear()
+        self.win_team = -1
+        self.team_scores = [0, 0]
+        self.pot_value = 0
 
         # reset players scores:
         for player in self.players:
@@ -508,19 +524,15 @@ class Match:
     
     def _is_end_game(self):
         # check if one team reach 21 * 3 points then end game
-        score_team1 = 0
-        score_team2 = 0
+        self.team_scores = [0, 0]
         for player in self.players:
-            if player.team_id == 0:
-                score_team1 += player.points
-            else:
-                score_team2 += player.points
-
-        # # test
-        # if score_team1 >= 1 or score_team2 >= 1:
-        #     return True
+            self.team_scores[player.team_id] += player.points
+            
+        # test
+        if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
+            return True
         
-        if score_team1 >= 33 or score_team2 >= 33:
+        if self.team_scores[0] >= 33 or self.team_scores[1] >= 33:
             return True
         return False
     
@@ -598,18 +610,23 @@ class Match:
 
     async def end_game(self):
         self.state = MatchState.ENDED
-        win_uids = [self.players[0].uid]
+        if self.team_scores[0] > self.team_scores[1]:
+            self.win_team = 0
+        else:
+            self.win_team = 1
+        uids = []
         score_totals = []
         score_last_tricks = []
         score_cards = []
         for player in self.players:
+            uids.append(player.uid)
             score_cards.append(player.points - player.score_last_trick)
             score_last_tricks.append(player.score_last_trick)
             score_totals.append(player.points)
         # send to users
         pkg = packet_pb2.EndGame()
-        print(f"End game, win_uids: {win_uids}")
-        pkg.win_uids.extend(win_uids)
+        pkg.win_team_id = self.win_team
+        pkg.uids.extend(uids)
         pkg.score_cards.extend(score_cards)
         pkg.score_last_tricks.extend(score_last_tricks)
         pkg.score_totals.extend(score_totals)
