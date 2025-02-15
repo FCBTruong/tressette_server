@@ -191,22 +191,16 @@ class Match:
         seat_server_id = slot_idx
         self.players[slot_idx] = match_player
         team_id = match_player.team_id
- 
 
-        # send to others that user has joined
-        for i, player in enumerate(self.players):
-            if player.is_bot or player.uid == -1 or player.uid == user_id:
-                continue
-            print(f"Send to user {player.uid} that user {user_id} has joined")
-            pkg = packet_pb2.NewUserJoinMatch()
-            pkg.uid = user_id
-            pkg.name = user_data.name
-            pkg.seat_server = seat_server_id
-            pkg.team_id = team_id
-            pkg.avatar = user_data.avatar
-            pkg.gold = user_data.gold
+        pkg = packet_pb2.NewUserJoinMatch()
+        pkg.uid = user_id
+        pkg.name = user_data.name
+        pkg.seat_server = seat_server_id
+        pkg.team_id = team_id
+        pkg.avatar = user_data.avatar
+        pkg.gold = user_data.gold
 
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_USER_JOIN_MATCH, pkg)
+        await self.broadcast_pkg(CMDs.NEW_USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
         
         if not is_bot:
             # send game info to user
@@ -233,10 +227,9 @@ class Match:
         pkg = packet_pb2.PrepareStartGame()
         pkg.time_start = int(self.time_start)
         print('Game is starting, wait for 3 seconds')
-        for player in self.players:
-            if player.is_bot or player.uid == -1:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.PREPARE_START_GAME, pkg)
+
+        await self.broadcast_pkg(CMDs.PREPARE_START_GAME, pkg)
+
 
     def check_can_join(self, uid: int):
         if self.state == MatchState.WAITING:
@@ -292,17 +285,10 @@ class Match:
         await game_vars.get_game_client().send_packet(uid, CMDs.GAME_INFO, game_info)
 
     # ALERT: This function is called from match_mgr
-    async def user_leave(self, uid): 
-        # noti to others
-        for player in self.players:
-            if player.uid == -1 or player.is_bot:
-                continue
-
-            print(f"Send to user {player.uid} that user {uid} has left")
-
-            pkg = packet_pb2.UserLeaveMatch()
-            pkg.uid = uid
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.USER_LEAVE_MATCH, pkg)
+    async def user_leave(self, uid):
+        pkg = packet_pb2.UserLeaveMatch()
+        pkg.uid = uid
+        await self.broadcast_pkg(CMDs.USER_LEAVE_MATCH, pkg)
 
         # remove user from match
         for i, player in enumerate(self.players):
@@ -356,10 +342,8 @@ class Match:
 
         pkg = packet_pb2.StartGame()
         pkg.pot_value = self.pot_value
-        for player in self.players:
-            if player.is_bot or player.uid == -1:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.START_GAME, pkg)
+
+        await self.broadcast_pkg(CMDs.START_GAME, pkg)
 
         # # wait for 3 seconds
         # await asyncio.sleep(TIME_START_TO_DEAL)
@@ -440,11 +424,8 @@ class Match:
         pkg.auto = auto
         pkg.current_turn = self.current_turn
         pkg.hand_suit = self.hand_suit
-        for i, player in enumerate(self.players):
-            # do not send to bots
-            if player.is_bot:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.PLAY_CARD, pkg)
+
+        await self.broadcast_pkg(CMDs.PLAY_CARD, pkg)
 
         # Check done hand
         if is_finish_hand:
@@ -504,9 +485,17 @@ class Match:
         self.current_hand += 1
 
         # check is end round
-        if len(self.players[0].cards) == 0:
+        if len(self.players[0].cards) == 0: # test = 9
             # logic end round
             self.is_end_round = True
+        else:
+            self.is_end_round = False
+        
+        if self.is_end_round:
+            # calculate last trick
+            #BONUS 1 point for the last trick to the team that wins it
+            win_player.points += 1
+            win_player.score_last_trick += 1
 
         pkg = packet_pb2.EndHand()
         pkg.win_uid = win_player.uid
@@ -517,11 +506,8 @@ class Match:
 
         # send to others
         await asyncio.sleep(0.5)
-        for player in self.players:
-            # do not send to bots
-            if player.is_bot:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.END_HAND, pkg)
+
+        await self.broadcast_pkg(CMDs.END_HAND, pkg)
 
         # effect show win cards
         await asyncio.sleep(2)
@@ -532,25 +518,41 @@ class Match:
             return
         
         if not self.is_end_round:
-            await self._handle_draw_card()
-            await asyncio.sleep(3)
+            # Still has cards to draw
+            if len(self.cards) > 0:
+                await self._handle_draw_card()
+                await asyncio.sleep(3)
             await self._handle_new_hand()
         else:
             # create new round
             await self._on_end_round()
     
     async def _on_end_round(self):
+        await self._on_new_round()
+
+    async def _on_new_round(self):
         self.cur_round += 1
+        self.is_end_round = False
+
+        # When new round start, all redudant points need to be removed, example 3, 1/3 -> 3, 4 2/3 -> 4
+        for player in self.players:
+            redundant_points = player.points % 3
+            player.points -= redundant_points
+
+        # players need to contribute to pot again
+        for player in self.players:
+            # get pot user need to contribute
+            pot_user_need_to_contribute = self.bet
+            self.pot_value += pot_user_need_to_contribute
+
         # Send new round
         pkg = packet_pb2.NewRound()
         pkg.current_round = self.cur_round
-        for player in self.players:
-            # do not send to bots
-            if player.is_bot or player.uid == -1:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_ROUND, pkg)
+        pkg.pot_value = self.pot_value
 
-        await asyncio.sleep(1)
+        await self.broadcast_pkg(CMDs.NEW_ROUND, pkg)
+
+        await asyncio.sleep(2)
         await self.deal_card()
         await asyncio.sleep(2)
         await self._handle_new_hand()
@@ -561,9 +563,9 @@ class Match:
         for player in self.players:
             self.team_scores[player.team_id] += player.points
             
-        # test
-        if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
-            return True
+        # # test
+        # if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
+        #     return True
         
         if self.team_scores[0] >= 33 or self.team_scores[1] >= 33:
             return True
@@ -579,11 +581,8 @@ class Match:
         # send to users
         pkg = packet_pb2.DrawCard()
         pkg.cards.extend(draw_cards)
-        for player in self.players:
-            # do not send to bots
-            if player.is_bot:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.DRAW_CARD, pkg)
+
+        await self.broadcast_pkg(CMDs.DRAW_CARD, pkg)
 
     async def _handle_new_hand(self):
         self.current_hand += 1
@@ -600,11 +599,8 @@ class Match:
         print(f"New hand")
         pkg = packet_pb2.NewHand()
         pkg.current_turn = self.current_turn
-        for player in self.players:
-            # do not send to bots
-            if player.is_bot:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_HAND, pkg)
+
+        await self.broadcast_pkg(CMDs.NEW_HAND, pkg)
 
         await self.players[self.current_turn].on_turn()
 
@@ -651,6 +647,19 @@ class Match:
             score_cards.append(player.points - player.score_last_trick)
             score_last_tricks.append(player.score_last_trick)
             score_totals.append(player.points)
+
+        # add gold
+        for player in self.players:
+            if player.uid == -1 or player.is_bot:
+                continue
+            user_info = await users_info_mgr.get_user_info(player.uid)
+            if player.team_id == self.win_team:
+                gold_add = int(self.pot_value / self.player_mode * 2)
+                user_info.add_gold(gold_add)
+            else:
+                pass
+            await user_info.commit_gold()
+            await user_info.send_update_money()
         # send to users
         pkg = packet_pb2.EndGame()
         pkg.win_team_id = self.win_team
@@ -658,11 +667,8 @@ class Match:
         pkg.score_cards.extend(score_cards)
         pkg.score_last_tricks.extend(score_last_tricks)
         pkg.score_totals.extend(score_totals)
-        for player in self.players:
-            if player.is_bot:
-                continue
 
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.END_GAME, pkg)
+        await self.broadcast_pkg(CMDs.END_GAME, pkg)
         
         await asyncio.sleep(2)
 
@@ -703,25 +709,28 @@ class Match:
             is_active = connection_manager.check_user_active_online(uid)
             if not is_active:
                 await game_vars.get_match_mgr().handle_user_leave_match(uid)
-        
+    
+    async def broadcast_pkg(self, cmd_id, pkg, ignore_uids=[]):
+        for player in self.players:
+            if player.is_bot or player.uid == -1:
+                continue
+            if player.uid in ignore_uids:
+                continue
+            await game_vars.get_game_client().send_packet(player.uid, cmd_id, pkg)
 
     async def broadcast_chat_message(self, uid, message):
         pkg = packet_pb2.InGameChatMessage()
         pkg.uid = uid
         pkg.chat_message = message
-        for player in self.players:
-            if player.uid == uid:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_INGAME_CHAT_MESSAGE, pkg)
- 
+
+        await self.broadcast_pkg(CMDs.NEW_INGAME_CHAT_MESSAGE, pkg, ignore_uids=[uid])
+
     async def broadcast_chat_emoticon(self, uid, emoticon):
         pkg = packet_pb2.InGameChatEmoticon()
         pkg.uid = uid
         pkg.emoticon = emoticon
-        for player in self.players:
-            if player.uid == -1:
-                continue
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.CHAT_EMOTICON, pkg)
+
+        await self.broadcast_pkg(CMDs.CHAT_EMOTICON, pkg)
 
     async def check_user_can_join_gold(self, uid):
         user_inf = await users_info_mgr.get_user_info(uid)

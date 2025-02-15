@@ -283,4 +283,5 @@ message PaymentFinishedAppleTransaction {
 
 message NewRound {
   int32 current_round = 1;
+  int64 pot_value = 2;
 }
