@@ -74,6 +74,7 @@ message GameInfo {
   bool is_registered_leave = 16;
   int32 bet = 17;
   int64 pot_value = 18;
+  int32 current_round = 19;
 }
 
 message RegisterLeaveGame {
@@ -107,7 +108,7 @@ message PlayCard {
 }
 
 message StartGame {
-
+  int32 pot_value = 1;
 }
 
 message NewHand {
@@ -278,4 +279,8 @@ message PaymentAppleConsume {
 
 message PaymentFinishedAppleTransaction {
   string pack_id = 1;
+}
+
+message NewRound {
+  int32 current_round = 1;
 }

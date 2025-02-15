@@ -122,6 +122,8 @@ class Match:
         self.win_team = -1
         self.team_scores = [0, 0]
         self.pot_value = 0
+        self.cur_round = 0
+        self.is_end_round = False
 
         # init slots
         for i in range(player_mode):
@@ -273,6 +275,7 @@ class Match:
         game_info.is_registered_leave = uid in self.register_leave_uids
         game_info.bet = self.bet
         game_info.pot_value = self.pot_value
+        game_info.current_round = self.cur_round
 
         for player in self.players:
             game_info.uids.append(player.uid)
@@ -336,6 +339,7 @@ class Match:
         self.win_team = -1
         self.team_scores = [0, 0]
         self.pot_value = 0
+        self.cur_round = 1
 
         # reset players scores:
         for player in self.players:
@@ -343,10 +347,15 @@ class Match:
             player.score_last_trick = 0
             player.cards.clear()
 
+            # get pot user need to contribute
+            pot_user_need_to_contribute = self.bet
+            self.pot_value += pot_user_need_to_contribute
+
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
 
         pkg = packet_pb2.StartGame()
+        pkg.pot_value = self.pot_value
         for player in self.players:
             if player.is_bot or player.uid == -1:
                 continue
@@ -354,6 +363,7 @@ class Match:
 
         # # wait for 3 seconds
         # await asyncio.sleep(TIME_START_TO_DEAL)
+        await asyncio.sleep(3)
         await self.deal_card()
 
         # wait for 2 seconds
@@ -493,6 +503,11 @@ class Match:
 
         self.current_hand += 1
 
+        # check is end round
+        if len(self.players[0].cards) == 0:
+            # logic end round
+            self.is_end_round = True
+
         pkg = packet_pb2.EndHand()
         pkg.win_uid = win_player.uid
         pkg.win_card = win_card
@@ -511,17 +526,35 @@ class Match:
         # effect show win cards
         await asyncio.sleep(2)
         
-        # draw new cards
+        # # draw new cards
         if self._is_end_game():
             await self.end_game()
             return
         
-        if len(self.cards) != 0:
+        if not self.is_end_round:
             await self._handle_draw_card()
             await asyncio.sleep(3)
-
-        await self._handle_new_hand()
+            await self._handle_new_hand()
+        else:
+            # create new round
+            await self._on_end_round()
     
+    async def _on_end_round(self):
+        self.cur_round += 1
+        # Send new round
+        pkg = packet_pb2.NewRound()
+        pkg.current_round = self.cur_round
+        for player in self.players:
+            # do not send to bots
+            if player.is_bot or player.uid == -1:
+                continue
+            await game_vars.get_game_client().send_packet(player.uid, CMDs.NEW_ROUND, pkg)
+
+        await asyncio.sleep(1)
+        await self.deal_card()
+        await asyncio.sleep(2)
+        await self._handle_new_hand()
+
     def _is_end_game(self):
         # check if one team reach 21 * 3 points then end game
         self.team_scores = [0, 0]
@@ -553,11 +586,6 @@ class Match:
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DRAW_CARD, pkg)
 
     async def _handle_new_hand(self):
-        # check if cards of players are empty
-        if self.players[0].cards == []:
-            await self.deal_card()
-            await asyncio.sleep(2)
-
         self.current_hand += 1
         self.hand_suit = -1
 
