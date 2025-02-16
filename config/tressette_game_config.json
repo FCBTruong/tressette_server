@@ -1,4 +1,5 @@
 {
     "min_gold_play": 15000,
-    "time_thinking_in_turn": 15
+    "time_thinking_in_turn": 15,
+    "tax_percent": 0.1
 }

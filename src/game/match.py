@@ -26,8 +26,9 @@ TRESSETTE_MODE = 0
 BRISCOLA_MODE = 1
 
 TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
+TAX_PERCENT = tress_config.get("tax_percent")
 TIME_START_TO_DEAL = 3.5 # seconds
-
+TIME_DRAW_CARD = 4 # seconds
 
 # 0 - 39
 TRESSETTE_CARDS = [i for i in range(40)]
@@ -55,6 +56,7 @@ class MatchPlayer:
         self.team_id = -1
         self.is_bot = False
         self.match_mgr = match_mgr
+        self.gold_change = 0
 
     
     def reset_game(self):
@@ -332,10 +334,20 @@ class Match:
             player.points = 0
             player.score_last_trick = 0
             player.cards.clear()
+            player.gold_change = 0
 
             # get pot user need to contribute
             pot_user_need_to_contribute = self.bet
             self.pot_value += pot_user_need_to_contribute
+
+            if player.is_bot:
+                continue
+
+            player.gold_change = -pot_user_need_to_contribute
+
+            player_info = await users_info_mgr.get_user_info(player.uid)
+            player_info.add_gold(-pot_user_need_to_contribute)
+            await player_info.send_update_money()
 
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
@@ -494,8 +506,8 @@ class Match:
         if self.is_end_round:
             # calculate last trick
             #BONUS 1 point for the last trick to the team that wins it
-            win_player.points += 1
-            win_player.score_last_trick += 1
+            win_player.points += 3 # 1 point for last trick
+            win_player.score_last_trick += 3
 
         pkg = packet_pb2.EndHand()
         pkg.win_uid = win_player.uid
@@ -521,7 +533,7 @@ class Match:
             # Still has cards to draw
             if len(self.cards) > 0:
                 await self._handle_draw_card()
-                await asyncio.sleep(3)
+                await asyncio.sleep(TIME_DRAW_CARD)
             await self._handle_new_hand()
         else:
             # create new round
@@ -545,6 +557,14 @@ class Match:
             pot_user_need_to_contribute = self.bet
             self.pot_value += pot_user_need_to_contribute
 
+            if player.is_bot:
+                continue
+
+            player.gold_change = -pot_user_need_to_contribute
+            player_info = await users_info_mgr.get_user_info(player.uid)
+            player_info.add_gold(-pot_user_need_to_contribute)
+            await player_info.send_update_money()
+
         # Send new round
         pkg = packet_pb2.NewRound()
         pkg.current_round = self.cur_round
@@ -552,7 +572,7 @@ class Match:
 
         await self.broadcast_pkg(CMDs.NEW_ROUND, pkg)
 
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
         await self.deal_card()
         await asyncio.sleep(2)
         await self._handle_new_hand()
@@ -638,15 +658,6 @@ class Match:
             self.win_team = 0
         else:
             self.win_team = 1
-        uids = []
-        score_totals = []
-        score_last_tricks = []
-        score_cards = []
-        for player in self.players:
-            uids.append(player.uid)
-            score_cards.append(player.points - player.score_last_trick)
-            score_last_tricks.append(player.score_last_trick)
-            score_totals.append(player.points)
 
         # add gold
         for player in self.players:
@@ -654,12 +665,29 @@ class Match:
                 continue
             user_info = await users_info_mgr.get_user_info(player.uid)
             if player.team_id == self.win_team:
-                gold_add = int(self.pot_value / self.player_mode * 2)
-                user_info.add_gold(gold_add)
+                gold_win = int(self.pot_value / self.player_mode * 2)
+                player.gold_change += gold_win
+
+                gold_received = int(gold_win - gold_win * TAX_PERCENT)
+                user_info.add_gold(gold_received)
             else:
                 pass
             await user_info.commit_gold()
             await user_info.send_update_money()
+
+        uids = []
+        score_totals = []
+        score_last_tricks = []
+        score_cards = []
+        gold_changes = []
+        for player in self.players:
+            uids.append(player.uid)
+            score_cards.append(player.points - player.score_last_trick)
+            score_last_tricks.append(player.score_last_trick)
+            score_totals.append(player.points)
+            gold_changes.append(player.gold_change)
+
+        
         # send to users
         pkg = packet_pb2.EndGame()
         pkg.win_team_id = self.win_team
@@ -667,6 +695,7 @@ class Match:
         pkg.score_cards.extend(score_cards)
         pkg.score_last_tricks.extend(score_last_tricks)
         pkg.score_totals.extend(score_totals)
+        pkg.gold_changes.extend(gold_changes)
 
         await self.broadcast_pkg(CMDs.END_GAME, pkg)
         

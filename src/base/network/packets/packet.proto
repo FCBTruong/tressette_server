@@ -143,6 +143,7 @@ message EndGame {
   repeated int32 score_cards = 2;
   repeated int32 score_last_tricks = 3;
   repeated int32 score_totals = 4;
+  repeated int64 gold_changes = 6;
 }
 
 message PrepareStartGame {
