@@ -135,6 +135,8 @@ message GeneralInfo {
   int64 timestamp = 1;
   int64 min_gold_play = 2;
   int32 time_thinking_in_turn = 3;
+  repeated int32 tressette_bets = 4;
+  int32 bet_multiplier_min = 5;
 }
 
 message EndGame {
@@ -174,8 +176,8 @@ message UpdateMoney {
 message TableList {
   repeated int32 table_ids = 1;
   repeated int32 bets = 2;
-  repeated int32 cur_player = 3;
-  repeated int32 max_player = 4;
+  repeated int32 num_players = 3;
+  repeated int32 player_modes = 4;
 }
 
 message ShopConfig {
@@ -285,4 +287,12 @@ message PaymentFinishedAppleTransaction {
 message NewRound {
   int32 current_round = 1;
   int64 pot_value = 2;
+}
+
+message CreateTable {
+  int32 bet = 1;
+}
+
+message JoinTableById {
+  int32 match_id = 1;
 }

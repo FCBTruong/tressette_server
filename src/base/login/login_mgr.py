@@ -2,6 +2,7 @@ import random
 from src.base.security.jwt import create_login_token, verify_token
 from src.config.settings import settings
 from src.constants import *
+from src.game.users_info_mgr import users_info_mgr
 from src.postgres.orm import PsqlOrm
 from src.postgres.sql_models import FirebaseAuthSchema, GuestsSchema, UserInfoSchema
 import firebase_admin
@@ -32,8 +33,10 @@ class LoginMgr:
             except Exception as e:
                 print(e)
         elif login_type == LOGIN_UID_CHEAT:
-            if settings.ENABLE_CHEAT:
-                return int(token)
+            if not settings.ENABLE_CHEAT:
+                return -1
+
+            return int(token)
         return -1
     
     def create_new_basic_user(self) -> UserInfoSchema:

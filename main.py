@@ -87,6 +87,17 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
             for uid in users_info_mgr.users:
                 await users_info_mgr.remove_cache_user(uid)
             return 'cheat ok'
+        elif cmd == "cheat_gold":
+            if data is None:
+                raise HTTPException(status_code=400, detail="Missing data for cheat command")
+            uid, gold = data.split(',')
+            user = await users_info_mgr.get_user_info(int(uid))
+            if user is None:
+                return f"User {uid} not found"
+            await user.add_gold(int(gold))
+            await user.commit_gold()
+            await user.send_update_money()
+            return 'cheat ok'
         return "hello"
     except Exception as e:
         traceback.print_exc()

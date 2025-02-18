@@ -12,6 +12,7 @@ from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
 from datetime import datetime, timedelta
 from src.game.tressette_config import config as tress_config
+import uuid
 
 class MatchState(Enum):
     WAITING = 0
@@ -126,6 +127,7 @@ class Match:
         self.pot_value = 0
         self.cur_round = 0
         self.is_end_round = False
+        self.unique_match_id = str(uuid.uuid4())
 
         # init slots
         for i in range(player_mode):
@@ -202,7 +204,7 @@ class Match:
         pkg.avatar = user_data.avatar
         pkg.gold = user_data.gold
 
-        await self.broadcast_pkg(CMDs.NEW_USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
+        await self.broadcast_pkg(CMDs.NEW__USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
         
         if not is_bot:
             # send game info to user
@@ -238,7 +240,10 @@ class Match:
             return True
         return False
     
-    def check_room_full(self):
+    def get_min_gold_play(self):
+        return self.bet * tress_config.get('bet_multiplier_min')
+    
+    def check_room_full(self) -> bool:
         for player in self.players:
             if player.uid == -1:
                 return False
@@ -303,11 +308,12 @@ class Match:
             self.time_start = -1
 
     async def start_game(self):
+        self.unique_game_id = str(uuid.uuid4())
         # write logs
         for player in self.players:
             if player.is_bot or player.uid == -1:
                 continue
-            game_vars.get_logs_mgr().write_log(player.uid, "start_game", "", [self.match_id, self.bet])
+            game_vars.get_logs_mgr().write_log(player.uid, "start_game", "", [self.unique_match_id, self.unique_game_id, self.bet])
 
         print('Start game')
         self.time_start = -1
@@ -583,9 +589,9 @@ class Match:
         for player in self.players:
             self.team_scores[player.team_id] += player.points
             
-        # # test
-        # if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
-        #     return True
+        # test
+        if self.team_scores[0] >= 10 or self.team_scores[1] >= 10:
+            return True
         
         if self.team_scores[0] >= 33 or self.team_scores[1] >= 33:
             return True
@@ -638,7 +644,7 @@ class Match:
             if card % 4 == self.hand_suit:
                 cards_valid.append(card)
 
-        win_card = cards_valid[0]
+        win_card = cards_valid[2]
         for card in cards_valid:
             if CARD_STRONGS[card // 4] > CARD_STRONGS[win_card // 4]:
                 win_card = card
@@ -675,6 +681,8 @@ class Match:
             await user_info.commit_gold()
             await user_info.send_update_money()
 
+            game_vars.get_logs_mgr().write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet])
+
         uids = []
         score_totals = []
         score_last_tricks = []
@@ -699,7 +707,7 @@ class Match:
 
         await self.broadcast_pkg(CMDs.END_GAME, pkg)
         
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
 
          # User can quit the room now
         self.state = MatchState.WAITING 
@@ -726,6 +734,16 @@ class Match:
         for uid, count in self.auto_play_count_by_uid.items():
             if count >= 3:
                 await game_vars.get_match_mgr().handle_user_leave_match(uid)
+
+        # Kick user not has enough gold
+        for player in self.players:
+            if player.is_bot:
+                continue
+            if player.uid == -1:
+                continue
+            user_info = await users_info_mgr.get_user_info(player.uid)
+            if user_info.gold < self.get_min_gold_play():
+                await game_vars.get_match_mgr().handle_user_leave_match(player.uid)
     
         # update user connection, kick user that is disconnected
         for player in self.players:
@@ -761,18 +779,19 @@ class Match:
 
         await self.broadcast_pkg(CMDs.CHAT_EMOTICON, pkg)
 
-    async def check_user_can_join_gold(self, uid):
-        user_inf = await users_info_mgr.get_user_info(uid)
-        if user_inf.gold < self.bet * 3:
-            return False
-        return True
-    
     def register_leave(self, uid):
         print(f"User {uid} register leave")
         self.register_leave_uids.add(uid)
 
     def deregister_leave(self, uid):
         self.register_leave_uids.discard(uid)
+
+    def get_num_players(self):
+        count = 0
+        for player in self.players:
+            if player.uid != -1:
+                count += 1
+        return count
 
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
 CARD_VALUES = {

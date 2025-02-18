@@ -14,7 +14,7 @@ class GameMgr:
     async def on_receive_packet(self, uid: int, cmd_id: int, payload):
         match cmd_id:
             case CMDs.QUICK_PLAY:
-                await self._handle_quick_play(uid)
+                await game_vars.get_match_mgr().receive_quick_play(uid, payload)
             case CMDs.REGISTER_LEAVE_GAME:
                 await game_vars.get_match_mgr().handle_register_leave_match(uid, payload)
             case CMDs.PLAY_CARD:
@@ -24,34 +24,13 @@ class GameMgr:
             case CMDs.CHAT_EMOTICON:
                 await game_vars.get_ingame_chat_mgr().on_chat_emoticon(uid, payload)
             case CMDs.TABLE_LIST:
-                await game_vars.get_match_mgr().on_table_list(uid)
-        pass
-    
-    async def _handle_quick_play(self, uid: int):
-        user = await users_info_mgr.get_user_info(uid)
-        if user.gold < 15000:
-            print(f"User {uid} not enough gold")
-            return
-
-        print(f"User {uid} quick play")
-        # STEP 1: CHECK IF USER IS IN A MATCH
-        match = await game_vars.get_match_mgr().get_match_of_user(uid)
-        if match:
-            print(f"User {uid} is in a match, reconnecting")
-            await match.user_reconnect(uid)
-            return
-
-        # STEP JOIN A MATCH
-        match = await game_vars.get_match_mgr().get_free_match(uid)
-        if not match:
-            match = await game_vars.get_match_mgr().create_match(uid)
-        
-        print(f"User {uid} join match {match.match_id}")
-        await game_vars.get_match_mgr().user_join_match(match, uid=uid)
-
-        game_vars.get_logs_mgr().write_log(uid, "quick_play", "", [])
-        
-        
+                await game_vars.get_match_mgr().receive_request_table_list(uid)
+            case CMDs.CREATE_TABLE:
+                await game_vars.get_match_mgr().create_table(uid, payload)
+            case CMDs.JOIN_TABLE_BY_ID:
+                print("JOIN_TABLE_BY_ID")
+                await game_vars.get_match_mgr().receive_user_join_match(uid, payload)
+     
     async def on_user_login(self, uid: int):
         # wait for 1 second, to let user handle login process
         await asyncio.sleep(1)

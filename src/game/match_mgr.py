@@ -8,6 +8,7 @@ from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
 from src.game.match import LeaveMatchErrors, Match, MatchState
 from src.game.users_info_mgr import users_info_mgr
+from src.game.tressette_config import config as tress_config
 
 
 logging.basicConfig(
@@ -38,6 +39,7 @@ class MatchManager:
         """The main loop to manage matches."""
         try:
             while True:
+                print("MatchManager loop started.bbbb")
                 for match in list(self.matches.values()):  # Use list() to avoid mutation issues.
                     try:
                         await match.loop()
@@ -56,6 +58,26 @@ class MatchManager:
         self.matches[match_id] = match
         self.start_match_id += 1
         return match
+
+    async def create_table(self, uid, payload):
+        create_table_pkg = packet_pb2.CreateTable()
+        create_table_pkg.ParseFromString(payload)
+        bet = create_table_pkg.bet
+    
+        # check if user has enough gold to create table this bet
+        user_info = await users_info_mgr.get_user_info(uid)
+        if user_info.gold < tress_config.get("min_gold_play"):
+            print(f"User {uid} not enough gold")
+            return
+        if await self.is_user_in_match(uid):
+            return
+        
+        if user_info.gold < bet * tress_config.get('bet_multiplier_min'):
+            return
+        
+        match = await self.create_match(uid)
+        match.bet = bet
+        await self._user_join_match(match, uid)
 
     async def get_match(self, match_id):
         return self.matches.get(match_id)
@@ -83,19 +105,13 @@ class MatchManager:
     async def is_user_in_match(self, user_id):
         return user_id in self.user_matchids
     
-    async def get_free_match(self, uid) -> Match:
-        print(f"Number match current: {len(self.matches.items())}")
+    async def get_free_match(self) -> Match:
         for match_id, match in self.matches.items():
-            enought_gold = await match.check_user_can_join_gold(uid)
-
-            if not enought_gold:
-                continue # Not enough gold
-            
             if match.state == MatchState.WAITING and not match.check_room_full():
                 return match
         return None
     
-    async def user_join_match(self, match: Match, uid: int):
+    async def _user_join_match(self, match: Match, uid: int):
         self.user_matchids[uid] = match.match_id
         await match.user_join(uid)
 
@@ -157,23 +173,30 @@ class MatchManager:
         if match:
             await match.user_play_card(uid, payload)
 
-    async def on_table_list(self, uid):
-        matches = await self.prioritize_matches(self.matches, uid)  # Get the 20 matches closest to the user's gold
+    async def receive_request_table_list(self, uid):
+        matches = await self._prioritize_matches(self.matches, uid)  # Get the 20 matches closest to the user's gold
         # priority table is waiting
         match_ids = []
         bets = []
+        player_modes = []
+        num_players = []
         for match in matches:
             match_ids.append(match.match_id)
             bets.append(match.bet)
+            player_modes.append(match.player_mode)
+            num_players.append(match.get_num_players())
+
         
         print(f"Table list: {match_ids}")
         pkg = packet_pb2.TableList()
         pkg.table_ids.extend(match_ids)
         pkg.bets.extend(bets)
+        pkg.player_modes.extend(player_modes)
+        pkg.num_players.extend(num_players)
         await game_vars.get_game_client().send_packet(uid, CMDs.TABLE_LIST, pkg)
 
-    async def prioritize_matches(self, matches: dict[int, Match], uid: int) -> list[Match]:
-        max_matches = 20  # Limit of prioritized matches
+    async def _prioritize_matches(self, matches: dict[int, Match], uid: int) -> list[Match]:
+        MAX_MATCHES = 20  # Limit of prioritized matches
         user = await users_info_mgr.get_user_info(uid)
         user_gold = user.gold
 
@@ -188,8 +211,8 @@ class MatchManager:
         # Combine matches, prioritizing waiting matches
         prioritized_matches = waiting_matches + other_matches
 
-        # Return the top matches, limited to `max_matches`
-        return prioritized_matches[:max_matches]
+        # Return the top matches, limited to `MAX_MATCHES`
+        return prioritized_matches[:MAX_MATCHES]
 
     async def join_match(self, uid, match_id):
         match = await self.get_match(match_id)
@@ -197,4 +220,68 @@ class MatchManager:
         # check other conditions to join match
         if not match:
             return
-        await self.user_join_match(match, uid)
+        await self._user_join_match(match, uid)
+
+    async def _handle_quick_play(self, uid: int):
+        user = await users_info_mgr.get_user_info(uid)
+        if user.gold < tress_config.get("min_gold_play"):
+            print(f"User {uid} not enough gold")
+            return
+
+        print(f"User {uid} quick play")
+        # STEP 1: CHECK IF USER IS IN A MATCH
+        match = await self.get_match_of_user(uid)
+        if match:
+            print(f"User {uid} is in a match, reconnecting")
+            await match.user_reconnect(uid)
+            return
+
+        # STEP JOIN A MATCH
+        match = await self.get_free_match()
+        if not match:
+            match = await game_vars.get_match_mgr().create_match(uid)
+
+        # Check condition
+        if user.gold < match.get_min_gold_play():
+            return
+        
+        print(f"User {uid} join match {match.match_id}")
+        await self._user_join_match(match, uid=uid)
+
+        game_vars.get_logs_mgr().write_log(uid, "quick_play", "", [])
+        
+    async def _check_user_can_join_match(self, uid, match: Match) -> bool:
+        user = await users_info_mgr.get_user_info(uid)
+        if user.gold < match.get_min_gold_play():
+            return False
+        return True
+    
+    async def _handle_user_join_by_match_id(self, uid, match_id):
+        # check if user is in a match
+        is_in_match = await self.is_user_in_match(uid)
+        if is_in_match:
+            return
+
+        match = await self.get_match(match_id)
+        if not match:
+            return
+        
+        if match.state != MatchState.WAITING:
+            return
+        
+        if match.check_room_full():
+            return
+        
+        if not await self._check_user_can_join_match(uid, match):
+            return
+        
+        await self._user_join_match(match, uid)
+
+    async def receive_user_join_match(self, uid, payload):
+        join_pkg = packet_pb2.JoinTableById()
+        join_pkg.ParseFromString(payload)
+        match_id = join_pkg.match_id
+        await self._handle_user_join_by_match_id(uid, match_id)
+
+    async def receive_quick_play(self, uid, payload):
+        await self._handle_quick_play(uid)

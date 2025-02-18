@@ -40,7 +40,8 @@ class ConnectionManager:
         try:
             while websocket in self.active_connections:
                 raw_data = await websocket.receive_bytes()
-                asyncio.create_task(self.handle_received_packet(websocket, raw_data))
+                task = asyncio.create_task(self.handle_received_packet(websocket, raw_data))
+                await asyncio.gather(*[task], return_exceptions=True)
         except WebSocketDisconnect:
             await self.disconnect(websocket)
             print(f"WebSocket disconnected: {websocket}")
@@ -216,6 +217,11 @@ class ConnectionManager:
                 if not user:
                     logger.info("Unauthorized")
                     return
+                
+                # Prevent user play game from multiple devices
+                if self.user_websockets.get(user.get("uid")) != websocket:
+                    print("Not allow user play game from multiple devices")
+                    return
                 print(f"User: {user}")
                 uid = user.get("uid")
                 
@@ -223,6 +229,8 @@ class ConnectionManager:
         except Exception as e:
             logger.info(f"Failed to parse packet: {e}")
             traceback.print_exc()
+        finally:
+            return
 
     async def send_packet_to_user(self, uid: int, cmd_id: int, payload: bytes):
         websocket_ref = self.user_websockets.get(uid)

@@ -43,6 +43,10 @@ class GameClient:
         general_pkg.min_gold_play = tress_config.get("min_gold_play")
         general_pkg.time_thinking_in_turn = tress_config.get("time_thinking_in_turn")
         general_pkg.timestamp = int(datetime.now().timestamp())
+        general_pkg.bet_multiplier_min = tress_config.get("bet_multiplier_min")
+
+        tressette_bets = tress_config.get("bets")
+        general_pkg.tressette_bets.extend(tressette_bets)
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
         user_pkg = packet_pb2.UserInfo()
