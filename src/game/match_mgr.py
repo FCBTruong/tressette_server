@@ -39,7 +39,6 @@ class MatchManager:
         """The main loop to manage matches."""
         try:
             while True:
-                print("MatchManager loop started.bbbb")
                 for match in list(self.matches.values()):  # Use list() to avoid mutation issues.
                     try:
                         await match.loop()

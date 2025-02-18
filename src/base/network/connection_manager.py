@@ -40,8 +40,7 @@ class ConnectionManager:
         try:
             while websocket in self.active_connections:
                 raw_data = await websocket.receive_bytes()
-                task = asyncio.create_task(self.handle_received_packet(websocket, raw_data))
-                await asyncio.gather(*[task], return_exceptions=True)
+                asyncio.create_task(self.handle_received_packet(websocket, raw_data))
         except WebSocketDisconnect:
             await self.disconnect(websocket)
             print(f"WebSocket disconnected: {websocket}")

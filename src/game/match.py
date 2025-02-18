@@ -105,7 +105,6 @@ class MatchBot(MatchPlayer):
         await self.match_mgr._play_card(self.uid, card_id=card_id, auto=False)
 
 class Match:
-    cards_compare = []
     def __init__(self, match_id, game_mode=TRESSETTE_MODE, player_mode=PLAYER_SOLO_MODE):
         self.match_id = match_id
         self.start_time = datetime.now()
@@ -128,6 +127,7 @@ class Match:
         self.cur_round = 0
         self.is_end_round = False
         self.unique_match_id = str(uuid.uuid4())
+        self.cards_compare = []
 
         # init slots
         for i in range(player_mode):
@@ -644,7 +644,7 @@ class Match:
             if card % 4 == self.hand_suit:
                 cards_valid.append(card)
 
-        win_card = cards_valid[2]
+        win_card = cards_valid[0]
         for card in cards_valid:
             if CARD_STRONGS[card // 4] > CARD_STRONGS[win_card // 4]:
                 win_card = card
