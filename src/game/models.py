@@ -16,7 +16,9 @@ class UserInfo:
     avatar: str
     avatar_third_party: str
     is_active: bool
-    def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool = True):
+    last_time_received_support: int
+    def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool,
+                 last_time_received_support: int):
         self.uid = uid
         self.name = name
         self.gold = gold
@@ -24,6 +26,7 @@ class UserInfo:
         self.avatar = avatar
         self.avatar_third_party = avatar_third_party
         self.is_active = is_active
+        self.last_time_received_support = last_time_received_support
 
         # Set default values
         if self.avatar_third_party is None:
@@ -31,9 +34,6 @@ class UserInfo:
 
         if self.level is None:
             self.level = 1
-            
-    async def commit_to_database():
-        pass
 
     def update_avatar(self, avatar: str):
         self.avatar = avatar
@@ -73,3 +73,25 @@ class UserInfo:
         pkg_money = packet_pb2.UpdateMoney()
         pkg_money.gold = self.gold
         await game_vars.get_game_client().send_packet(self.uid, CMDs.UPDATE_MONEY, pkg_money)
+
+
+    async def commit_to_database(self, *fields):
+        """
+        Updates the specified fields for the UserInfoSchema table using the current instance's values.
+
+        Parameters:
+        - fields: A list of field names to update. Only the specified fields will be updated.
+        """
+        # Collect field values from self
+        update_data = {field: getattr(self, field) for field in fields if hasattr(self, field)}
+
+        if not update_data:
+            return  # No fields to update
+
+        async with PsqlOrm.get().session() as session:
+            await session.execute(
+                sa_update(UserInfoSchema)
+                .where(UserInfoSchema.uid == self.uid)
+                .values(**update_data)
+            )
+            await session.commit()

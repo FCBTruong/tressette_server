@@ -36,8 +36,7 @@ class GameClient:
                 await users_info_mgr.on_receive_packet(uid, cmd_id, payload)
                 await game_vars.get_friend_mgr().on_receive_packet(uid, cmd_id, payload)
 
-    async def user_login_success(self, uid):
-        from src.base.network.connection_manager import connection_manager
+    async def user_login_success(self, uid, device_model, platform):
         logger.info(f"User with ID {uid} has successfully logged in")
         general_pkg = packet_pb2.GeneralInfo()
         general_pkg.min_gold_play = tress_config.get("min_gold_play")
@@ -59,6 +58,7 @@ class GameClient:
         user_pkg.avatar = user_info.avatar
         user_pkg.level = user_info.level
         user_pkg.avatar_third_party = user_info.avatar_third_party
+        user_pkg.support_num = 1 if game_vars.get_game_mgr().check_can_receive_support(user_info.last_time_received_support) else 0
         logger.info(f"User info: {user_info.gold}")
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
@@ -74,7 +74,7 @@ class GameClient:
         await game_vars.get_game_mgr().on_user_login(uid)
 
         # Write log login
-        game_vars.get_logs_mgr().write_log(uid, "login", "", [])
+        game_vars.get_logs_mgr().write_log(uid, "login", "", [device_model, platform])
 
     async def send_packet(self, uid, cmd_id, pkt):
         from src.base.network.connection_manager import connection_manager

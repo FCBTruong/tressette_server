@@ -119,14 +119,14 @@ class ConnectionManager:
 
     async def send_packet(self, websocket: WebSocket, cmd_id: int, payload: bytes):
         """Sends a serialized packet to the WebSocket."""
-        logger.info(f"Sending packet: cmd_id={cmd_id}")
+        if cmd_id != 0:
+            logger.info(f"Sending packet: cmd_id={cmd_id}")
         
         packet = packet_pb2.Packet(cmd_id=cmd_id, payload=payload)
         serialized_packet = packet.SerializeToString()
 
         # Send the serialized packet
         await websocket.send_bytes(serialized_packet)
-        print(f"Packet successfully sent: cmd_id={cmd_id}")
 
     def _authenticate_user(self):
         return True
@@ -139,7 +139,8 @@ class ConnectionManager:
             cmd_id = packet.cmd_id
             payload = packet.payload
             token = packet.token
-            logger.info(f"Packet received: cmd_id={cmd_id}")
+            if cmd_id != 0:
+                logger.info(f"Packet received: cmd_id={cmd_id}")
 
             if cmd_id == CMD_PING_PONG:
                 if websocket not in self.ping_responses:
@@ -165,7 +166,9 @@ class ConnectionManager:
                 login_client_pkg.ParseFromString(payload)
                 token = login_client_pkg.token
                 login_type = login_client_pkg.type
-                print(f"Login packet received: token={token}, login_type={login_type}")
+                device_model = login_client_pkg.device_model
+                platform = login_client_pkg.platform
+                print(f"Login packet received: token={token}, login_type={login_type}, device_model={device_model}, platform={platform}")
                 login_response = packet_pb2.LoginResponse()
 
                 # authenticate user
@@ -206,7 +209,7 @@ class ConnectionManager:
 
                 self.user_websockets[uid] = websocket
                 await self.send_packet(websocket, CMD_LOGIN, p)
-                await game_vars.get_game_client().user_login_success(uid=uid)
+                await game_vars.get_game_client().user_login_success(uid=uid, device_model=device_model, platform=platform)
             else:
                 if not token:
                     logger.info("Unauthorized")

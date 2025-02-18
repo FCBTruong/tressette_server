@@ -3,6 +3,7 @@
 import random
 import uuid
 
+from src.game.game_vars import game_vars
 from src.postgres.orm import PsqlOrm
 from src.postgres.sql_models import GuestsSchema, UserInfoSchema
 from src.constants import *
@@ -15,11 +16,11 @@ class GuestMgr:
         async with PsqlOrm.get().session() as session:
             # Create a new user model
             user_model = UserInfoSchema()
-            user_model.gold = 0
+            user_model.gold = 100000
             user_model.level = 1
 
             # random avatar 1 -> 8
-            avatar_id = random.randint(1, 8)
+            avatar_id = random.choice(AVATAR_IDS)
             user_model.avatar = str(avatar_id)
             user_model.login_type = LOGIN_GUEST
 
@@ -45,5 +46,5 @@ class GuestMgr:
             session.add(guest_model)
             # Commit the session to save the guest record
             await session.commit()
-
+        game_vars.get_logs_mgr().write_log(guest_id, "new_user", "guest", [])
         return guest_id

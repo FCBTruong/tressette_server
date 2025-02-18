@@ -40,7 +40,6 @@ class UsersInfoMgr:
         async with PsqlOrm.get().session() as session:
             user_info = await session.get(UserInfoSchema, uid)
             if user_info:
-                print("infoooo", user_info)
                 user_info_data = {
                     "uid": user_info.uid,
                     "name": user_info.name,
@@ -48,7 +47,8 @@ class UsersInfoMgr:
                     "level": user_info.level,
                     "avatar": user_info.avatar,
                     "avatar_third_party": user_info.avatar_third_party,
-                    "is_active": user_info.is_active
+                    "is_active": user_info.is_active,
+                    "last_time_received_support": user_info.last_time_received_support,
                 }
                 user_inf = UserInfo(**user_info_data)
                 self.users[uid] = user_inf

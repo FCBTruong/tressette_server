@@ -17,6 +17,7 @@ class UserInfoSchema(Base):
     avatar_third_party = Column(String)  # Text column for third party avatar
     login_type = Column(Integer)  # Integer column for login type
     is_active = Column(Boolean, nullable=False, default=True)
+    last_time_received_support = Column(Integer, default=0)
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
 

@@ -1,4 +1,5 @@
 from asyncio.log import logger
+from datetime import datetime
 import os
 from typing import Optional
 from dotenv import load_dotenv
@@ -50,4 +51,9 @@ class Settings(
 
 settings = Settings()
 
+# Get the current local time with time zone info
+current_time = datetime.now().astimezone()
+
+# Print the current time zone name
+print(f"Current Time Zone: {current_time.tzname()}")
 print('configlog: ', settings)

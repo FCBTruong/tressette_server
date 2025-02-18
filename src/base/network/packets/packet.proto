@@ -26,6 +26,8 @@ message PingPong {
 message Login {
   int32 type = 1;
   string token = 2;
+  string device_model = 3;
+  string platform = 4;
 }
 
 message LoginFirebase {
@@ -53,6 +55,7 @@ message UserInfo {
   string avatar = 7;
   string avatar_third_party = 8;
   int32 level = 9;
+  int32 support_num = 10;
 }
 
 message GameInfo {
@@ -295,4 +298,8 @@ message CreateTable {
 
 message JoinTableById {
   int32 match_id = 1;
+}
+
+message ClaimSupport {
+  int32 support_amount = 1;
 }

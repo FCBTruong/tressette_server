@@ -2,6 +2,7 @@ import random
 from src.base.security.jwt import create_login_token, verify_token
 from src.config.settings import settings
 from src.constants import *
+from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.postgres.orm import PsqlOrm
 from src.postgres.sql_models import FirebaseAuthSchema, GuestsSchema, UserInfoSchema
@@ -41,7 +42,7 @@ class LoginMgr:
     
     def create_new_basic_user(self) -> UserInfoSchema:
         user_model = UserInfoSchema()
-        user_model.gold = 0 
+        user_model.gold = 100000
         user_model.level = 1
 
         avatar_id = random.choice(AVATAR_IDS)
@@ -94,6 +95,8 @@ class LoginMgr:
                 session.add(firebase_auth)
                 await session.commit()
                 uid = basic_user.uid
+
+                game_vars.get_logs_mgr().write_log(uid, "new_user", "firebase", [])
         
         # generate a new token
         new_token = create_login_token({
