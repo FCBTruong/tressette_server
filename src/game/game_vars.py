@@ -11,6 +11,7 @@ class GameVars:
         self.friend_mgr = None
         self.bots_mgr = None
         self.logs_mgr = None
+        self.game_live_performance = None
         
     def get_game_client(self):
         if self.game_client is None:
@@ -67,5 +68,11 @@ class GameVars:
             from src.base.logs.logs_mgr import LogsMgr
             self.logs_mgr = LogsMgr()
         return self.logs_mgr
+    
+    def get_game_live_performance(self):
+        if self.game_live_performance is None:
+            from src.game.game_live_performance import GameLivePerformance
+            self.game_live_performance = GameLivePerformance()
+        return self.game_live_performance
     
 game_vars = GameVars()

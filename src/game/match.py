@@ -215,7 +215,7 @@ class Match:
         else:
             # add a bot
             # wait for 1 second
-            await asyncio.sleep(3)
+            await asyncio.sleep(8)
             await self.add_bot()
 
     async def add_bot(self):

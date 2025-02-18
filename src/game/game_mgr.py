@@ -27,7 +27,7 @@ class GameMgr:
             case CMDs.TABLE_LIST:
                 await game_vars.get_match_mgr().receive_request_table_list(uid)
             case CMDs.CREATE_TABLE:
-                await game_vars.get_match_mgr().create_table(uid, payload)
+                await game_vars.get_match_mgr().received_create_table(uid, payload)
             case CMDs.JOIN_TABLE_BY_ID:
                 print("JOIN_TABLE_BY_ID")
                 await game_vars.get_match_mgr().receive_user_join_match(uid, payload)
