@@ -56,6 +56,9 @@ message UserInfo {
   string avatar_third_party = 8;
   int32 level = 9;
   int32 support_num = 10;
+  int32 win_count = 11;
+  int32 game_count = 12;
+  int64 exp = 13;
 }
 
 message GameInfo {

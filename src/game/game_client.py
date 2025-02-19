@@ -54,6 +54,9 @@ class GameClient:
 
         user_pkg.uid = user_info.uid
         user_pkg.name = user_info.name
+        user_pkg.exp = user_info.exp
+        user_pkg.game_count = user_info.game_count
+        user_pkg.win_count = user_info.win_count
         user_pkg.gold = user_info.gold
         user_pkg.avatar = user_info.avatar
         user_pkg.level = user_info.level

@@ -13,6 +13,7 @@ from src.game.game_vars import game_vars
 from datetime import datetime, timedelta
 from src.game.tressette_config import config as tress_config
 import uuid
+from src.game.modules import game_exp
 
 class MatchState(Enum):
     WAITING = 0
@@ -216,7 +217,14 @@ class Match:
             # add a bot
             # wait for 1 second
             await asyncio.sleep(8)
-            await self.add_bot()
+            await self._check_and_gen_bot()
+
+    async def _check_and_gen_bot(self):
+        max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
+        if self.bet > max_bet_to_gen_bot:
+            return
+        await self.add_bot()
+        
 
     async def add_bot(self):
         print('Add bot')
@@ -590,7 +598,7 @@ class Match:
             self.team_scores[player.team_id] += player.points
             
         # test
-        if self.team_scores[0] >= 10 or self.team_scores[1] >= 10:
+        if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
             return True
         
         if self.team_scores[0] >= 33 or self.team_scores[1] >= 33:
@@ -670,15 +678,20 @@ class Match:
             if player.uid == -1 or player.is_bot:
                 continue
             user_info = await users_info_mgr.get_user_info(player.uid)
+            user_info.game_count += 1
+            added_exp = int(game_exp.calculate_exp_gain(self.bet))
             if player.team_id == self.win_team:
                 gold_win = int(self.pot_value / self.player_mode * 2)
                 player.gold_change += gold_win
 
                 gold_received = int(gold_win - gold_win * TAX_PERCENT)
                 user_info.add_gold(gold_received)
-            else:
-                pass
-            await user_info.commit_gold()
+                user_info.win_count += 1
+                added_exp = added_exp * 2
+
+            user_info.add_exp(added_exp)
+
+            await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
             await user_info.send_update_money()
 
             game_vars.get_logs_mgr().write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet])

@@ -16,6 +16,9 @@ class UserInfoSchema(Base):
     avatar = Column(String)  # Text column for avatar
     avatar_third_party = Column(String)  # Text column for third party avatar
     login_type = Column(Integer)  # Integer column for login type
+    game_count = Column(Integer, default=0)  # Integer column for game count
+    win_count = Column(Integer, default=0)  # Integer column for win count
+    exp = Column(BigInteger, default=0)  # Integer column for experience
     is_active = Column(Boolean, nullable=False, default=True)
     last_time_received_support = Column(Integer, default=0)
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user

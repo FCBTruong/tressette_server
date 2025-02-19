@@ -50,7 +50,12 @@ class UsersInfoMgr:
                     "is_active": user_info.is_active,
                     "last_time_received_support": user_info.last_time_received_support,
                 }
+                
                 user_inf = UserInfo(**user_info_data)
+                user_inf.win_count = user_info.win_count
+                user_inf.game_count = user_info.game_count
+                user_inf.exp = user_info.exp
+                
                 self.users[uid] = user_inf
                 return user_inf
         return None

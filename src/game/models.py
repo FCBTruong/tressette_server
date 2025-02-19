@@ -17,6 +17,9 @@ class UserInfo:
     avatar_third_party: str
     is_active: bool
     last_time_received_support: int
+    exp: int
+    game_count: int
+    win_count: int
     def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool,
                  last_time_received_support: int):
         self.uid = uid
@@ -49,6 +52,9 @@ class UserInfo:
         self.gold += gold
         if self.gold < 0:
             self.gold = 0
+
+    def add_exp(self, exp: int):
+        self.exp += exp
 
     async def commit_gold(self):
         async with PsqlOrm.get().session() as session:
