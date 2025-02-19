@@ -1,0 +1,9 @@
+{
+    "android_version": 1,
+    "android_forced_update_version": 0,
+    "android_remind_update_version": 0,
+
+    "ios_version": 1,
+    "ios_forced_update_version": 0,
+    "ios_remind_update_version": 0
+}

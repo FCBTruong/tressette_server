@@ -110,6 +110,8 @@ class MatchManager:
         best_diff = float('inf')
         
         for match_id, match in self.matches.items():
+            if not match.is_public:
+                continue
             if match.state == MatchState.WAITING and not match.check_room_full():
                 min_gold = match.get_min_gold_play()
                 

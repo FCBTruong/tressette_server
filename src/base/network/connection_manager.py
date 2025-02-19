@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import random
 import time
@@ -23,9 +24,12 @@ CMD_PING_PONG = 0
 CMD_LOGIN = 1
 CMD_CREATE_GUEST_ACCOUNT = 2
 CMD_LOGIN_FIREBASE = 3
+CMD_APP_VERSION = 5
 PING_INTERVAL = 10  # Interval between pings
 
-
+with open('config/app_version.json', 'r') as file:
+    app_version_config = json.load(file)
+    
 class ConnectionManager:
     def __init__(self):
         self.active_connections: set[WebSocket] = set()
@@ -37,6 +41,21 @@ class ConnectionManager:
     async def handle_new_connection(self, websocket: WebSocket):
         """Handles a new WebSocket connection."""
         await self.connect(websocket)
+
+        # send app version
+        app_version_pkg = packet_pb2.AppCodeVersion()
+        app_version_pkg.android_version = app_version_config.get("android_version")
+        app_version_pkg.android_forced_update_version = app_version_config.get("android_forced_update_version")
+        app_version_pkg.android_remind_update_version = app_version_config.get("android_remind_update_version")
+
+        app_version_pkg.ios_version = app_version_config.get("ios_version")
+        app_version_pkg.ios_forced_update_version = app_version_config.get("ios_forced_update_version")
+        app_version_pkg.ios_remind_update_version = app_version_config.get("ios_remind_update_version")
+
+        # send app version
+        p = app_version_pkg.SerializeToString()
+        await self.send_packet(websocket, CMD_APP_VERSION, p)
+
         try:
             while websocket in self.active_connections:
                 raw_data = await websocket.receive_bytes()

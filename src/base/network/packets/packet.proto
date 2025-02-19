@@ -306,3 +306,13 @@ message JoinTableById {
 message ClaimSupport {
   int32 support_amount = 1;
 }
+
+message AppCodeVersion {
+  int32 android_version = 1;
+  int32 android_forced_update_version = 2;
+  int32 android_remind_update_version = 3;
+
+  int32 ios_version = 4;
+  int32 ios_forced_update_version = 5;
+  int32 ios_remind_update_version = 6;
+}

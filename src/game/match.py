@@ -31,6 +31,7 @@ TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
 TAX_PERCENT = tress_config.get("tax_percent")
 TIME_START_TO_DEAL = 3.5 # seconds
 TIME_DRAW_CARD = 4 # seconds
+TIME_MATCH_MAXIMUM = 60 * 60 # 1 hour -> after this match will be destroyed
 
 # 0 - 39
 TRESSETTE_CARDS = [i for i in range(40)]
@@ -129,16 +130,27 @@ class Match:
         self.is_end_round = False
         self.unique_match_id = str(uuid.uuid4())
         self.cards_compare = []
+        self.task_gen_bot = None
+        self.unique_game_id = ""
+        self.is_public = True
 
         # init slots
         for i in range(player_mode):
             p = MatchPlayer(-1, self)
             self.players.append(p)
 
+    def set_public(self, is_public):
+        self.is_public = is_public
     
     async def loop(self):
         try:
             if self.state == MatchState.PLAYING:
+                # check overtime
+                if datetime.now() - self.start_time > timedelta(seconds=TIME_MATCH_MAXIMUM):
+                    await self.end_game()
+                    return
+                
+                # check auto play
                 if self.current_turn != -1 and self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
                     player = self.players[self.current_turn]
                     if player:
@@ -168,7 +180,7 @@ class Match:
         if not is_bot:
             user_data = await users_info_mgr.get_user_info(user_id)
         else:
-            user_data = await game_vars.get_bots_mgr().get_a_bot()
+            user_data = await game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
 
         # find empty slot
         slot_idx = -1   
@@ -213,24 +225,33 @@ class Match:
 
         if self.check_room_full():
             await self._prepare_start_game()
+            self._clear_coroutine_gen_bot()
         else:
-            # add a bot
-            # wait for 1 second
-            await asyncio.sleep(8)
             await self._check_and_gen_bot()
 
     async def _check_and_gen_bot(self):
         max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
         if self.bet > max_bet_to_gen_bot:
             return
-        await self.add_bot()
         
+        ccu = await game_vars.get_game_live_performance().get_ccu()
+        if ccu > tress_config.get('ccu_to_gen_bot'):
+            return # not gen bot if ccu > 100
+            
+        if self.task_gen_bot is not None:
+            self.task_gen_bot.cancel()
 
-    async def add_bot(self):
-        print('Add bot')
-        # random uid from 2M - 3M
-        bot_uid = random.randint(2000000, 3000000)
+        self.task_gen_bot = asyncio.create_task(self._coroutine_gen_bot())
+    
+    async def _coroutine_gen_bot(self):
+        await asyncio.sleep(8)
+        bot_uid = random.randint(5000000, 30000000)
         await self.user_join(bot_uid, is_bot=True)
+
+    def _clear_coroutine_gen_bot(self):
+        if self.task_gen_bot is not None:
+            self.task_gen_bot.cancel()
+            self.task_gen_bot = None
 
     async def _prepare_start_game(self):
         self.state = MatchState.PREPARING_START
@@ -315,16 +336,18 @@ class Match:
             self.state = MatchState.WAITING
             self.time_start = -1
 
+        await self._check_and_gen_bot()
+
     async def start_game(self):
         self.unique_game_id = str(uuid.uuid4())
         # write logs
         for player in self.players:
             if player.is_bot or player.uid == -1:
                 continue
-            game_vars.get_logs_mgr().write_log(player.uid, "start_game", "", [self.unique_match_id, self.unique_game_id, self.bet])
+            game_vars.get_logs_mgr().write_log(player.uid, "start_game", "", [self.unique_match_id, self.unique_game_id, self.bet, \
+                                                                              self.player_mode, self.game_mode])
 
         print('Start game')
-        self.time_start = -1
         self.state = MatchState.PLAYING
         self.start_time = datetime.now()
         self.current_turn = 0
@@ -694,7 +717,7 @@ class Match:
             await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
             await user_info.send_update_money()
 
-            game_vars.get_logs_mgr().write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet])
+            game_vars.get_logs_mgr().write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet, player.gold_change])
 
         uids = []
         score_totals = []

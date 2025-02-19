@@ -77,7 +77,7 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
         if password != "tzPuys0cPIHKfgA":
             return "Invalid password"
         if cmd == 'ccu':
-            return len(connection_manager.active_connections)
+            return await game_vars.get_game_live_performance().get_ccu()
         if cmd == 'cheat_refresh':
             if data is None:
                 raise HTTPException(status_code=400, detail="Missing data for cheat command")
