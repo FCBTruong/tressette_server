@@ -45,7 +45,9 @@ class GameClient:
         general_pkg.bet_multiplier_min = tress_config.get("bet_multiplier_min")
 
         tressette_bets = tress_config.get("bets")
+        exp_levels = tress_config.get("exp_levels")
         general_pkg.tressette_bets.extend(tressette_bets)
+        general_pkg.exp_levels.extend(exp_levels)
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
         user_pkg = packet_pb2.UserInfo()

@@ -143,6 +143,7 @@ message GeneralInfo {
   int32 time_thinking_in_turn = 3;
   repeated int32 tressette_bets = 4;
   int32 bet_multiplier_min = 5;
+  repeated int32 exp_levels = 6;
 }
 
 message EndGame {
@@ -216,9 +217,10 @@ message SearchFriendResponse {
   string name = 3;
   string avatar = 4;
   int32 win_count = 5;
-  double win_rate = 6;
+  double game_count = 6;
   int32 error = 7;
   int32 level = 8;
+  int64 exp = 9;
 }
 
 message CheatGoldUser {

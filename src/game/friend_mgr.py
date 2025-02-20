@@ -158,6 +158,9 @@ class FriendMgr:
             pkg_response.avatar = user_info.avatar
             pkg_response.level = user_info.level
             pkg_response.gold = user_info.gold
+            pkg_response.exp = user_info.exp
+            pkg_response.win_count = user_info.win_count
+            pkg_response.game_count = user_info.game_count
 
         pkg_response.error = err
         # send response
