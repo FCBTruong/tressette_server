@@ -305,6 +305,10 @@ message JoinTableById {
   int32 match_id = 1;
 }
 
+message JoinTableResponse {
+  int32 error = 1;
+}
+
 message ClaimSupport {
   int32 support_amount = 1;
 }

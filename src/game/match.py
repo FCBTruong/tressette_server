@@ -32,6 +32,7 @@ TAX_PERCENT = tress_config.get("tax_percent")
 TIME_START_TO_DEAL = 3.5 # seconds
 TIME_DRAW_CARD = 4 # seconds
 TIME_MATCH_MAXIMUM = 60 * 60 # 1 hour -> after this match will be destroyed
+SCORE_WIN_GAME = 11 * 3
 
 # 0 - 39
 TRESSETTE_CARDS = [i for i in range(40)]
@@ -624,7 +625,7 @@ class Match:
         if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
             return True
         
-        if self.team_scores[0] >= 33 or self.team_scores[1] >= 33:
+        if self.team_scores[0] >= SCORE_WIN_GAME or self.team_scores[1] >= SCORE_WIN_GAME:
             return True
         return False
     
@@ -752,7 +753,7 @@ class Match:
         await self.update_users_staying_endgame()
 
         # next game
-        await asyncio.sleep(1)
+        await asyncio.sleep(5)
         if self.check_room_full():
             await self._prepare_start_game()
 

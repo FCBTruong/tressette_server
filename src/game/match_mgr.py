@@ -1,6 +1,7 @@
 # Configure the logger
 
 import asyncio
+from enum import Enum
 import logging
 
 from src.base.network.packets import packet_pb2
@@ -17,6 +18,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger("game_match")  # Name your logger
 
+class JoinMatchErrors(Enum):
+    SUCCESS = 0
+    MATCH_STARTED = 1
+    FULL_ROOM = 2
+    NOT_ENOUGH_GOLD = 3
+    ALREADY_IN_MATCH = 4
+    MATCH_NOT_FOUND = 5
 
 class MatchManager:
     def __init__(self):
@@ -210,6 +218,12 @@ class MatchManager:
         pkg.bets.extend(bets)
         pkg.player_modes.extend(player_modes)
         pkg.num_players.extend(num_players)
+
+        # pkg = packet_pb2.TableList()
+        # pkg.table_ids.extend([1, 2, 3, 4, 5,6,7])
+        # pkg.bets.extend([100000, 2000000, 300000, 400000, 5000000, 400000, 5000000])
+        # pkg.player_modes.extend([2,2,2,2,2,2,2])
+        # pkg.num_players.extend([1,2,1,2,1,2,2])
         await game_vars.get_game_client().send_packet(uid, CMDs.TABLE_LIST, pkg)
 
     async def _prioritize_matches(self, matches: dict[int, Match], uid: int) -> list[Match]:
@@ -222,8 +236,8 @@ class MatchManager:
         other_matches = [match for match in matches.values() if match.state != MatchState.WAITING]
 
         # Sort matches by bet proximity to user's gold
-        waiting_matches.sort(key=lambda match: abs(match.bet - user_gold))
-        other_matches.sort(key=lambda match: abs(match.bet - user_gold))
+        waiting_matches.sort(key=lambda match: abs(match.bet * tress_config.get('bet_multiplier_min') - user_gold))
+        other_matches.sort(key=lambda match: abs(match.bet * tress_config.get('bet_multiplier_min') - user_gold))
 
         # Combine matches, prioritizing waiting matches
         prioritized_matches = waiting_matches + other_matches
@@ -271,33 +285,38 @@ class MatchManager:
         await self._user_join_match(match, uid=uid)
 
         game_vars.get_logs_mgr().write_log(uid, "quick_play", "", [])
-        
-    async def _check_user_can_join_match(self, uid, match: Match) -> bool:
-        user = await users_info_mgr.get_user_info(uid)
-        if user.gold < match.get_min_gold_play():
-            return False
-        return True
+    
     
     async def _handle_user_join_by_match_id(self, uid, match_id):
         # check if user is in a match
         is_in_match = await self.is_user_in_match(uid)
         if is_in_match:
+            await self._send_response_join_table(uid, JoinMatchErrors.ALREADY_IN_MATCH)
             return
 
         match = await self.get_match(match_id)
         if not match:
+            await self._send_response_join_table(uid, JoinMatchErrors.MATCH_NOT_FOUND)
             return
         
         if match.state != MatchState.WAITING:
+            await self._send_response_join_table(uid, JoinMatchErrors.MATCH_STARTED)
             return
         
         if match.check_room_full():
+            await self._send_response_join_table(uid, JoinMatchErrors.FULL_ROOM)
             return
-        
-        if not await self._check_user_can_join_match(uid, match):
+        user_info = await users_info_mgr.get_user_info(uid)
+        if user_info.gold < match.get_min_gold_play():
+            await self._send_response_join_table(uid, JoinMatchErrors.NOT_ENOUGH_GOLD)
             return
         
         await self._user_join_match(match, uid)
+
+    async def _send_response_join_table(self, uid, status):
+        join_pkg = packet_pb2.JoinTableResponse()
+        join_pkg.error = status.value
+        await game_vars.get_game_client().send_packet(uid, CMDs.JOIN_TABLE_BY_ID, join_pkg)
 
     async def receive_user_join_match(self, uid, payload):
         join_pkg = packet_pb2.JoinTableById()
