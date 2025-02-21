@@ -61,6 +61,7 @@ class MatchPlayer:
         self.is_bot = False
         self.match_mgr = match_mgr
         self.gold_change = 0
+        self.gold_win = 0
 
     
     def reset_game(self):
@@ -374,6 +375,7 @@ class Match:
             player.score_last_trick = 0
             player.cards.clear()
             player.gold_change = 0
+            player.gold_win = 0
 
             # get pot user need to contribute
             pot_user_need_to_contribute = self.bet
@@ -708,6 +710,7 @@ class Match:
             if player.team_id == self.win_team:
                 gold_win = int(self.pot_value / self.player_mode * 2)
                 player.gold_change += gold_win
+                player.gold_win = gold_win
 
                 gold_received = int(gold_win - gold_win * TAX_PERCENT)
                 user_info.add_gold(gold_received)
@@ -726,12 +729,14 @@ class Match:
         score_last_tricks = []
         score_cards = []
         gold_changes = []
+        gold_wins = []
         for player in self.players:
             uids.append(player.uid)
             score_cards.append(player.points - player.score_last_trick)
             score_last_tricks.append(player.score_last_trick)
             score_totals.append(player.points)
             gold_changes.append(player.gold_change)
+            gold_wins.append(player.gold_win)
 
         
         # send to users
@@ -742,6 +747,7 @@ class Match:
         pkg.score_last_tricks.extend(score_last_tricks)
         pkg.score_totals.extend(score_totals)
         pkg.gold_changes.extend(gold_changes)
+        pkg.gold_wins.extend(gold_wins)
 
         await self.broadcast_pkg(CMDs.END_GAME, pkg)
         
