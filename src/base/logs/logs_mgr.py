@@ -21,5 +21,6 @@ class LogsMgr:
             await session.commit()
 
     def write_log(self, uid, action, sub_action, extras):
+        print('write log', action, extras)
         """Public function to trigger log writing without blocking."""
         asyncio.create_task(self._write_log(uid, action, sub_action, extras))

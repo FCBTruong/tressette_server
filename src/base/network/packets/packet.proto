@@ -299,6 +299,8 @@ message NewRound {
 
 message CreateTable {
   int32 bet = 1;
+  int32 player_mode = 2;
+  bool is_private = 3;
 }
 
 message JoinTableById {

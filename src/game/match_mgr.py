@@ -7,7 +7,7 @@ import logging
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
-from src.game.match import LeaveMatchErrors, Match, MatchState
+from src.game.match import LeaveMatchErrors, Match, MatchState, PLAYER_SOLO_MODE, PLAYER_DUO_MODE
 from src.game.users_info_mgr import users_info_mgr
 from src.game.tressette_config import config as tress_config
 
@@ -58,10 +58,11 @@ class MatchManager:
         except Exception as e:
             logger.error(f"Unexpected error in MatchManager loop: {e}")
 
-    async def _create_match(self, bet) -> Match:
+    async def _create_match(self, bet, player_mode = PLAYER_SOLO_MODE, is_private = False) -> Match:
         match_id = self.start_match_id
         logger.info(f"Creating match {match_id}")
-        match = Match(match_id)
+        match = Match(match_id, player_mode=player_mode)
+        match.set_public(not is_private)
         match.bet = bet
         self.matches[match_id] = match
         self.start_match_id += 1
@@ -71,7 +72,11 @@ class MatchManager:
         create_table_pkg = packet_pb2.CreateTable()
         create_table_pkg.ParseFromString(payload)
         bet = create_table_pkg.bet
-    
+        player_mode = create_table_pkg.player_mode
+        is_private = create_table_pkg.is_private
+        if player_mode != PLAYER_DUO_MODE and player_mode != PLAYER_SOLO_MODE:
+            print(f"Invalid player mode {player_mode}")
+            return
         # check if user has enough gold to create table this bet
         user_info = await users_info_mgr.get_user_info(uid)
         if user_info.gold < tress_config.get("min_gold_play"):
@@ -83,7 +88,7 @@ class MatchManager:
         if user_info.gold < bet * tress_config.get('bet_multiplier_min'):
             return
         
-        match = await self._create_match(bet)
+        match = await self._create_match(bet, player_mode, is_private)
         await self._user_join_match(match, uid)
 
     async def get_match(self, match_id):
@@ -120,7 +125,8 @@ class MatchManager:
         for match_id, match in self.matches.items():
             if not match.is_public:
                 continue
-            if match.state == MatchState.WAITING and not match.check_room_full():
+            if match.state == MatchState.WAITING and not match.check_room_full() and match.player_mode != PLAYER_DUO_MODE:
+                # For current, only solo mode for quick play
                 min_gold = match.get_min_gold_play()
                 
                 # Ensure user has enough gold to play
@@ -206,6 +212,9 @@ class MatchManager:
         player_modes = []
         num_players = []
         for match in matches:
+            # skip private match
+            if match.is_public is False:
+                continue
             match_ids.append(match.match_id)
             bets.append(match.bet)
             player_modes.append(match.player_mode)

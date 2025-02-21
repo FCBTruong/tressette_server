@@ -108,11 +108,11 @@ class MatchBot(MatchPlayer):
         await self.match_mgr._play_card(self.uid, card_id=card_id, auto=False)
 
 class Match:
-    def __init__(self, match_id, game_mode=TRESSETTE_MODE, player_mode=PLAYER_SOLO_MODE):
+    def __init__(self, match_id, player_mode=PLAYER_SOLO_MODE):
         self.match_id = match_id
         self.start_time = datetime.now()
         self.end_time = None
-        self.game_mode = game_mode
+        self.game_mode = TRESSETTE_MODE
         self.player_mode = player_mode
         self.players: list[MatchPlayer] = []
         self.cards = []
@@ -231,6 +231,8 @@ class Match:
             await self._check_and_gen_bot()
 
     async def _check_and_gen_bot(self):
+        if not self.is_public:
+            return
         max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
         if self.bet > max_bet_to_gen_bot:
             return
@@ -318,7 +320,6 @@ class Match:
             if player.uid == uid:
                 game_info.my_cards.extend(player.cards)
         
-        print(f"Send game info to user {uid}, game_info: {game_info}")
         await game_vars.get_game_client().send_packet(uid, CMDs.GAME_INFO, game_info)
 
     # ALERT: This function is called from match_mgr
@@ -622,8 +623,8 @@ class Match:
             self.team_scores[player.team_id] += player.points
             
         # test
-        if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
-            return True
+        # if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
+        #     return True
         
         if self.team_scores[0] >= SCORE_WIN_GAME or self.team_scores[1] >= SCORE_WIN_GAME:
             return True
@@ -833,7 +834,7 @@ class Match:
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
 CARD_VALUES = {
     0: 3, 1: 3, 2: 3, 3: 3,  # Aces (1 point * 3)
-    4: 0, 5: 0, 6: 0, 7: 0,  # 2s
+    4: 1, 5: 1, 6: 1, 7: 1,  # 2s
     8: 1, 9: 1, 10: 1, 11: 1,  # 3s (1 point * 3)
     12: 0, 13: 0, 14: 0, 15: 0,  # 4s
     16: 0, 17: 0, 18: 0, 19: 0,  # 5s

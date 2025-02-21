@@ -81,6 +81,7 @@ class Logs(Base):
     extra1 = Column(Text, nullable=True)
     extra2 = Column(Text, nullable=True)
     extra3 = Column(Text, nullable=True)
+    extra4 = Column(Text, nullable=True)
     extra5 = Column(Text, nullable=True)
     extra6 = Column(Text, nullable=True)
     extra7 = Column(Text, nullable=True)
