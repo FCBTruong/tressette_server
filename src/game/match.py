@@ -22,6 +22,15 @@ class MatchState(Enum):
     ENDING = 3
     ENDED = 4
 
+class PlayCardErrors(Enum):
+    SUCCESS = 0
+    NOT_IN_GAME = 1
+    NOT_YOUR_TURN = 2
+    INVALID_CARD = 3
+    NOT_FOUND_CARD = 4
+    INVALID_SUIT = 5
+    NOT_IN_HAND = 6
+
 PLAYER_SOLO_MODE = 2
 PLAYER_DUO_MODE = 4
 TRESSETTE_MODE = 0
@@ -96,6 +105,13 @@ class MatchBot(MatchPlayer):
         # play a card
         if len(self.cards) == 0:
             return
+        card_id = self.get_card_to_play()
+        # wait for 1 second
+        time_thinking = random.randrange(1, 3)
+        await asyncio.sleep(time_thinking)
+        await self.match_mgr._play_card(self.uid, card_id=card_id, auto=False)
+    
+    async def get_card_to_play(self) -> int:
         card_id = self.cards[0]
         cur_hand_suit = self.match_mgr.hand_suit
         if cur_hand_suit != -1:
@@ -104,9 +120,44 @@ class MatchBot(MatchPlayer):
                 if card % 4 == cur_hand_suit:
                     card_id = card
                     break
-        # wait for 1 second
-        await asyncio.sleep(1)
-        await self.match_mgr._play_card(self.uid, card_id=card_id, auto=False)
+        return card_id
+    
+class MatchBotIntermediate(MatchBot):
+    # overrider get_card_to_play with basic algorithm
+    def get_card_to_play(self) -> int:
+        # filter card - 1
+        cards_on_table = [card for card in self.match_mgr.cards_compare if card != -1]
+
+        if len(cards_on_table) == 0:
+            # play the first card
+            return self.cards[0]
+        else:
+            strong_card = cards_on_table[0]
+            for card in cards_on_table:
+                if CARD_STRONGS[card // 4] > CARD_STRONGS[strong_card // 4]:
+                    strong_card = card
+            # Play the smallest card that can win
+            cur_hand_suit = self.match_mgr.hand_suit
+            cards_valid = []
+            for card in self.cards:
+                if card % 4 == cur_hand_suit:
+                    cards_valid.append(card)
+            if len(cards_valid) == 0:
+                # User has no valid card, definitely lose, play the card with smallest value
+                min_card = self.cards[0]
+                for card in self.cards:
+                    if CARD_VALUES[card] < CARD_VALUES[min_card]:
+                        min_card = card
+                return min_card
+            else:
+                # User has valid card, play the smallest card that can win > strong_card
+                min_card = cards_valid[0]
+                for card in cards_valid:
+                    if CARD_VALUES[card] < CARD_VALUES[min_card] and CARD_STRONGS[card // 4] > CARD_STRONGS[strong_card // 4]:
+                        min_card = card
+                return min_card
+                
+
 
 class Match:
     def __init__(self, match_id, player_mode=PLAYER_SOLO_MODE):
@@ -194,7 +245,7 @@ class Match:
             print('Match is full')
             return
         if is_bot:
-            match_player = MatchBot(user_id, self)
+            match_player = MatchBotIntermediate(user_id, self)
         else:
             match_player = MatchPlayer(user_id, self)
 
@@ -414,28 +465,37 @@ class Match:
         card_id = pkg.card_id
         await self._play_card(uid, card_id, auto=False)
     
+    async def _send_card_play_response(self, uid, status: PlayCardErrors):
+        pkg = packet_pb2.PlayCardResponse()
+        pkg.status = status.value
+        await game_vars.get_game_client().send_packet(uid, CMDs.PLAY_CARD_RESPONSE, pkg)
+
     async def _play_card(self, uid, card_id, auto=False):
         # # test
         # await self.end_game()
         # return
         if self.state != MatchState.PLAYING:
             logger.error("Game is not in progress")
+            await self._send_card_play_response(uid, PlayCardErrors.NOT_IN_GAME)
             return
         
-        if await self.check_done_hand():
+        if self.check_done_hand():
             logger.error("hand is done, wait for next hand")
+            await self._send_card_play_response(uid, PlayCardErrors.NOT_IN_HAND)
             return
     
 
         # check whether it is user turn
         if self.current_turn == -1 or self.players[self.current_turn].uid != uid:
             logger.error(f"User {uid} is not in turn, current turn: {self.current_turn}, user turn: {self.players[self.current_turn].uid}")
+            await self._send_card_play_response(uid, PlayCardErrors.NOT_YOUR_TURN)
             return
         
         # check whether user has the card
         player = self.players[self.current_turn]
         if card_id not in player.cards:
             logger.error(f"User {uid} does not have card {card_id}")
+            await self._send_card_play_response(uid, PlayCardErrors.NOT_FOUND_CARD)
             return
         
         if self.hand_suit == -1:
@@ -446,6 +506,7 @@ class Match:
                 for card in player.cards:
                     if card % 4 == self.hand_suit:
                         logger.error(f"User {uid} must play card with suit {self.hand_suit}")
+                        await self._send_card_play_response(uid, PlayCardErrors.INVALID_SUIT)
                         return
 
         # Now user can play card
@@ -464,7 +525,7 @@ class Match:
         self.cards_compare[self.current_turn] = card_id
         self.time_auto_play = -1
 
-        is_finish_hand = await self.check_done_hand()
+        is_finish_hand = self.check_done_hand()
         if not is_finish_hand:
             self.current_turn = (self.current_turn + 1) % len(self.players)
         else:
@@ -493,7 +554,7 @@ class Match:
             else:
                 self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
-    async def check_done_hand(self):
+    def check_done_hand(self):
         for card in self.cards_compare:
             if card == -1:
                 return False

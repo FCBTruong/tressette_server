@@ -325,3 +325,7 @@ message AppCodeVersion {
   int32 ios_forced_update_version = 5;
   int32 ios_remind_update_version = 6;
 }
+
+message PlayCardResponse {
+  int32 status = 1;
+}
