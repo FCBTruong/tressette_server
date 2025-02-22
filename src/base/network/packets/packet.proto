@@ -329,3 +329,7 @@ message AppCodeVersion {
 message PlayCardResponse {
   int32 status = 1;
 }
+
+message CheatViewCardBot {
+  repeated int32 cards = 1;
+}

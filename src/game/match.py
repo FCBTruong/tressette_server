@@ -7,6 +7,7 @@ import traceback
 
 from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
+from src.config.settings import settings
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
@@ -14,6 +15,7 @@ from datetime import datetime, timedelta
 from src.game.tressette_config import config as tress_config
 import uuid
 from src.game.modules import game_exp
+from src.game.tressette_constants import *
 
 class MatchState(Enum):
     WAITING = 0
@@ -110,6 +112,16 @@ class MatchBot(MatchPlayer):
         time_thinking = random.randrange(1, 3)
         await asyncio.sleep(time_thinking)
         await self.match_mgr._play_card(self.uid, card_id=card_id, auto=False)
+
+        # send back to client current cards for testing
+        if settings.ENABLE_CHEAT:
+            await self._send_cheat_view_card()
+    
+    async def _send_cheat_view_card(self):
+        print('Send cheat view card')
+        pkg = packet_pb2.CheatViewCardBot()
+        pkg.cards.extend(self.cards)
+        await self.match_mgr.broadcast_pkg(CMDs.CHEAT_VIEW_CARD_BOT, pkg)
     
     async def get_card_to_play(self) -> int:
         card_id = self.cards[0]
@@ -123,40 +135,27 @@ class MatchBot(MatchPlayer):
         return card_id
     
 class MatchBotIntermediate(MatchBot):
-    # overrider get_card_to_play with basic algorithm
     def get_card_to_play(self) -> int:
-        # filter card - 1
         cards_on_table = [card for card in self.match_mgr.cards_compare if card != -1]
 
-        if len(cards_on_table) == 0:
-            # play the first card
-            return self.cards[0]
-        else:
-            strong_card = cards_on_table[0]
-            for card in cards_on_table:
-                if CARD_STRONGS[card // 4] > CARD_STRONGS[strong_card // 4]:
-                    strong_card = card
-            # Play the smallest card that can win
-            cur_hand_suit = self.match_mgr.hand_suit
-            cards_valid = []
-            for card in self.cards:
-                if card % 4 == cur_hand_suit:
-                    cards_valid.append(card)
-            if len(cards_valid) == 0:
-                # User has no valid card, definitely lose, play the card with smallest value
-                min_card = self.cards[0]
-                for card in self.cards:
-                    if CARD_VALUES[card] < CARD_VALUES[min_card]:
-                        min_card = card
-                return min_card
-            else:
-                # User has valid card, play the smallest card that can win > strong_card
-                min_card = cards_valid[0]
-                for card in cards_valid:
-                    if CARD_VALUES[card] < CARD_VALUES[min_card] and CARD_STRONGS[card // 4] > CARD_STRONGS[strong_card // 4]:
-                        min_card = card
-                return min_card
-                
+        if not cards_on_table:
+            return self.cards[0]  # Play the first card if nothing is on the table
+
+        strong_card = max(cards_on_table, key=lambda c: TRESSETTE_CARD_STRONGS[c // 4])
+
+        cur_hand_suit = self.match_mgr.hand_suit
+        cards_valid = [card for card in self.cards if card % 4 == cur_hand_suit]
+
+        if not cards_valid:
+            return min(self.cards, key=lambda c: CARD_VALUES[c])  # Play the lowest value card
+
+        # Find the smallest valid card
+        min_card = min(cards_valid, key=lambda c: CARD_VALUES[c])
+
+        # Find the smallest card that can win
+        winning_cards = [card for card in cards_valid if TRESSETTE_CARD_STRONGS[card // 4] > TRESSETTE_CARD_STRONGS[strong_card // 4]]
+
+        return min(winning_cards, key=lambda c: CARD_VALUES[c]) if winning_cards else min_card
 
 
 class Match:
@@ -742,7 +741,7 @@ class Match:
 
         win_card = cards_valid[0]
         for card in cards_valid:
-            if CARD_STRONGS[card // 4] > CARD_STRONGS[win_card // 4]:
+            if TRESSETTE_CARD_STRONGS[card // 4] > TRESSETTE_CARD_STRONGS[win_card // 4]:
                 win_card = card
         return win_card
 
@@ -912,20 +911,3 @@ CARD_VALUES = {
     36: 1, 37: 1, 38: 1, 39: 1   # Kings (1/3 point * 3 = 1)
 }
 
-# Three (2) -> Two(1) -> ACE(0) -> King (9) -> Queen (8) -> Jack (7) -> 7 (6) -> 6 (5) -> 5 (4) -> 4 (3)
-CARD_STRONGS = {
-    2: 100,
-    1: 99,
-    0: 98,
-    9: 97,
-    8: 96,
-    7: 95,
-    6: 94,
-    5: 93,
-    4: 92,
-    3: 91
-}
-
-
-class MatchLogic:
-    pass
