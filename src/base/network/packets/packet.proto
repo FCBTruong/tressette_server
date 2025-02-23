@@ -333,3 +333,8 @@ message PlayCardResponse {
 message CheatViewCardBot {
   repeated int32 cards = 1;
 }
+
+message InviteFriendPlay {
+  int32 uid = 1;
+  int32 room_id = 2;
+}

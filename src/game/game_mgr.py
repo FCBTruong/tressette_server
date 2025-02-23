@@ -33,6 +33,12 @@ class GameMgr:
                 await game_vars.get_match_mgr().receive_user_join_match(uid, payload)
             case CMDs.CLAIM_SUPPORT:
                 await self._claim_support(uid)
+            case CMDs.INVITE_FRIEND_PLAY:
+                await self._receive_invite_friend_play(uid, payload)
+            case CMDs.CHEAT_ADD_BOT:
+                mat = await game_vars.get_match_mgr().get_match_of_user(uid)
+                if mat:
+                    await mat.cheat_add_bot()
      
     async def on_user_login(self, uid: int):
         # wait for 1 second, to let user handle login process
@@ -79,3 +85,24 @@ class GameMgr:
         pkg = packet_pb2.ClaimSupport()
         pkg.support_amount = GOLD_SUPPORT
         await game_vars.get_game_client().send_packet(uid, CMDs.CLAIM_SUPPORT, pkg)
+
+    async def _receive_invite_friend_play(self, uid: int, payload):
+        pkg = packet_pb2.InviteFriendPlay()
+        pkg.ParseFromString(payload)
+        friend_uid = pkg.uid
+        # get current room of user
+        match = await game_vars.get_match_mgr().get_match_of_user(uid)
+        if not match:
+            print("Error invite friend play, user not in match")
+            return
+        
+        if not game_vars.get_friend_mgr().is_friend(uid, friend_uid):
+            print("Error invite friend play, not friend")
+            return
+        
+        # send invite friend play
+        res_pkg = packet_pb2.InviteFriendPlay()
+        res_pkg.uid = uid
+        res_pkg.room_id = match.match_id
+
+        await game_vars.get_game_client().send_packet(friend_uid, CMDs.INVITE_FRIEND_PLAY, res_pkg)

@@ -568,6 +568,10 @@ class Match:
         print(f"Cards: {self.cards}")
         for i, player in enumerate(self.players):
             player.cards = self.cards[i*10: (i+1)*10]
+
+        # TEST CARDS, DONT USE THIS FUNCTION LIVE
+        if settings.DEV_MODE:
+            self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         
         # remove cards dealt
         self.cards = self.cards[10 * len(self.players):]
@@ -896,6 +900,11 @@ class Match:
             if player.uid != -1:
                 count += 1
         return count
+
+    async def cheat_add_bot(self):
+        if settings.ENABLE_CHEAT:
+            bot_uid = random.randint(5000000, 30000000)
+            await self.user_join(bot_uid, is_bot=True)
 
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
 CARD_VALUES = {

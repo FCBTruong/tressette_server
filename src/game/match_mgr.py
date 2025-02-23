@@ -346,3 +346,4 @@ class MatchManager:
                     suitable_bet = bet
         
         return suitable_bet
+    

@@ -335,4 +335,16 @@ class FriendMgr:
 
         await game_vars.get_game_client().send_packet(uid, CMDs.RECOMMEND_FRIENDS, pkg)
 
+    async def is_friend(self, uid1, uid2):
+        async with PsqlOrm.get().session() as session:
+            result = await session.execute(
+                select(Friendship).where(
+                    (Friendship.user1_id == uid1) & (Friendship.user2_id == uid2) |
+                    (Friendship.user1_id == uid2) & (Friendship.user2_id == uid1),
+                    Friendship.status == FRIENDSHIP_STATUS_ACCEPTED
+                )
+            )
+            row = result.scalars().first()
+            return row is not None
+        
 FRIEND_RECOMMENDED_SIZE = 10
