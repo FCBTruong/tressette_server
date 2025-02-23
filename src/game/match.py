@@ -38,13 +38,14 @@ PLAYER_DUO_MODE = 4
 TRESSETTE_MODE = 0
 BRISCOLA_MODE = 1
 
+SERVER_SCORE_ONE_POINT = 3
+
 TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
 TAX_PERCENT = tress_config.get("tax_percent")
 TIME_START_TO_DEAL = 3.5 # seconds
 TIME_DRAW_CARD = 4 # seconds
 TIME_MATCH_MAXIMUM = 60 * 60 # 1 hour -> after this match will be destroyed
-SCORE_WIN_GAME = 11 * 3
-
+SCORE_WIN_GAME = 11 * SERVER_SCORE_ONE_POINT
 # 0 - 39
 TRESSETTE_CARDS = [i for i in range(40)]
 
@@ -185,6 +186,7 @@ class Match:
         self.task_gen_bot = None
         self.unique_game_id = ""
         self.is_public = True
+        self.napoli_claimed_status = {}
 
         # init slots
         for i in range(player_mode):
@@ -615,6 +617,7 @@ class Match:
             win_player.score_last_trick += 3
 
         pkg = packet_pb2.EndHand()
+        pkg.is_end_round = self.is_end_round
         pkg.win_uid = win_player.uid
         pkg.win_card = win_card
         pkg.win_point = win_score
@@ -650,6 +653,7 @@ class Match:
     async def _on_new_round(self):
         self.cur_round += 1
         self.is_end_round = False
+        self.napoli_claimed_status.clear()
 
         # When new round start, all redudant points need to be removed, example 3, 1/3 -> 3, 4 2/3 -> 4
         for player in self.players:
@@ -905,6 +909,48 @@ class Match:
         if settings.ENABLE_CHEAT:
             bot_uid = random.randint(5000000, 30000000)
             await self.user_join(bot_uid, is_bot=True)
+
+    async def receive_game_action_napoli(self, uid, payload):
+        if self.napoli_claimed_status.get(uid):
+            return
+    
+        p = None
+        for player in self.players:
+            if player.uid == uid:
+                p = player
+                break
+        if p is None:
+            return
+        napoli_sets = self.find_napoli(p.cards)
+        if len(napoli_sets) == 0:
+            return
+        
+        self.napoli_claimed_status[uid] = True
+        # add 3 (1 point) for each napoli set
+        point_add = len(napoli_sets) * SERVER_SCORE_ONE_POINT
+        p.points += point_add
+
+        # send to all users
+        pkg = packet_pb2.GameActionNapoli()
+        pkg.uid = uid
+        pkg.point_add = point_add
+
+        await self.broadcast_pkg(CMDs.GAME_ACTION_NAPOLI, pkg)
+
+    def find_napoli(self, hand):
+        napoli_sets = []
+        
+        # Check for Napoli in each suit
+        for suit in range(4):
+            ace = suit
+            two = suit + 4
+            three = suit + 8
+
+            if ace in hand and two in hand and three in hand:
+                napoli_sets.append([ace, two, three])
+        
+        return napoli_sets
+
 
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
 CARD_VALUES = {

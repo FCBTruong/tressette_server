@@ -131,6 +131,7 @@ message EndHand {
   int32 win_card = 2;
   repeated int32 user_points = 3;
   int32 win_point = 4;
+  bool is_end_round = 5;
 }
 
 message DrawCard {
@@ -337,4 +338,9 @@ message CheatViewCardBot {
 message InviteFriendPlay {
   int32 uid = 1;
   int32 room_id = 2;
+}
+
+message GameActionNapoli {
+  int32 uid = 1;
+  int32 point_add = 2;
 }

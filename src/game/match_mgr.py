@@ -347,3 +347,7 @@ class MatchManager:
         
         return suitable_bet
     
+    async def receive_game_action_napoli(self, uid, payload):
+        match = await self.get_match_of_user(uid)
+        if match:
+            await match.receive_game_action_napoli(uid, payload)

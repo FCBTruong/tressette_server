@@ -39,6 +39,8 @@ class GameMgr:
                 mat = await game_vars.get_match_mgr().get_match_of_user(uid)
                 if mat:
                     await mat.cheat_add_bot()
+            case CMDs.GAME_ACTION_NAPOLI:
+                await game_vars.get_match_mgr().receive_game_action_napoli(uid, payload)
      
     async def on_user_login(self, uid: int):
         # wait for 1 second, to let user handle login process
