@@ -45,7 +45,8 @@ TAX_PERCENT = tress_config.get("tax_percent")
 TIME_START_TO_DEAL = 3.5 # seconds
 TIME_DRAW_CARD = 4 # seconds
 TIME_MATCH_MAXIMUM = 60 * 60 # 1 hour -> after this match will be destroyed
-SCORE_WIN_GAME = 11 * SERVER_SCORE_ONE_POINT
+SCORE_WIN_GAME_ELEVEN = 11 * SERVER_SCORE_ONE_POINT
+SCORE_WIN_GAME_TWENTY_ONE = 21 * SERVER_SCORE_ONE_POINT
 # 0 - 39
 TRESSETTE_CARDS = [i for i in range(40)]
 
@@ -160,7 +161,7 @@ class MatchBotIntermediate(MatchBot):
 
 
 class Match:
-    def __init__(self, match_id, player_mode=PLAYER_SOLO_MODE):
+    def __init__(self, match_id, bet, player_mode=PLAYER_SOLO_MODE):
         self.match_id = match_id
         self.start_time = datetime.now()
         self.end_time = None
@@ -171,7 +172,7 @@ class Match:
         self.win_player = None
         self.hand_suit = -1
         self.auto_play_time_by_uid = {}
-        self.bet = 10000
+        self.bet = bet
         self.auto_play_count_by_uid = {} # consecutive auto play count
         self.state = MatchState.WAITING
         self.current_turn = -1
@@ -187,6 +188,12 @@ class Match:
         self.unique_game_id = ""
         self.is_public = True
         self.napoli_claimed_status = {}
+        self.hand_in_round = -1
+
+        if player_mode == PLAYER_SOLO_MODE:
+            self.point_to_win = SCORE_WIN_GAME_ELEVEN
+        else:
+            self.point_to_win = SCORE_WIN_GAME_TWENTY_ONE
 
         # init slots
         for i in range(player_mode):
@@ -286,6 +293,12 @@ class Match:
     async def _check_and_gen_bot(self):
         if not self.is_public:
             return
+        
+        if self.state != MatchState.WAITING:
+            return
+        
+        if self.player_mode != PLAYER_SOLO_MODE:
+            return
         max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
         if self.bet > max_bet_to_gen_bot:
             return
@@ -361,6 +374,8 @@ class Match:
         game_info.bet = self.bet
         game_info.pot_value = self.pot_value
         game_info.current_round = self.cur_round
+        game_info.hand_in_round = self.hand_in_round
+        game_info.point_to_win = self.point_to_win
 
         for player in self.players:
             game_info.uids.append(player.uid)
@@ -420,6 +435,9 @@ class Match:
         self.team_scores = [0, 0]
         self.pot_value = 0
         self.cur_round = 1
+        self.is_end_round = False
+        self.napoli_claimed_status.clear()
+        self.hand_in_round = -1
 
         # reset players scores:
         for player in self.players:
@@ -648,12 +666,15 @@ class Match:
             await self._on_end_round()
     
     async def _on_end_round(self):
+        # wait for 2 seconds
+        await asyncio.sleep(2)
         await self._on_new_round()
 
     async def _on_new_round(self):
         self.cur_round += 1
         self.is_end_round = False
         self.napoli_claimed_status.clear()
+        self.hand_in_round = -1
 
         # When new round start, all redudant points need to be removed, example 3, 1/3 -> 3, 4 2/3 -> 4
         for player in self.players:
@@ -696,7 +717,7 @@ class Match:
         # if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
         #     return True
         
-        if self.team_scores[0] >= SCORE_WIN_GAME or self.team_scores[1] >= SCORE_WIN_GAME:
+        if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
         return False
     
@@ -716,6 +737,7 @@ class Match:
     async def _handle_new_hand(self):
         self.current_hand += 1
         self.hand_suit = -1
+        self.hand_in_round += 1
 
         # next turn is the winner of last hand
         if self.win_player is not None:
@@ -925,6 +947,11 @@ class Match:
         if len(napoli_sets) == 0:
             return
         
+        napoli_suits = []
+        for napoli_set in napoli_sets:
+            set_suit = napoli_set[0] % 4
+            napoli_suits.append(set_suit)
+
         self.napoli_claimed_status[uid] = True
         # add 3 (1 point) for each napoli set
         point_add = len(napoli_sets) * SERVER_SCORE_ONE_POINT
@@ -934,6 +961,7 @@ class Match:
         pkg = packet_pb2.GameActionNapoli()
         pkg.uid = uid
         pkg.point_add = point_add
+        pkg.suits.extend(napoli_suits)
 
         await self.broadcast_pkg(CMDs.GAME_ACTION_NAPOLI, pkg)
 

@@ -12,7 +12,7 @@ from firebase_admin import auth, credentials
 cred = credentials.Certificate("secrets/firebase_auth.json")
 firebase_admin.initialize_app(cred)
 import aiohttp
-import json
+from src.game.tressette_config import config as tress_config
 
 class LoginMgr:
     def __init__(self):
@@ -42,7 +42,7 @@ class LoginMgr:
     
     def create_new_basic_user(self) -> UserInfoSchema:
         user_model = UserInfoSchema()
-        user_model.gold = 100000
+        user_model.gold = 0
         user_model.level = 1
 
         avatar_id = random.choice(AVATAR_IDS)
@@ -66,6 +66,13 @@ class LoginMgr:
             firebase_auth = await session.get(FirebaseAuthSchema, firebase_uid)
             if firebase_auth:
                 uid = firebase_auth.uid
+
+                # Update user info
+                user_info = await session.get(UserInfoSchema, uid)
+                user_info.name = decoded_token.get("name")
+                user_info.avatar = decoded_token.get("picture")
+                user_info.avatar_third_party = decoded_token.get("picture")
+                await session.commit()
             else:
                 # Create a new user
                 basic_user = self.create_new_basic_user()

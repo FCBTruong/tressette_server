@@ -12,6 +12,7 @@ class GameVars:
         self.bots_mgr = None
         self.logs_mgr = None
         self.game_live_performance = None
+        self.customer_service_mgr = None
         
     def get_game_client(self):
         if self.game_client is None:
@@ -74,5 +75,11 @@ class GameVars:
             from src.game.game_live_performance import GameLivePerformance
             self.game_live_performance = GameLivePerformance()
         return self.game_live_performance
+    
+    def get_customer_service_mgr(self):
+        if self.customer_service_mgr is None:
+            from src.game.modules.customer_service import CustomerServiceMgr
+            self.customer_service_mgr = CustomerServiceMgr()
+        return self.customer_service_mgr
     
 game_vars = GameVars()

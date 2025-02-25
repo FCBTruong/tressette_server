@@ -81,6 +81,8 @@ message GameInfo {
   int32 bet = 17;
   int64 pot_value = 18;
   int32 current_round = 19;
+  int32 hand_in_round = 20;
+  int32 point_to_win = 21;
 }
 
 message RegisterLeaveGame {
@@ -343,4 +345,10 @@ message InviteFriendPlay {
 message GameActionNapoli {
   int32 uid = 1;
   int32 point_add = 2;
+  repeated int32 suits = 3;
+}
+
+message CustomerServiceReport {
+  int32 report_type = 1;
+  string report_content = 2;
 }

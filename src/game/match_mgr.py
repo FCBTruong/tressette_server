@@ -61,9 +61,8 @@ class MatchManager:
     async def _create_match(self, bet, player_mode = PLAYER_SOLO_MODE, is_private = False) -> Match:
         match_id = self.start_match_id
         logger.info(f"Creating match {match_id}")
-        match = Match(match_id, player_mode=player_mode)
+        match = Match(match_id, bet, player_mode=player_mode)
         match.set_public(not is_private)
-        match.bet = bet
         self.matches[match_id] = match
         self.start_match_id += 1
         return match

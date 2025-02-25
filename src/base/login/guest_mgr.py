@@ -16,7 +16,7 @@ class GuestMgr:
         async with PsqlOrm.get().session() as session:
             # Create a new user model
             user_model = UserInfoSchema()
-            user_model.gold = 100000
+            user_model.gold = 0
             user_model.level = 1
 
             # random avatar 1 -> 8
