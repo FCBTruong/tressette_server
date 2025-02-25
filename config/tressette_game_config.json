@@ -6,7 +6,8 @@
     "max_bet_to_gen_bot": 100000,
     "ccu_to_gen_bot": 100,
     "level_min_transfer_money": 5,
-    "start_gold": 100000,
+    "startup_gold_auth": 100000,
+    "startup_gold_guest_acc": 100000,
     "bets": [
         5000,
         10000,

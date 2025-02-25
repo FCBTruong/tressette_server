@@ -1,8 +1,13 @@
 
 LOGIN_GUEST = 0
+
+# Third party login providers
 LOGIN_GOOGLE = 1
 LOGIN_FACEBOOK = 2
-LOGIN_TOKEN = 3
+LOGIN_APPLE = 3
+
+LOGIN_TOKEN = 20 # login token is google, facebook, apple
+
 LOGIN_UID_CHEAT = 10
 
 LOGIN_ERROR_SUCCESS = 0

@@ -20,8 +20,10 @@ class UserInfo:
     exp: int
     game_count: int
     win_count: int
+    received_startup: bool
+    login_type: int
     def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool,
-                 last_time_received_support: int):
+                 last_time_received_support: int, received_startup: bool = True):
         self.uid = uid
         self.name = name
         self.gold = gold
@@ -30,6 +32,7 @@ class UserInfo:
         self.avatar_third_party = avatar_third_party
         self.is_active = is_active
         self.last_time_received_support = last_time_received_support
+        self.received_startup = received_startup
 
         # Set default values
         if self.avatar_third_party is None:

@@ -3,6 +3,7 @@ import logging
 from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.base.payment import payment_mgr
+from src.constants import *
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
@@ -52,8 +53,18 @@ class GameClient:
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
         user_pkg = packet_pb2.UserInfo()
+        startup_gold = 0
         
         user_info = await users_info_mgr.get_user_info(uid)
+
+        if not user_info.received_startup:
+            user_info.received_startup = True
+            gold_startup = tress_config.get("startup_gold_guest_acc")
+            if user_info.login_type in [LOGIN_FACEBOOK, LOGIN_GOOGLE, LOGIN_APPLE]:
+                gold_startup = tress_config.get("startup_gold_auth")
+            user_info.add_gold(gold_startup)
+            startup_gold = gold_startup
+            await user_info.commit_to_database('received_startup', 'gold')
 
         user_pkg.uid = user_info.uid
         user_pkg.name = user_info.name
@@ -65,7 +76,9 @@ class GameClient:
         user_pkg.level = user_info.level
         user_pkg.avatar_third_party = user_info.avatar_third_party
         user_pkg.support_num = 1 if game_vars.get_game_mgr().check_can_receive_support(user_info.last_time_received_support) else 0
+        user_pkg.startup_gold = startup_gold
         logger.info(f"User info: {user_info.gold}")
+
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
 

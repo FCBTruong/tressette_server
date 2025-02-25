@@ -81,6 +81,8 @@ class LoginMgr:
                     basic_user.login_type = LOGIN_FACEBOOK
                 elif sign_in_provider == "google.com":
                     basic_user.login_type = LOGIN_GOOGLE
+                elif sign_in_provider == "apple.com":
+                    basic_user.login_type = LOGIN_APPLE
                 
                 basic_user.name = decoded_token.get("name")
                 basic_user.avatar = decoded_token.get("picture")

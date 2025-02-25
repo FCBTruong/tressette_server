@@ -59,6 +59,7 @@ message UserInfo {
   int32 win_count = 11;
   int32 game_count = 12;
   int64 exp = 13;
+  int32 startup_gold = 14;
 }
 
 message GameInfo {
