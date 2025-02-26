@@ -118,6 +118,7 @@ message PlayCard {
 
 message StartGame {
   int32 pot_value = 1;
+  repeated int64 players_gold = 2;
 }
 
 message NewHand {
@@ -158,6 +159,7 @@ message EndGame {
   repeated int32 score_totals = 4;
   repeated int64 gold_changes = 6;
   repeated int64 gold_wins = 7;
+  repeated int64 players_gold = 8;
 }
 
 message PrepareStartGame {
@@ -300,6 +302,7 @@ message PaymentFinishedAppleTransaction {
 message NewRound {
   int32 current_round = 1;
   int64 pot_value = 2;
+  repeated int64 players_gold = 3;
 }
 
 message CreateTable {

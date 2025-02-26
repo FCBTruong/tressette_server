@@ -439,6 +439,13 @@ class Match:
         self.napoli_claimed_status.clear()
         self.hand_in_round = -1
 
+        # Init player golds
+        for player in self.players:
+            if player.is_bot:
+                continue
+            p_info = await users_info_mgr.get_user_info(player.uid)
+            player.gold = p_info.gold
+
         # reset players scores:
         for player in self.players:
             player.points = 0
@@ -449,22 +456,25 @@ class Match:
 
             # get pot user need to contribute
             pot_user_need_to_contribute = self.bet
+
+            # add to debt, to remove later
+            if not player.is_bot:
+                game_vars.get_debt_mgr().add_debt_ingame(player.uid, pot_user_need_to_contribute)
+            player.gold -= pot_user_need_to_contribute
+
             self.pot_value += pot_user_need_to_contribute
-
-            if player.is_bot:
-                continue
-
             player.gold_change = -pot_user_need_to_contribute
-
-            player_info = await users_info_mgr.get_user_info(player.uid)
-            player_info.add_gold(-pot_user_need_to_contribute)
-            await player_info.send_update_money()
 
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
 
+        players_gold = []
+        for player in self.players:
+            players_gold.append(player.gold)
+
         pkg = packet_pb2.StartGame()
         pkg.pot_value = self.pot_value
+        pkg.players_gold.extend(players_gold)
 
         await self.broadcast_pkg(CMDs.START_GAME, pkg)
 
@@ -622,7 +632,7 @@ class Match:
         self.current_hand += 1
 
         # check is end round
-        if len(self.players[0].cards) == 0: # test = 9
+        if len(self.players[0].cards) == 9: # test = 9
             # logic end round
             self.is_end_round = True
         else:
@@ -631,7 +641,7 @@ class Match:
         if self.is_end_round:
             # calculate last trick
             #BONUS 1 point for the last trick to the team that wins it
-            win_player.points += 3 # 1 point for last trick
+            win_player.points += 3
             win_player.score_last_trick += 3
 
         pkg = packet_pb2.EndHand()
@@ -681,24 +691,25 @@ class Match:
             redundant_points = player.points % 3
             player.points -= redundant_points
 
+        players_gold = []
         # players need to contribute to pot again
         for player in self.players:
             # get pot user need to contribute
             pot_user_need_to_contribute = self.bet
             self.pot_value += pot_user_need_to_contribute
-
-            if player.is_bot:
-                continue
-
             player.gold_change = -pot_user_need_to_contribute
-            player_info = await users_info_mgr.get_user_info(player.uid)
-            player_info.add_gold(-pot_user_need_to_contribute)
-            await player_info.send_update_money()
+
+            player.gold -= pot_user_need_to_contribute
+            if not player.is_bot:
+                game_vars.get_debt_mgr().add_debt_ingame(player.uid, pot_user_need_to_contribute)
+
+            players_gold.append(player.gold)
 
         # Send new round
         pkg = packet_pb2.NewRound()
         pkg.current_round = self.cur_round
         pkg.pot_value = self.pot_value
+        pkg.players_gold.extend(players_gold)
 
         await self.broadcast_pkg(CMDs.NEW_ROUND, pkg)
 
@@ -708,6 +719,8 @@ class Match:
         await self._handle_new_hand()
 
     def _is_end_game(self):
+        if self.cur_round == 2:
+            return True
         # check if one team reach 21 * 3 points then end game
         self.team_scores = [0, 0]
         for player in self.players:
@@ -792,26 +805,33 @@ class Match:
 
         # add gold
         for player in self.players:
+            if player.team_id == self.win_team:
+                gold_win = int(self.pot_value / self.player_mode * 2)
+                gold_received = int(gold_win - gold_win * TAX_PERCENT)
+                player.gold += gold_received
+                player.gold_change += gold_win
+                player.gold_win = gold_win
+        
             if player.uid == -1 or player.is_bot:
                 continue
+
             user_info = await users_info_mgr.get_user_info(player.uid)
             user_info.game_count += 1
             added_exp = int(game_exp.calculate_exp_gain(self.bet))
-            if player.team_id == self.win_team:
-                gold_win = int(self.pot_value / self.player_mode * 2)
-                player.gold_change += gold_win
-                player.gold_win = gold_win
 
-                gold_received = int(gold_win - gold_win * TAX_PERCENT)
+            if player.team_id == self.win_team:
                 user_info.add_gold(gold_received)
                 user_info.win_count += 1
                 added_exp = added_exp * 2
 
             user_info.add_exp(added_exp)
+            gold_debt = game_vars.get_debt_mgr().get_debt_ingame(player.uid)
+            user_info.add_gold(-gold_debt)
+            # reset debt
+            game_vars.get_debt_mgr().remove_debt_ingame(player.uid)
 
             await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
             await user_info.send_update_money()
-
             game_vars.get_logs_mgr().write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet, player.gold_change])
 
         uids = []
@@ -820,6 +840,7 @@ class Match:
         score_cards = []
         gold_changes = []
         gold_wins = []
+        players_gold = []
         for player in self.players:
             uids.append(player.uid)
             score_cards.append(player.points - player.score_last_trick)
@@ -827,6 +848,7 @@ class Match:
             score_totals.append(player.points)
             gold_changes.append(player.gold_change)
             gold_wins.append(player.gold_win)
+            players_gold.append(player.gold)
 
         
         # send to users
@@ -838,6 +860,7 @@ class Match:
         pkg.score_totals.extend(score_totals)
         pkg.gold_changes.extend(gold_changes)
         pkg.gold_wins.extend(gold_wins)
+        pkg.players_gold.extend(players_gold)
 
         await self.broadcast_pkg(CMDs.END_GAME, pkg)
         

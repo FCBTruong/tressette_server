@@ -13,6 +13,7 @@ class GameVars:
         self.logs_mgr = None
         self.game_live_performance = None
         self.customer_service_mgr = None
+        self.debt_mgr = None
         
     def get_game_client(self):
         if self.game_client is None:
@@ -81,5 +82,11 @@ class GameVars:
             from src.game.modules.customer_service import CustomerServiceMgr
             self.customer_service_mgr = CustomerServiceMgr()
         return self.customer_service_mgr
+    
+    def get_debt_mgr(self):
+        if self.debt_mgr is None:
+            from src.game.debt_mgr import DebtMgr
+            self.debt_mgr = DebtMgr()
+        return self.debt_mgr
     
 game_vars = GameVars()

@@ -70,7 +70,6 @@ class LoginMgr:
                 # Update user info
                 user_info = await session.get(UserInfoSchema, uid)
                 user_info.name = decoded_token.get("name")
-                user_info.avatar = decoded_token.get("picture")
                 user_info.avatar_third_party = decoded_token.get("picture")
                 await session.commit()
             else:

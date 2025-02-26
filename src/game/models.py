@@ -41,6 +41,12 @@ class UserInfo:
         if self.level is None:
             self.level = 1
 
+        if self.name is None:
+            self.name = "tressette player"
+
+        if self.avatar is None:
+            self.avatar = "0"
+
     def update_avatar(self, avatar: str):
         self.avatar = avatar
 
