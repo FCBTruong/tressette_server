@@ -41,7 +41,6 @@ class GameClient:
     async def user_login_success(self, uid, device_model, platform):
         logger.info(f"User with ID {uid} has successfully logged in")
         general_pkg = packet_pb2.GeneralInfo()
-        general_pkg.min_gold_play = tress_config.get("min_gold_play")
         general_pkg.time_thinking_in_turn = tress_config.get("time_thinking_in_turn")
         general_pkg.timestamp = int(datetime.now().timestamp())
         general_pkg.bet_multiplier_min = tress_config.get("bet_multiplier_min")

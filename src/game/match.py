@@ -8,6 +8,7 @@ import traceback
 from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
+from src.constants import *
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
@@ -74,7 +75,6 @@ class MatchPlayer:
         self.is_bot = False
         self.match_mgr = match_mgr
         self.gold_change = 0
-        self.gold_win = 0
 
     
     def reset_game(self):
@@ -189,6 +189,7 @@ class Match:
         self.is_public = True
         self.napoli_claimed_status = {}
         self.hand_in_round = -1
+        self.enable_bet_win_score = True
 
         if player_mode == PLAYER_SOLO_MODE:
             self.point_to_win = SCORE_WIN_GAME_ELEVEN
@@ -376,6 +377,7 @@ class Match:
         game_info.current_round = self.cur_round
         game_info.hand_in_round = self.hand_in_round
         game_info.point_to_win = self.point_to_win
+        game_info.enable_bet_win_score = self.enable_bet_win_score
 
         for player in self.players:
             game_info.uids.append(player.uid)
@@ -391,9 +393,10 @@ class Match:
         await game_vars.get_game_client().send_packet(uid, CMDs.GAME_INFO, game_info)
 
     # ALERT: This function is called from match_mgr
-    async def user_leave(self, uid):
+    async def user_leave(self, uid, reason = 0):
         pkg = packet_pb2.UserLeaveMatch()
         pkg.uid = uid
+        pkg.reason = reason
         await self.broadcast_pkg(CMDs.USER_LEAVE_MATCH, pkg)
 
         # remove user from match
@@ -452,7 +455,6 @@ class Match:
             player.score_last_trick = 0
             player.cards.clear()
             player.gold_change = 0
-            player.gold_win = 0
 
             # get pot user need to contribute
             pot_user_need_to_contribute = self.bet
@@ -463,7 +465,7 @@ class Match:
             player.gold -= pot_user_need_to_contribute
 
             self.pot_value += pot_user_need_to_contribute
-            player.gold_change = -pot_user_need_to_contribute
+            player.gold_change -= pot_user_need_to_contribute
 
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
@@ -697,7 +699,7 @@ class Match:
             # get pot user need to contribute
             pot_user_need_to_contribute = self.bet
             self.pot_value += pot_user_need_to_contribute
-            player.gold_change = -pot_user_need_to_contribute
+            player.gold_change -= pot_user_need_to_contribute
 
             player.gold -= pot_user_need_to_contribute
             if not player.is_bot:
@@ -719,8 +721,6 @@ class Match:
         await self._handle_new_hand()
 
     def _is_end_game(self):
-        if self.cur_round == 2:
-            return True
         # check if one team reach 21 * 3 points then end game
         self.team_scores = [0, 0]
         for player in self.players:
@@ -729,6 +729,8 @@ class Match:
         # test
         # if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
         #     return True
+        if self.cur_round == 2:
+            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -803,14 +805,30 @@ class Match:
         else:
             self.win_team = 1
 
+        diff_score = abs(self.team_scores[0] - self.team_scores[1]) // 3
+        diff_score = 11
+        total_team_lose_pay = 0
+
+        if self.enable_bet_win_score:
+            for player in self.players:
+                if player.team_id != self.win_team:
+                    glose = min(player.gold, self.bet * diff_score)
+                    total_team_lose_pay += glose
+                    player.gold -= glose
+                    player.gold_change -= glose
+                    game_vars.get_debt_mgr().add_debt_ingame(player.uid, glose)
+
+        gold_win_score_one_player = int(total_team_lose_pay // (self.player_mode / 2))
+
+        pot_received_one_player = int(self.pot_value // (self.player_mode / 2))
+
         # add gold
         for player in self.players:
             if player.team_id == self.win_team:
-                gold_win = int(self.pot_value / self.player_mode * 2)
+                gold_win = pot_received_one_player + gold_win_score_one_player
                 gold_received = int(gold_win - gold_win * TAX_PERCENT)
                 player.gold += gold_received
                 player.gold_change += gold_win
-                player.gold_win = gold_win
         
             if player.uid == -1 or player.is_bot:
                 continue
@@ -839,7 +857,6 @@ class Match:
         score_last_tricks = []
         score_cards = []
         gold_changes = []
-        gold_wins = []
         players_gold = []
         for player in self.players:
             uids.append(player.uid)
@@ -847,7 +864,6 @@ class Match:
             score_last_tricks.append(player.score_last_trick)
             score_totals.append(player.points)
             gold_changes.append(player.gold_change)
-            gold_wins.append(player.gold_win)
             players_gold.append(player.gold)
 
         
@@ -859,8 +875,8 @@ class Match:
         pkg.score_last_tricks.extend(score_last_tricks)
         pkg.score_totals.extend(score_totals)
         pkg.gold_changes.extend(gold_changes)
-        pkg.gold_wins.extend(gold_wins)
         pkg.players_gold.extend(players_gold)
+        pkg.gold_win_score = gold_win_score_one_player
 
         await self.broadcast_pkg(CMDs.END_GAME, pkg)
         
@@ -900,7 +916,7 @@ class Match:
                 continue
             user_info = await users_info_mgr.get_user_info(player.uid)
             if user_info.gold < self.get_min_gold_play():
-                await game_vars.get_match_mgr().handle_user_leave_match(player.uid)
+                await game_vars.get_match_mgr().handle_user_leave_match(player.uid, REASON_KICK_NOT_ENOUGH_GOLD)
     
         # update user connection, kick user that is disconnected
         for player in self.players:

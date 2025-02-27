@@ -84,6 +84,7 @@ message GameInfo {
   int32 current_round = 19;
   int32 hand_in_round = 20;
   int32 point_to_win = 21;
+  bool enable_bet_win_score = 22;
 }
 
 message RegisterLeaveGame {
@@ -101,6 +102,7 @@ message NewUserJoinMatch {
 
 message UserLeaveMatch {
   int32 uid = 1;
+  int32 reason = 2;
 }
 
 message DealCard {
@@ -144,11 +146,10 @@ message DrawCard {
 
 message GeneralInfo {
   int64 timestamp = 1;
-  int64 min_gold_play = 2;
-  int32 time_thinking_in_turn = 3;
-  repeated int32 tressette_bets = 4;
-  int32 bet_multiplier_min = 5;
-  repeated int32 exp_levels = 6;
+  int32 time_thinking_in_turn = 2;
+  repeated int32 tressette_bets = 3;
+  int32 bet_multiplier_min = 4;
+  repeated int32 exp_levels = 5;
 }
 
 message EndGame {
@@ -158,8 +159,8 @@ message EndGame {
   repeated int32 score_last_tricks = 3;
   repeated int32 score_totals = 4;
   repeated int64 gold_changes = 6;
-  repeated int64 gold_wins = 7;
-  repeated int64 players_gold = 8;
+  repeated int64 players_gold = 7;
+  int64 gold_win_score = 8;
 }
 
 message PrepareStartGame {

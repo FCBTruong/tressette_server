@@ -78,7 +78,7 @@ class MatchManager:
             return
         # check if user has enough gold to create table this bet
         user_info = await users_info_mgr.get_user_info(uid)
-        if user_info.gold < tress_config.get("min_gold_play"):
+        if user_info.gold < self.get_gold_minimum_play():
             print(f"User {uid} not enough gold")
             return
         if await self.is_user_in_match(uid):
@@ -170,7 +170,7 @@ class MatchManager:
 
 
     # USER officially leave match
-    async def handle_user_leave_match(self, uid: int) -> LeaveMatchErrors:
+    async def handle_user_leave_match(self, uid: int, reason = 0) -> LeaveMatchErrors:
         match_id = self.user_matchids.get(uid)
 
         if not match_id:
@@ -180,9 +180,8 @@ class MatchManager:
         if not match.can_quit_game():
             return LeaveMatchErrors.MATCH_STARTED
         
-        await match.user_leave(uid)
+        await match.user_leave(uid, reason)
         self.user_matchids.pop(uid)
-        print("User leave match", match.check_has_real_players())
 
         if not match.check_has_real_players():
             print('Destroy match', match_id)
@@ -263,7 +262,7 @@ class MatchManager:
 
     async def _handle_quick_play(self, uid: int):
         user = await users_info_mgr.get_user_info(uid)
-        if user.gold < tress_config.get("min_gold_play"):
+        if user.gold < self.get_gold_minimum_play():
             print(f"User {uid} not enough gold")
             return
 
@@ -350,3 +349,6 @@ class MatchManager:
         match = await self.get_match_of_user(uid)
         if match:
             await match.receive_game_action_napoli(uid, payload)
+
+    def get_gold_minimum_play(self):
+        return tress_config.get('bets')[0] * tress_config.get('bet_multiplier_min')
