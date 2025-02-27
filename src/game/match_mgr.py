@@ -131,7 +131,7 @@ class MatchManager:
                 # Ensure user has enough gold to play
                 if gold >= min_gold:
                     # Prioritize match with gold closest to 2 * min_gold_play
-                    diff = abs((2 * min_gold) - gold)
+                    diff = abs((3 * min_gold) - gold)
                     
                     if best_match is None or diff < best_diff:
                         best_match = match
@@ -281,9 +281,9 @@ class MatchManager:
             # Expect bet
             ccu = await game_vars.get_game_live_performance().get_ccu()
             if ccu < 100:
-                expect_bet = int(user.gold / 10)
+                expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 3))
             else:
-                expect_bet = int(user.gold / 6)
+                expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
             bet = self.find_largest_bet_below(expect_bet)
 
             match = await self._create_match(bet)
@@ -352,3 +352,8 @@ class MatchManager:
 
     def get_gold_minimum_play(self):
         return tress_config.get('bets')[0] * tress_config.get('bet_multiplier_min')
+    
+    async def receive_user_return_to_table(self, uid):
+        match = await self.get_match_of_user(uid)
+        if match:
+            match.user_return_to_table(uid)

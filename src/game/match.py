@@ -42,6 +42,7 @@ BRISCOLA_MODE = 1
 SERVER_SCORE_ONE_POINT = 3
 
 TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
+TIME_AUTO_PLAY_SEVERE = min(3, TIME_AUTO_PLAY)
 TAX_PERCENT = tress_config.get("tax_percent")
 TIME_START_TO_DEAL = 3.5 # seconds
 TIME_DRAW_CARD = 4 # seconds
@@ -171,9 +172,9 @@ class Match:
         self.cards = []
         self.win_player = None
         self.hand_suit = -1
-        self.auto_play_time_by_uid = {}
         self.bet = bet
         self.auto_play_count_by_uid = {} # consecutive auto play count
+        self.users_auto_play = {} # uids that are auto play, server will not wait for them
         self.state = MatchState.WAITING
         self.current_turn = -1
         self.register_leave_uids = set()
@@ -427,7 +428,6 @@ class Match:
         self.current_hand = -1
         self.time_auto_play = -1
         self.cards_compare.clear()
-        self.auto_play_time_by_uid.clear()
         self.hand_suit = -1
         self.win_player = None
         self.win_card = -1
@@ -542,13 +542,12 @@ class Match:
 
         # Now user can play card
         if not auto:
-            # remove auto play time
-            self.auto_play_time_by_uid.pop(uid, None)
-
-            # remove auto play count
+            self.users_auto_play.pop(uid, None)
             self.auto_play_count_by_uid.pop(uid, None)
         else:
             self.auto_play_count_by_uid[uid] = self.auto_play_count_by_uid.get(uid, 0) + 1
+            if self.auto_play_count_by_uid[uid] >= 3:
+                self.users_auto_play[uid] = True
             
         # remove card from player
         print('remove card id: ', card_id, ' auto: ', auto)
@@ -580,9 +579,12 @@ class Match:
             # next uid
             next_uid = self.players[self.current_turn].uid
             await self.players[self.current_turn].on_turn()
-            if self.auto_play_time_by_uid.get(next_uid):
-                self.time_auto_play = self.auto_play_time_by_uid[next_uid] + TIME_AUTO_PLAY
+
+            if next_uid in self.users_auto_play:
+                # people that are auto play
+                self.time_auto_play = TIME_AUTO_PLAY_SEVERE + datetime.now().timestamp()
             else:
+                # normal people
                 self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
     def check_done_hand(self):
@@ -592,6 +594,10 @@ class Match:
         return True
 
     async def user_reconnect(self, uid):
+       # remove state auto play if has
+       self.auto_play_count_by_uid.pop(uid, None)
+       self.users_auto_play.pop(uid, None)
+       
        await self._send_game_info(uid)
 
     async def deal_card(self):
@@ -634,7 +640,7 @@ class Match:
         self.current_hand += 1
 
         # check is end round
-        if len(self.players[0].cards) == 9: # test = 9
+        if len(self.players[0].cards) == 0: # test = 9
             # logic end round
             self.is_end_round = True
         else:
@@ -806,7 +812,6 @@ class Match:
             self.win_team = 1
 
         diff_score = abs(self.team_scores[0] - self.team_scores[1]) // 3
-        diff_score = 11
         total_team_lose_pay = 0
 
         if self.enable_bet_win_score:
@@ -904,9 +909,8 @@ class Match:
             await game_vars.get_match_mgr().handle_user_leave_match(uid)    
 
         # kick user auto playing consecutively more than 3 times
-        for uid, count in self.auto_play_count_by_uid.items():
-            if count >= 3:
-                await game_vars.get_match_mgr().handle_user_leave_match(uid)
+        for uid in self.users_auto_play:
+            await game_vars.get_match_mgr().handle_user_leave_match(uid)
 
         # Kick user not has enough gold
         for player in self.players:
@@ -1017,6 +1021,9 @@ class Match:
                 napoli_sets.append([ace, two, three])
         
         return napoli_sets
+    
+    def user_return_to_table(self, uid):
+        self.users_auto_play.pop(uid, None)
 
 
 # Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
