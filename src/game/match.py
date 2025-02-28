@@ -597,7 +597,7 @@ class Match:
        # remove state auto play if has
        self.auto_play_count_by_uid.pop(uid, None)
        self.users_auto_play.pop(uid, None)
-       
+
        await self._send_game_info(uid)
 
     async def deal_card(self):
@@ -608,8 +608,8 @@ class Match:
             player.cards = self.cards[i*10: (i+1)*10]
 
         # TEST CARDS, DONT USE THIS FUNCTION LIVE
-        # if settings.DEV_MODE:
-        #     self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        if settings.DEV_MODE:
+            self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         
         # remove cards dealt
         self.cards = self.cards[10 * len(self.players):]
@@ -731,12 +731,6 @@ class Match:
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-            
-        # test
-        # if self.team_scores[0] >= 1 or self.team_scores[1] >= 1:
-        #     return True
-        if self.cur_round == 2:
-            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True

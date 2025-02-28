@@ -98,3 +98,5 @@ class GameClient:
         from src.base.network.connection_manager import connection_manager
         await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())
 
+     
+    

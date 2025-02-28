@@ -98,6 +98,11 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
             await user.commit_gold()
             await user.send_update_money()
             return 'cheat ok'
+        elif cmd == 'broadcast':
+            if data is None:
+                raise HTTPException(status_code=400, detail="Missing data for broadcast command")
+            await connection_manager.admin_broadcast(data)
+            return 'broadcast ok'
         return "hello"
     except Exception as e:
         traceback.print_exc()

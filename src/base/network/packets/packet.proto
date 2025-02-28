@@ -357,3 +357,7 @@ message CustomerServiceReport {
   int32 report_type = 1;
   string report_content = 2;
 }
+
+message AdminBroadcast {
+  string mes = 1;
+}

@@ -318,5 +318,13 @@ class ConnectionManager:
         p = login_response.SerializeToString()
         await self.send_packet(websocket, CMD_LOGIN_FIREBASE, p)   
 
+    async def admin_broadcast(self, message: str):
+        # sent to all users
+        pkg = packet_pb2.AdminBroadcast()
+        pkg.mes = message
+        for uid, ws in self.user_websockets.items():
+            await self.send_packet_to_user(uid, CMDs.ADMIN_BROADCAST, pkg.SerializeToString())
+            
+
 # Instantiate the ConnectionManager for usage
 connection_manager = ConnectionManager()
