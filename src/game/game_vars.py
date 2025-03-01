@@ -65,12 +65,6 @@ class GameVars:
             self.bots_mgr = BotsMgr()
         return self.bots_mgr
     
-    def get_logs_mgr(self):
-        if self.logs_mgr is None:
-            from src.base.logs.logs_mgr import LogsMgr
-            self.logs_mgr = LogsMgr()
-        return self.logs_mgr
-    
     def get_game_live_performance(self):
         if self.game_live_performance is None:
             from src.game.game_live_performance import GameLivePerformance

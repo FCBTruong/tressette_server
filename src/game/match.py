@@ -5,6 +5,7 @@ import logging
 import random
 import traceback
 
+from src.base.logs.logs_mgr import write_log
 from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
@@ -418,7 +419,7 @@ class Match:
         for player in self.players:
             if player.is_bot or player.uid == -1:
                 continue
-            game_vars.get_logs_mgr().write_log(player.uid, "start_game", "", [self.unique_match_id, self.unique_game_id, self.bet, \
+            write_log(player.uid, "start_game", "", [self.unique_match_id, self.unique_game_id, self.bet, \
                                                                               self.player_mode, self.game_mode])
 
         print('Start game')
@@ -849,7 +850,7 @@ class Match:
 
             await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
             await user_info.send_update_money()
-            game_vars.get_logs_mgr().write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet, player.gold_change])
+            write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet, player.gold_change])
 
         uids = []
         score_totals = []

@@ -4,6 +4,7 @@ import asyncio
 from enum import Enum
 import logging
 
+from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
@@ -291,7 +292,7 @@ class MatchManager:
         print(f"User {uid} join match {match.match_id}")
         await self._user_join_match(match, uid=uid)
 
-        game_vars.get_logs_mgr().write_log(uid, "quick_play", "", [])
+        write_log(uid, "quick_play", "", [])
     
     
     async def _handle_user_join_by_match_id(self, uid, match_id):

@@ -1,26 +1,51 @@
-import asyncio
-from src.postgres.orm import PsqlOrm
-from src.postgres.sql_models import Logs
+
+import threading
+import httpx  # Better for async requests
 from datetime import datetime
+import time
 
-class LogsMgr:
-    async def _write_log(self, uid, action, sub_action, extras):
-        """Internal async function to handle log writing."""
-        # Map extras to extra1, extra2, ..., extra10
-        extras_mapping = {f"extra{i + 1}": str(extras[i]) for i in range(min(len(extras), 10))}
+from src.config.settings import settings
 
-        async with PsqlOrm.get().session() as session:
-            new_log = Logs(
-                uid=uid,
-                log_time=datetime.utcnow(),
-                action=action,
-                sub_action=sub_action,
-                **extras_mapping  # Unpack extras into the appropriate fields
-            )
-            session.add(new_log)
-            await session.commit()
 
-    def write_log(self, uid, action, sub_action, extras):
-        print('write log', action, extras)
-        """Public function to trigger log writing without blocking."""
-        asyncio.create_task(self._write_log(uid, action, sub_action, extras))
+log_buffer = []
+buffer_limit = 10000  # Max logs before forcing send
+log_server_url = settings.LOGS_URL
+
+def write_log(uid, action, sub_action, extras):
+    """Append log to buffer and send if limit is reached."""
+    print('write log', action, extras)
+
+    global log_buffer
+    log_buffer.append({
+        "log_time": datetime.now().isoformat(),
+        "uid": uid,
+        "action": action,
+        "sub_action": sub_action,
+        "extras": extras
+    })
+
+    if len(log_buffer) >= buffer_limit:
+        send_logs()
+
+def send_logs():
+    """Send logs to the log server."""
+    global log_buffer
+    if log_buffer:
+        try:
+            response = httpx.post(log_server_url, json=log_buffer, timeout=10)
+            if response.status_code != 200:
+                print(f"Failed to send logs, status: {response.status_code}")
+        except Exception as e:
+            print(f"Error sending logs: {e}")
+
+        log_buffer.clear()
+
+TIME_SEND_LOGS = 60 * 10 # 10 minutes
+# Background thread for sending logs every 10 minutes
+def start_log_sender():
+    while True:
+        time.sleep(TIME_SEND_LOGS)
+        send_logs()
+
+# Start the background thread
+threading.Thread(target=start_log_sender, daemon=True).start()

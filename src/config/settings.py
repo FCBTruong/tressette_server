@@ -41,6 +41,7 @@ class RedisSettings(DatabaseSettings):
 class CommonSettings(BaseSettings):
     ENABLE_CHEAT: Optional[bool] = os.getenv("ENABLE_CHEAT") == "true"
     DEV_MODE: Optional[bool] = os.getenv("DEV_MODE") == "true"
+    LOGS_URL: Optional[str] = os.getenv("LOGS_URL")
     
 class Settings(
     EnvironmentSettings,

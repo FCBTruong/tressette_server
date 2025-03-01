@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import json
+from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.base.payment import apple_pay, google_pay
 from src.game.users_info_mgr import users_info_mgr
@@ -137,7 +138,7 @@ async def _purchase_success(uid, pack_id):
     # send to user
     await game_vars.get_game_client().send_packet(uid, CMDs.PAYMENT_SUCCESS, pkg)
 
-    game_vars.get_logs_mgr().write_log(uid, "payment", "buy_success", [pack_id, before_gold, user_info.gold])
+    write_log(uid, "payment", "buy_success", [pack_id, before_gold, user_info.gold])
 
 def get_pack_info(pack_id):
     packs = config.get("packs")

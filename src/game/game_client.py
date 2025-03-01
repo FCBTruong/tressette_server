@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from src.base.logs.logs_mgr import write_log
 from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.base.payment import payment_mgr
@@ -31,7 +32,7 @@ class GameClient:
                 await self.send_packet(uid, CMDs.LOGOUT, logout_pkg)
                 print("Accepted logout")
                 await connection_manager.user_logout(uid)
-                game_vars.get_logs_mgr().write_log(uid, "logout", "", [])
+                write_log(uid, "logout", "", [])
             case _:
                 await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
                 await users_info_mgr.on_receive_packet(uid, cmd_id, payload)
@@ -92,7 +93,7 @@ class GameClient:
         await game_vars.get_game_mgr().on_user_login(uid)
 
         # Write log login
-        game_vars.get_logs_mgr().write_log(uid, "login", "", [device_model, platform])
+        write_log(uid, "login", "", [device_model, platform])
 
     async def send_packet(self, uid, cmd_id, pkt):
         from src.base.network.connection_manager import connection_manager

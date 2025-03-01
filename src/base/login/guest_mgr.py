@@ -3,6 +3,7 @@
 import random
 import uuid
 
+from src.base.logs.logs_mgr import write_log
 from src.game.game_vars import game_vars
 from src.postgres.orm import PsqlOrm
 from src.postgres.sql_models import GuestsSchema, UserInfoSchema
@@ -46,5 +47,5 @@ class GuestMgr:
             session.add(guest_model)
             # Commit the session to save the guest record
             await session.commit()
-        game_vars.get_logs_mgr().write_log(guest_id, "new_user", "guest", [])
+        write_log(guest_id, "new_user", "guest", [])
         return guest_id
