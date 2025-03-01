@@ -33,7 +33,7 @@ async def _handle_apple_consume(uid, payload):
     receipt_data = pkg.receipt_data
     pack_id = pkg.pack_id
 
-    purchase_info = await apple_pay.verify_apple_receipt(receipt_data)
+    purchase_info = await apple_pay.verify_apple_receipt(uid, receipt_data)
 
     if not purchase_info: # not purchased yet
         print("Invalid purchase")

@@ -9,7 +9,7 @@ from src.base.payment.google_pay import verify_purchase
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 import src.game.game_client as game_client
-
+from src.base.payment.apple_pay import cheat_test_sandbox
 
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
@@ -103,6 +103,11 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
                 raise HTTPException(status_code=400, detail="Missing data for broadcast command")
             await connection_manager.admin_broadcast(data)
             return 'broadcast ok'
+        elif cmd == 'enable_sandbox':
+            if data is None:
+                raise HTTPException(status_code=400, detail="Missing data for enable_sandbox command")
+            cheat_test_sandbox(data)
+            return 'enable_sandbox ok'
         return "hello"
     except Exception as e:
         traceback.print_exc()
