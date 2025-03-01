@@ -94,7 +94,7 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
             user = await users_info_mgr.get_user_info(int(uid))
             if user is None:
                 return f"User {uid} not found"
-            await user.add_gold(int(gold))
+            user.add_gold(int(gold))
             await user.commit_gold()
             await user.send_update_money()
             return 'cheat ok'
@@ -108,6 +108,11 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
                 raise HTTPException(status_code=400, detail="Missing data for enable_sandbox command")
             cheat_test_sandbox(data)
             return 'enable_sandbox ok'
+        elif cmd == "test_curl":
+            # curl link and return response
+            import requests
+            response = requests.get(data)
+            return response.text
         return "hello"
     except Exception as e:
         traceback.print_exc()
