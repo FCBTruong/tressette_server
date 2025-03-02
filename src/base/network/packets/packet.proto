@@ -28,6 +28,7 @@ message Login {
   string token = 2;
   string device_model = 3;
   string platform = 4;
+  string device_country = 5;
 }
 
 message LoginFirebase {

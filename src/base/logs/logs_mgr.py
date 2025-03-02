@@ -41,6 +41,10 @@ def send_logs():
         log_buffer.clear()
 
 TIME_SEND_LOGS = 60 * 10 # 10 minutes
+
+if settings.DEV_MODE:
+    TIME_SEND_LOGS = 1
+    
 # Background thread for sending logs every 10 minutes
 def start_log_sender():
     while True:
