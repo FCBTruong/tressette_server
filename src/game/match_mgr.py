@@ -48,16 +48,23 @@ class MatchManager:
         """The main loop to manage matches."""
         try:
             while True:
+                tasks = []
                 for match in list(self.matches.values()):  # Use list() to avoid mutation issues.
-                    try:
-                        await match.loop()
-                    except Exception as e:
-                        logger.error(f"Error in match loop: {e}")
+                    tasks.append(self._run_match(match))
+                
+                await asyncio.gather(*tasks, return_exceptions=True)
                 await asyncio.sleep(0.5)
         except asyncio.CancelledError:
             logger.info("MatchManager loop has been stopped.")
         except Exception as e:
             logger.error(f"Unexpected error in MatchManager loop: {e}")
+
+    async def _run_match(self, match: Match):
+        """Run a single match loop and handle errors."""
+        try:
+            await match.loop()
+        except Exception as e:
+            logger.error(f"Error in match loop for match {match.match_id}: {e}")
 
     async def _create_match(self, bet, player_mode = PLAYER_SOLO_MODE, is_private = False) -> Match:
         match_id = self.start_match_id
