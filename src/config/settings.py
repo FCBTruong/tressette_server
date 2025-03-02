@@ -28,8 +28,8 @@ class PostgresSettings(DatabaseSettings):
     POSTGRES_DB: Optional[str] = os.getenv("POSTGRES_DB")
 
     # PsqlORM settings
-    POSTGRES_POOL_SIZE: Optional[int] = os.getenv("POSTGRES_POOL_SIZE", 100)
-    POSTGRES_MAX_OVERFLOW: Optional[int] = os.getenv("POSTGRES_MAX_OVERFLOW", 100)
+    POSTGRES_POOL_SIZE: Optional[int] = os.getenv("POSTGRES_POOL_SIZE", 50)
+    POSTGRES_MAX_OVERFLOW: Optional[int] = os.getenv("POSTGRES_MAX_OVERFLOW", 50)
     POSTGRES_POOL_TIMEOUT: Optional[int] = os.getenv("POSTGRES_POOL_TIMEOUT", 30)
     POSTGRES_POOL_RECYCLE: Optional[int] = os.getenv("POSTGRES_POOL_RECYCLE", 3600)
 
