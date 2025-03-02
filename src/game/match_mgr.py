@@ -180,7 +180,7 @@ class MatchManager:
     # USER officially leave match
     async def handle_user_leave_match(self, uid: int, reason = 0) -> LeaveMatchErrors:
         match_id = self.user_matchids.get(uid)
-
+        print(f"User {uid} leave match {match_id}")
         if not match_id:
             return LeaveMatchErrors.NOT_IN_MATCH
         
@@ -211,6 +211,7 @@ class MatchManager:
             await match.user_play_card(uid, payload)
 
     async def receive_request_table_list(self, uid):
+        print(f"current number of matches: {len(self.matches)}")
         matches = await self._prioritize_matches(self.matches, uid)  # Get the 20 matches closest to the user's gold
         # priority table is waiting
         match_ids = []

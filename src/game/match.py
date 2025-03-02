@@ -646,6 +646,8 @@ class Match:
             self.is_end_round = True
         else:
             self.is_end_round = False
+            if settings.DEV_MODE:
+                self.is_end_round = True
         
         if self.is_end_round:
             # calculate last trick
@@ -733,6 +735,10 @@ class Match:
         for player in self.players:
             self.team_scores[player.team_id] += player.points
         
+        if settings.DEV_MODE:
+            return True
+            if self.cur_round >= 2:
+                return True
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
         return False

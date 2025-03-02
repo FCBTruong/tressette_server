@@ -33,6 +33,27 @@ class UsersInfoMgr:
         self.users.pop(uid, None)
 
     async def get_user_info(self, uid: int) -> UserInfo:
+        if settings.DEV_MODE:
+            if uid >= 2000000:
+                user_info_data = {
+                            "uid": uid,
+                            "name": "tester",
+                            "gold": 9999999,
+                            "level": 1,
+                            "avatar": '1',
+                            "avatar_third_party": '',
+                            "is_active": True,
+                            "last_time_received_support": 0,
+                            "received_startup": True
+                        }
+                        
+                user_inf = UserInfo(**user_info_data)
+                user_inf.win_count = 0
+                user_inf.game_count = 0
+                user_inf.exp = 0
+            
+                return user_inf
+        
         # cache_key = 'user' + str(uid)
         cached_user_info = self.users.get(uid)
         if cached_user_info:

@@ -3,6 +3,7 @@
 import asyncio
 from datetime import date, datetime
 from src.base.network.packets import packet_pb2
+from src.config.settings import settings
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
@@ -53,6 +54,11 @@ class GameMgr:
             match = await game_vars.get_match_mgr().get_match_of_user(uid)
             await match.user_reconnect(uid)
             return
+        # test ...
+        if settings.DEV_MODE:
+            NUM_TEST = 200
+            for i in range(2000000, 2000000 + NUM_TEST):
+                await game_vars.get_match_mgr().receive_quick_play(i, None)
     async def on_user_disconnect(self, uid: int):
         await game_vars.get_match_mgr().user_disconnect(uid)
 
