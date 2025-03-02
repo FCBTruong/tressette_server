@@ -15,13 +15,17 @@ def write_log(uid, action, sub_action, extras):
     """Append log to buffer and send if limit is reached."""
     print('write log', action, extras)
 
+    extra_strs = []
+    for e in extras:
+        extra_strs.append(str(e))
+
     global log_buffer
     log_buffer.append({
         "log_time": datetime.now().isoformat(),
         "uid": uid,
         "action": action,
         "sub_action": sub_action,
-        "extras": extras
+        "extras": extra_strs
     })
 
     if len(log_buffer) >= buffer_limit:
@@ -32,7 +36,7 @@ def send_logs():
     global log_buffer
     if log_buffer:
         try:
-            response = httpx.post(log_server_url, json=log_buffer, timeout=10)
+            response = httpx.post(log_server_url, json={"logs": log_buffer}, timeout=10)
             if response.status_code != 200:
                 print(f"Failed to send logs, status: {response.status_code}")
         except Exception as e:
@@ -44,7 +48,7 @@ TIME_SEND_LOGS = 60 * 10 # 10 minutes
 
 if settings.DEV_MODE:
     TIME_SEND_LOGS = 1
-    
+
 # Background thread for sending logs every 10 minutes
 def start_log_sender():
     while True:
