@@ -56,7 +56,7 @@ class GameMgr:
             return
         # test ...
         if settings.DEV_MODE:
-            NUM_TEST = 200
+            NUM_TEST = 12510
             for i in range(2000000, 2000000 + NUM_TEST):
                 await game_vars.get_match_mgr().receive_quick_play(i, None)
     async def on_user_disconnect(self, uid: int):
