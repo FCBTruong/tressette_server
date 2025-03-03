@@ -27,12 +27,9 @@ class GameClient:
             return 
         match cmd_id:
             case CMDs.LOGOUT:
-                logout_pkg = packet_pb2.Logout()
-                # send logout packet
-                await self.send_packet(uid, CMDs.LOGOUT, logout_pkg)
-                print("Accepted logout")
-                await connection_manager.user_logout(uid)
-                write_log(uid, "logout", "", [])
+                await self._handle_user_logout(uid)
+            case CMDs.DELETE_ACCOUNT:
+                await self._handle_delete_account(uid)
             case _:
                 await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
                 await users_info_mgr.on_receive_packet(uid, cmd_id, payload)
@@ -100,4 +97,20 @@ class GameClient:
         await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())
 
      
-    
+    async def _handle_delete_account(self, uid):
+        user_info = await users_info_mgr.get_user_info(uid)
+        if not user_info:
+            return
+        user_info.is_active = False
+        await user_info.commit_to_database('is_active')
+        await self._handle_user_logout(uid)
+        write_log(uid, "delete_account", "", [])
+
+    async def _handle_user_logout(self, uid):
+        logout_pkg = packet_pb2.Logout()
+        # send logout packet
+        await self.send_packet(uid, CMDs.LOGOUT, logout_pkg)
+        print("Accepted logout")
+        await connection_manager.user_logout(uid)
+        write_log(uid, "logout", "", [])
+   

@@ -10,6 +10,7 @@ from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 import src.game.game_client as game_client
 from src.base.payment.apple_pay import cheat_test_sandbox
+from src.base.payment.paypal_pay import create_paypal_order, paypal_webhook
 
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
@@ -63,6 +64,8 @@ html = """
 
 @app.get("/")
 async def get():
+    res = await create_paypal_order(1.0)
+    return res
     return HTMLResponse(html)
 
 
@@ -117,3 +120,7 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
     except Exception as e:
         traceback.print_exc()
         return str(e)
+
+@app.post("payment/paypal-webhook")
+async def on_paypal_webhook(request):
+    return await paypal_webhook(request)

@@ -118,7 +118,7 @@ class FriendMgr:
         uids = []
         for friend_id in friend_ids:
             user_info = await users_info_mgr.get_user_info(friend_id)
-            if user_info:
+            if user_info and user_info.is_active:
                 is_online = connection_manager.check_user_active_online(friend_id)
                 onlines.append(is_online)
                 uids.append(friend_id)
@@ -149,7 +149,7 @@ class FriendMgr:
         user_info = await users_info_mgr.get_user_info(search_uid)
 
         pkg_response = packet_pb2.SearchFriendResponse()
-        if not user_info:
+        if not user_info or user_info.is_active == False:
             print(f"User {uid} search friend {search_uid} not found")
             err = 1
         else:

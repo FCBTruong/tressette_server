@@ -1,5 +1,5 @@
 
-from sqlalchemy import TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Text, func
+from sqlalchemy import DECIMAL, TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Text, func
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
@@ -24,7 +24,8 @@ class UserInfoSchema(Base):
     received_startup=Column(Boolean, default=False)
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
-
+    paypal_orders = relationship("PayPalOrder", back_populates="user")
+    
 class GuestsSchema(Base):
     __tablename__ = 'guests'
     
@@ -72,20 +73,18 @@ class AppleTransactions(Base):
     in_app_ownership_type = Column(String(255), nullable=False, default='PURCHASED')
 
 
-class Logs(Base):
-    __tablename__ = 'logs'
-    log_id = Column(BigInteger, primary_key=True, autoincrement=True)
-    uid = Column(Integer, nullable=False)  
-    log_time = Column(TIMESTAMP, nullable=False)
-    action = Column(String, nullable=True)
-    sub_action = Column(String, nullable=True)
-    extra1 = Column(Text, nullable=True)
-    extra2 = Column(Text, nullable=True)
-    extra3 = Column(Text, nullable=True)
-    extra4 = Column(Text, nullable=True)
-    extra5 = Column(Text, nullable=True)
-    extra6 = Column(Text, nullable=True)
-    extra7 = Column(Text, nullable=True)
-    extra8 = Column(Text, nullable=True)
-    extra9 = Column(Text, nullable=True)
-    extra10 = Column(Text, nullable=True)
+class PayPalOrder(Base):
+    __tablename__ = "paypal_orders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_id = Column(String(50), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("user_info.uid"), nullable=False)  # Foreign Key to user_info.uid
+    pack_id = Column(String(50), nullable=False)
+    amount = Column(DECIMAL(10, 2), nullable=False)
+    currency = Column(String(10), nullable=False)
+    status = Column(String(20), default="pending", nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+    # Relationship to UserInfoSchema
+    user = relationship("UserInfoSchema", back_populates="paypal_orders")
