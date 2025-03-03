@@ -103,6 +103,7 @@ class GameClient:
             return
         user_info.is_active = False
         await user_info.commit_to_database('is_active')
+        await self.send_packet(uid, CMDs.DELETE_ACCOUNT, packet_pb2.Empty())
         await self._handle_user_logout(uid)
         write_log(uid, "delete_account", "", [])
 

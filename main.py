@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import HTMLResponse
 from src.base.network.connection_manager import connection_manager
 from src.base.payment.google_pay import verify_purchase
+from src.config.settings import settings
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 import src.game.game_client as game_client
@@ -64,8 +65,9 @@ html = """
 
 @app.get("/")
 async def get():
-    res = await create_paypal_order(1.0)
-    return res
+    if settings.DEV_MODE:
+        res = await create_paypal_order(1.0, '')
+        return res
     return HTMLResponse(html)
 
 
