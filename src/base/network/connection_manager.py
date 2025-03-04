@@ -294,7 +294,7 @@ class ConnectionManager:
         sub_type = login_firebase_pkg.sub_type
         if sub_type != 0:
             if sub_type == 1:  # Google
-                # Firebase Auth not working for iOS, so need to login through server
+                # Firebase Auth not working for iOS, Web, so need to login through server
                 google_login_inf = await game_vars.get_login_mgr().login_by_google_token(token)
                 if not google_login_inf['success']:
                     print("Unauthorized Google")

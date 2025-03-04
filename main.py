@@ -70,6 +70,9 @@ html = """
 async def get():
     return HTMLResponse(html)
 
+@app.get('/health')
+async def health():
+    return 'ok'
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
