@@ -44,8 +44,7 @@ def send_logs():
 
         log_buffer.clear()
 
-TIME_SEND_LOGS = 60 * 10 # 10 minutes
-
+TIME_SEND_LOGS = settings.TIME_SEND_LOGS
 if settings.DEV_MODE:
     TIME_SEND_LOGS = 1
 

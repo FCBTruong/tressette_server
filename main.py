@@ -11,7 +11,7 @@ from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 import src.game.game_client as game_client
 from src.base.payment.apple_pay import cheat_test_sandbox
-from src.base.payment.paypal_pay import create_paypal_order, paypal_webhook
+from src.base.payment.paypal_pay import create_paypal_order, handle_paypal_success
 
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
@@ -22,8 +22,11 @@ logger = logging.getLogger("main")  # Name your logger
 async def lifespan(app: FastAPI):
     print("Application startup complete.")
     yield
+if settings.ENABLE_SWAGGER:
+    app = FastAPI(lifespan=lifespan)
+else:
+    app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
-app = FastAPI(lifespan=lifespan)
 
 html = """
 <!DOCTYPE html>
@@ -65,9 +68,6 @@ html = """
 
 @app.get("/")
 async def get():
-    if settings.DEV_MODE:
-        res = await create_paypal_order(1.0, '')
-        return res
     return HTMLResponse(html)
 
 
@@ -118,11 +118,80 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
             import requests
             response = requests.get(data)
             return response.text
+        elif cmd == "send_logs":
+            from src.base.logs.logs_mgr import send_logs
+            send_logs()
         return "hello"
     except Exception as e:
         traceback.print_exc()
         return str(e)
 
-@app.post("payment/paypal-webhook")
+@app.post("/payment/paypal-webhook")
 async def on_paypal_webhook(request):
-    return await paypal_webhook(request)
+    pass
+    # return await paypal_webhook(request)
+
+@app.get('/paypal/success')
+async def success(token: str, PayerID: str):
+    await handle_paypal_success(token, PayerID)
+    return HTMLResponse(html_payment_success)
+
+@app.get('/paypal/cancel')
+async def success(token: str, PayerID: str):
+    print("Paypal cancel")
+
+
+html_payment_success = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Successful</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: inline-block;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        p {
+            font-size: 18px;
+            color: #333;
+        }
+        .btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #008CBA;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #005f73;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Payment Successful!</h1>
+        <p>Thank you for your payment. You can now return to the game.</p>
+        <a href="https://tressette.clareentertainment.com" class="btn">Back to Game</a>
+    </div>
+
+</body>
+</html>
+"""

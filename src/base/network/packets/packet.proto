@@ -362,3 +362,11 @@ message CustomerServiceReport {
 message AdminBroadcast {
   string mes = 1;
 }
+
+message PaymentPaypalRequestOrder {
+  string pack_id = 1;
+}
+
+message PaymentPaypalOrder {
+  string order_url = 1;
+}

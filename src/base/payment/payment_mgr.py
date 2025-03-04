@@ -10,6 +10,7 @@ from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
 from src.postgres.sql_models import UserInfoSchema, AppleTransactions
 from src.postgres.orm import PsqlOrm
+from src.base.payment import paypal_pay
 
 # load json config
 # Load the JSON configuration file
@@ -24,6 +25,8 @@ async def on_receive_packet(uid, cmd_id, payload):
         case CMDs.PAYMENT_APPLE_CONSUME:
             print("PAYMENT_APPLE_CONSUME")
             await _handle_apple_consume(uid, payload)
+        case CMDs.PAYMENT_PAYPAL_REQUEST_ORDER:
+            await _handle_paypal_request_order(uid, payload)
         case _:
             pass
 
@@ -82,7 +85,7 @@ async def _handle_apple_consume(uid, payload):
             session.add(new_transaction)
             await session.commit()
 
-        await _purchase_success(uid, buy_pack_id)
+        await _purchase_success(uid, buy_pack_id, "apple")
 
 # To tell user that the transaction is finished, ios call native finish transaction
 async def _send_finished_apple_transaction(uid, product_id):
@@ -116,9 +119,9 @@ async def _handle_google_consume(uid, payload):
     
     print("Consume success")
 
-    await _purchase_success(uid, pack_id)
+    await _purchase_success(uid, pack_id, "google")
 
-async def _purchase_success(uid, pack_id):
+async def _purchase_success(uid, pack_id, method):
     print(f"User {uid} purchase success pack {pack_id}")
 
     pack_info = get_pack_info(pack_id)
@@ -138,11 +141,15 @@ async def _purchase_success(uid, pack_id):
     # send to user
     await game_vars.get_game_client().send_packet(uid, CMDs.PAYMENT_SUCCESS, pkg)
 
-    write_log(uid, "payment", "buy_success", [pack_id, before_gold, user_info.gold])
+    write_log(uid, "payment_success", method, [pack_id, before_gold, user_info.gold])
 
 def get_pack_info(pack_id):
     packs = config.get("packs")
     for pack in packs:
+        if pack.get("pack_id") == pack_id:
+            return pack
+    web_packs = config.get("web_packs")
+    for pack in web_packs:
         if pack.get("pack_id") == pack_id:
             return pack
     return None
@@ -150,14 +157,20 @@ def get_pack_info(pack_id):
 def get_shop_config():
     return config
 
-async def send_shop_config(uid):
+async def send_shop_config(uid, platform):
     pkg = packet_pb2.ShopConfig()
     shop_config = get_shop_config()
     pack_ids = []
     golds = []
     prices = []
     currencies = []
-    for p in shop_config.get('packs'):
+    
+    if platform == "web":
+        packs = shop_config.get("web_packs")
+    else:
+        packs = shop_config.get("packs")
+        
+    for p in packs:
         pack_ids.append(p.get("pack_id"))
         golds.append(p.get("gold"))
         prices.append(p.get("price"))
@@ -169,3 +182,26 @@ async def send_shop_config(uid):
     pkg.currencies.extend(currencies)
     await game_vars.get_game_client().send_packet(uid, CMDs.SHOP_CONFIG, pkg)
     print(f"Send shop config to user {uid}", CMDs.SHOP_CONFIG)
+
+async def _handle_paypal_request_order(uid, payload):
+    pkg = packet_pb2.PaymentPaypalRequestOrder()
+    pkg.ParseFromString(payload)
+    pack_id = pkg.pack_id
+    
+    pack_info = get_pack_info(pack_id)
+    if not pack_info:
+        print("Invalid pack")
+        return
+    
+    amount = pack_info.get("price")
+    currency = pack_info.get("currency")
+
+    order_url = await paypal_pay.create_paypal_order(uid, amount, pack_id, currency)
+    if not order_url:
+        print("Failed to create PayPal order")
+        return
+
+    pkg = packet_pb2.PaymentPaypalOrder()
+    pkg.order_url = order_url
+    await game_vars.get_game_client().send_packet(uid, CMDs.PAYMENT_PAYPAL_REQUEST_ORDER, pkg)
+    print(f"Send PayPal order to user {uid}")

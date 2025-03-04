@@ -25,7 +25,7 @@ class UserInfoSchema(Base):
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
     paypal_orders = relationship("PayPalOrder", back_populates="user")
-    
+
 class GuestsSchema(Base):
     __tablename__ = 'guests'
     
@@ -76,12 +76,13 @@ class AppleTransactions(Base):
 class PayPalOrder(Base):
     __tablename__ = "paypal_orders"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    order_id = Column(String(50), unique=True, nullable=False)
+    order_id = Column(String(50), primary_key=True)
     user_id = Column(Integer, ForeignKey("user_info.uid"), nullable=False)  # Foreign Key to user_info.uid
     pack_id = Column(String(50), nullable=False)
     amount = Column(DECIMAL(10, 2), nullable=False)
     currency = Column(String(10), nullable=False)
+    payer_id = Column(String(50))
+    order_url = Column(String, nullable=False)
     status = Column(String(20), default="pending", nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())

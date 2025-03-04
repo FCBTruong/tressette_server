@@ -30,5 +30,37 @@
             "price": 20,
             "currency": "€"
         }   
+    ],
+    "web_packs": [
+        {
+            "pack_id": "web_pack_01",
+            "gold": 2000000,
+            "price": 0.99,
+            "currency": "EUR"
+        },
+        {
+            "pack_id": "web_pack_02",
+            "gold": 10000000,
+            "price": 4.99,
+            "currency": "EUR"
+        },
+        {
+            "pack_id": "web_pack_03",
+            "gold": 20000000,
+            "price": 9.99,
+            "currency": "EUR"
+        },
+        {
+            "pack_id": "web_pack_04",
+            "gold": 30000000,
+            "price": 14.99,
+            "currency": "EUR"
+        },
+        {
+            "pack_id": "web_pack_05",
+            "gold": 60000000,
+            "price": 29.99,
+            "currency": "EUR"
+        }   
     ]
 }

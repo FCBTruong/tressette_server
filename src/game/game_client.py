@@ -80,7 +80,7 @@ class GameClient:
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
 
         # SEND SHOP CONFIG
-        await payment_mgr.send_shop_config(uid)
+        await payment_mgr.send_shop_config(uid, platform)
 
         # Send friend list
         await game_vars.get_friend_mgr().send_list_friends(uid, send_recommend_if_empty=True)
