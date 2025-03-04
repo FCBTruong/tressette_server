@@ -19,6 +19,8 @@ PAYPAL_API_URL = "https://api-m.sandbox.paypal.com"  # Use "https://api-m.paypal
 paypal_access_token = None
 paypal_token_expires_at = 0  # Timestamp of expiration
 
+if settings.ENABLE_CHEAT:
+    PAYPAL_API_URL = "https://api-m.paypal.com"
 
 async def get_paypal_access_token():
     """Obtain a PayPal access token and cache it."""
@@ -49,12 +51,14 @@ async def create_paypal_order(uid: int, amount: float, pack_id: int, currency="E
     # to prevent spamming, we should check if user already has a pending order
     async with PsqlOrm.get().session() as session:
         existing_order = await session.scalar(
-            select(PayPalOrder)
-            .where(PayPalOrder.user_id == uid)
-            .where(PayPalOrder.pack_id == pack_id)
-            .where(PayPalOrder.status == "CREATED")  
-            .where(PayPalOrder.created_at >= func.now() - timedelta(hours=24))
+            select(PayPalOrder).where(
+                (PayPalOrder.user_id == uid) &
+                (PayPalOrder.pack_id == pack_id) &
+                (PayPalOrder.status == "CREATED") &
+                (PayPalOrder.created_at >= func.now() - timedelta(hours=24))
+            )
         )
+
 
         if existing_order:
             print("User already has a pending order with this pack.", pack_id, existing_order.order_id)
@@ -128,7 +132,7 @@ async def capture_paypal_order(order_id: str):
         print("Capture info:", capture_info)
 
         status = capture_info.get("status", "FAILED")
-        payer_id = capture_info.get("payer", {}).get("payer_id")
+        payer_id = capture_info.get("payer", {}).get("payer_id", None)
 
         order = await session.get(PayPalOrder, order_id)
         if order:
@@ -146,6 +150,8 @@ async def handle_paypal_success(token: str, payer_id: str):
         if not order:
             return "FAILED"
         
+        user_id, pack_id = order.user_id, order.pack_id 
+        
     access_token = await get_paypal_access_token()
 
     async with httpx.AsyncClient() as client:
@@ -162,6 +168,6 @@ async def handle_paypal_success(token: str, payer_id: str):
 
         status = await capture_paypal_order(token)
         if status == "COMPLETED":
-            await payment_mgr._purchase_success(order.user_id, order.pack_id, "paypal")
+            await payment_mgr._purchase_success(user_id, pack_id, "paypal")
 
         return status
