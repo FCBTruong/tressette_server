@@ -11,16 +11,18 @@ from src.postgres.sql_models import PayPalOrder
 from src.base.payment import payment_mgr  # Import once
 
 # PayPal API Credentials
-PAYPAL_CLIENT_ID = "Af6QXXBg_SbDASiFfnejhQsBIeDLYhGAeG-gY1Jqo1RsFupCppf6PR8kImjse1kzjUVhAsND7Ap3i6iO"
-PAYPAL_CLIENT_SECRET = "EGImIaH5u0CbmuERGrvdDxnf6yaU7CCgFr99O9CNRHjeWd_nnESM7pYZ3UrqDrwmnZb0KrAkyU7CE7Fw"
+PAYPAL_CLIENT_ID = "Addl0J3coQd3ET8opHfWZt6hPmZDexasIgPRjCJTb2HwlZh9TMhM4zzgY4OOG5XELUmFSKbcAkIcJEgA"
+PAYPAL_CLIENT_SECRET = "EIk-kYZ5-sjHPj-iBLPXK0c9YsE4poVN3_ZIL5XhV-TEE2AcC6Yge85zU2HXQRteLd2ZJk3JlfZ6NGa9"
 PAYPAL_API_URL = "https://api-m.sandbox.paypal.com"  # Use "https://api-m.paypal.com" for live
 
 # In-memory cache for PayPal access token
 paypal_access_token = None
 paypal_token_expires_at = 0  # Timestamp of expiration
 
-if settings.ENABLE_CHEAT:
+if not settings.ENABLE_CHEAT:
     PAYPAL_API_URL = "https://api-m.paypal.com"
+    PAYPAL_CLIENT_ID = 'AYTpfl5u55R8KCKvQ0dTVmN0hbcvMbPf1NT4LRMGIERqZkh3VDzkeTF2zh4ojx35QR6H1cZuG_zvt5dR'
+    PAYPAL_CLIENT_SECRET = 'ECQStY6ooJgS2SbN2YWzCDrKq4la_L1j5sFCvEm_1P02UO8iHRo--AMB9viAzQXUlOcNnaIOHGc_wOR6'
 
 async def get_paypal_access_token():
     """Obtain a PayPal access token and cache it."""
