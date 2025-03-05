@@ -66,10 +66,10 @@ class MatchManager:
         except Exception as e:
             logger.error(f"Error in match loop for match {match.match_id}: {e}")
 
-    async def _create_match(self, bet, player_mode = PLAYER_SOLO_MODE, is_private = False) -> Match:
+    async def _create_match(self, bet, player_mode = PLAYER_SOLO_MODE, is_private = False, point_mode = 11) -> Match:
         match_id = self.start_match_id
         logger.info(f"Creating match {match_id}")
-        match = Match(match_id, bet, player_mode=player_mode)
+        match = Match(match_id, bet, player_mode=player_mode, point_mode=point_mode)
         match.set_public(not is_private)
         self.matches[match_id] = match
         self.start_match_id += 1
@@ -80,7 +80,12 @@ class MatchManager:
         create_table_pkg.ParseFromString(payload)
         bet = create_table_pkg.bet
         player_mode = create_table_pkg.player_mode
+        point_mode = create_table_pkg.point_mode
         is_private = create_table_pkg.is_private
+        if point_mode not in [11, 21]:
+            print(f"Invalid point mode {point_mode}")
+            return
+        
         if player_mode != PLAYER_DUO_MODE and player_mode != PLAYER_SOLO_MODE:
             print(f"Invalid player mode {player_mode}")
             return
@@ -92,10 +97,21 @@ class MatchManager:
         if await self.is_user_in_match(uid):
             return
         
-        if user_info.gold < bet * tress_config.get('bet_multiplier_min'):
-            return
+        if create_table_pkg.bet_mode:
+            if user_info.gold < bet * tress_config.get('bet_multiplier_min'):
+                return
+        else: # in review
+            bet = 0
+            # get fee this user
+            fee = tress_config.get('fee_mode_no_bet')
+            if user_info.gold < fee:
+                return
+            user_info.add_gold(-fee)
+            await user_info.commit_gold()
+            await user_info.send_update_money()
+
         
-        match = await self._create_match(bet, player_mode, is_private)
+        match = await self._create_match(bet, player_mode, is_private, point_mode)
         await self._user_join_match(match, uid)
 
     async def get_match(self, match_id):
@@ -124,13 +140,16 @@ class MatchManager:
     async def is_user_in_match(self, user_id):
         return user_id in self.user_matchids
     
-    async def find_a_suitable_match(self, gold) -> Match:
+    async def find_a_suitable_match_quickplay(self, gold) -> Match:
         expect_match = None
         best_match = None
         best_diff = float('inf')
         
         for match_id, match in self.matches.items():
             if not match.is_public:
+                continue
+            if match.bet == 0:
+                # Bet = 0 is for review
                 continue
             if match.state == MatchState.WAITING and not match.check_room_full() and match.player_mode != PLAYER_DUO_MODE:
                 # For current, only solo mode for quick play
@@ -268,12 +287,14 @@ class MatchManager:
             return
         await self._user_join_match(match, uid)
 
-    async def _handle_quick_play(self, uid: int):
-        user = await users_info_mgr.get_user_info(uid)
-        if user.gold < self.get_gold_minimum_play():
-            print(f"User {uid} not enough gold")
-            return
+    async def _handle_case_bet_in_review(self, uid):
+        match = await self._create_match(0)
+        
+        print(f"User {uid} join match {match.match_id}")
+        await self._user_join_match(match, uid=uid)
 
+
+    async def _handle_quick_play(self, uid: int):
         print(f"User {uid} quick play")
         # STEP 1: CHECK IF USER IS IN A MATCH
         match = await self.get_match_of_user(uid)
@@ -281,9 +302,14 @@ class MatchManager:
             print(f"User {uid} is in a match, reconnecting")
             await match.user_reconnect(uid)
             return
+    
+        user = await users_info_mgr.get_user_info(uid)
+        if user.gold < self.get_gold_minimum_play():
+            print(f"User {uid} not enough gold")
+            return
 
         # STEP JOIN A MATCH
-        match = await self.find_a_suitable_match(user.gold)
+        match = await self.find_a_suitable_match_quickplay(user.gold)
 
         if not match:
             # Expect bet
@@ -340,6 +366,8 @@ class MatchManager:
         await self._handle_user_join_by_match_id(uid, match_id)
 
     async def receive_quick_play(self, uid, payload):
+        quick_play_pkg = packet_pb2.QuickPlay()
+        quick_play_pkg.ParseFromString(payload)
         await self._handle_quick_play(uid)
 
     def find_largest_bet_below(self, expect_bet):

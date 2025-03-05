@@ -29,6 +29,7 @@ message Login {
   string device_model = 3;
   string platform = 4;
   string device_country = 5;
+  int32 app_version_code = 6;
 }
 
 message LoginFirebase {
@@ -151,6 +152,7 @@ message GeneralInfo {
   repeated int32 tressette_bets = 3;
   int32 bet_multiplier_min = 4;
   repeated int32 exp_levels = 5;
+  int32 fee_mode_no_bet = 6;
 }
 
 message EndGame {
@@ -311,6 +313,8 @@ message CreateTable {
   int32 bet = 1;
   int32 player_mode = 2;
   bool is_private = 3;
+  int32 point_mode = 4;
+  bool bet_mode = 5;
 }
 
 message JoinTableById {
@@ -333,6 +337,7 @@ message AppCodeVersion {
   int32 ios_version = 4;
   int32 ios_forced_update_version = 5;
   int32 ios_remind_update_version = 6;
+  int32 ios_reviewing_version = 7;
 }
 
 message PlayCardResponse {
@@ -369,4 +374,7 @@ message PaymentPaypalRequestOrder {
 
 message PaymentPaypalOrder {
   string order_url = 1;
+}
+
+message QuickPlay {
 }

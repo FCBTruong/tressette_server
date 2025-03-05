@@ -51,6 +51,7 @@ class ConnectionManager:
         app_version_pkg.ios_version = app_version_config.get("ios_version")
         app_version_pkg.ios_forced_update_version = app_version_config.get("ios_forced_update_version")
         app_version_pkg.ios_remind_update_version = app_version_config.get("ios_remind_update_version")
+        app_version_pkg.ios_reviewing_version = app_version_config.get("ios_reviewing_version")
 
         # send app version
         p = app_version_pkg.SerializeToString()
@@ -255,17 +256,19 @@ class ConnectionManager:
             return
 
     async def send_packet_to_user(self, uid: int, cmd_id: int, payload: bytes):
-        websocket_ref = self.user_websockets.get(uid)
-        if websocket_ref:
-            # check active, other wise remove from user_websockets
-            if websocket_ref not in self.active_connections:
-                print(f"User with ID {uid} has no active WebSocket connection")
-                del self.user_websockets[uid]
-                return
-            await self.send_packet(websocket_ref, cmd_id, payload)
-        else:
-            print(f"User with ID {uid} not has no active WebSocket connection")
-        pass
+        try:
+            websocket_ref = self.user_websockets.get(uid)
+            if websocket_ref:
+                # check active, other wise remove from user_websockets
+                if websocket_ref not in self.active_connections:
+                    print(f"User with ID {uid} has no active WebSocket connection")
+                    del self.user_websockets[uid]
+                    return
+                await self.send_packet(websocket_ref, cmd_id, payload)
+            else:
+                print(f"User with ID {uid} not has no active WebSocket connection")
+        except Exception as e:
+            print(f"Error: {e}")
 
     async def user_logout(self, uid: int):
         # remove from user_websockets

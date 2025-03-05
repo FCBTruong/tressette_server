@@ -8,8 +8,8 @@ from src.constants import *
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
-from src.base.network.packets.packet_pb2 import ChatMessage  # Import ChatMessage from the protobuf module
 from src.game.tressette_config import config as tress_config
+from src.base.network.connection_manager import connection_manager
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
@@ -42,6 +42,7 @@ class GameClient:
         general_pkg.time_thinking_in_turn = tress_config.get("time_thinking_in_turn")
         general_pkg.timestamp = int(datetime.now().timestamp())
         general_pkg.bet_multiplier_min = tress_config.get("bet_multiplier_min")
+        general_pkg.fee_mode_no_bet = tress_config.get("fee_mode_no_bet")
 
         tressette_bets = tress_config.get("bets")
         exp_levels = tress_config.get("exp_levels")
@@ -93,7 +94,6 @@ class GameClient:
         write_log(uid, "login", "", [device_model, platform, device_country])
 
     async def send_packet(self, uid, cmd_id, pkt):
-        from src.base.network.connection_manager import connection_manager
         await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())
 
      

@@ -163,7 +163,7 @@ class MatchBotIntermediate(MatchBot):
 
 
 class Match:
-    def __init__(self, match_id, bet, player_mode=PLAYER_SOLO_MODE):
+    def __init__(self, match_id, bet, player_mode, point_mode):
         self.match_id = match_id
         self.start_time = datetime.now()
         self.end_time = None
@@ -193,10 +193,8 @@ class Match:
         self.hand_in_round = -1
         self.enable_bet_win_score = True
 
-        if player_mode == PLAYER_SOLO_MODE:
-            self.point_to_win = SCORE_WIN_GAME_ELEVEN
-        else:
-            self.point_to_win = SCORE_WIN_GAME_TWENTY_ONE
+        
+        self.point_to_win = point_mode * 3 # 11, 21
 
         # init slots
         for i in range(player_mode):
@@ -294,30 +292,36 @@ class Match:
             await self._check_and_gen_bot()
 
     async def _check_and_gen_bot(self):
+        print("check and gen bott")
         if not self.is_public:
             return
+        print("check and g2en bott")
         
         if self.state != MatchState.WAITING:
             return
         
         if self.player_mode != PLAYER_SOLO_MODE:
             return
-        max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
-        if self.bet > max_bet_to_gen_bot:
-            return
         
-        ccu = await game_vars.get_game_live_performance().get_ccu()
-        if ccu > tress_config.get('ccu_to_gen_bot'):
-            return # not gen bot if ccu > 100
+        if self.bet > 0:
+            max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
+            if self.bet > max_bet_to_gen_bot:
+                return
             
+            ccu = await game_vars.get_game_live_performance().get_ccu()
+            if ccu > tress_config.get('ccu_to_gen_bot'):
+                return # not gen bot if ccu > 100
+            
+        print("check and3 g2en bott")
         if self.task_gen_bot is not None:
             self.task_gen_bot.cancel()
 
+        print("check and g2en 2bott")
         self.task_gen_bot = asyncio.create_task(self._coroutine_gen_bot())
     
     async def _coroutine_gen_bot(self):
-        await asyncio.sleep(8)
-        bot_uid = random.randint(5000000, 30000000)
+        await asyncio.sleep(4)
+        bot_uid = random.randint(10000000, 30000000)
         await self.user_join(bot_uid, is_bot=True)
 
     def _clear_coroutine_gen_bot(self):
@@ -481,9 +485,8 @@ class Match:
 
         await self.broadcast_pkg(CMDs.START_GAME, pkg)
 
-        # # wait for 3 seconds
-        # await asyncio.sleep(TIME_START_TO_DEAL)
-        await asyncio.sleep(3)
+        # effect put pot value
+        await asyncio.sleep(3 if self.bet > 0 else 1)
         await self.deal_card()
 
         # wait for 2 seconds
@@ -609,8 +612,8 @@ class Match:
             player.cards = self.cards[i*10: (i+1)*10]
 
         # TEST CARDS, DONT USE THIS FUNCTION LIVE
-        if settings.DEV_MODE:
-            self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        # if settings.DEV_MODE:
+        #     self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         
         # remove cards dealt
         self.cards = self.cards[10 * len(self.players):]
@@ -646,6 +649,9 @@ class Match:
             self.is_end_round = True
         else:
             self.is_end_round = False
+
+        if settings.DEV_MODE:
+            self.is_end_round = True
         
         if self.is_end_round:
             # calculate last trick
@@ -722,7 +728,7 @@ class Match:
 
         await self.broadcast_pkg(CMDs.NEW_ROUND, pkg)
 
-        await asyncio.sleep(3)
+        await asyncio.sleep(3 if self.bet > 0 else 1)
         await self.deal_card()
         await asyncio.sleep(2)
         await self._handle_new_hand()
@@ -732,6 +738,9 @@ class Match:
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
+
+        if settings.DEV_MODE:
+            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
