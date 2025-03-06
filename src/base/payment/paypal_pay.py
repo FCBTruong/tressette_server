@@ -57,7 +57,7 @@ async def create_paypal_order(uid: int, amount: float, pack_id: int, currency="E
                 (PayPalOrder.user_id == uid) &
                 (PayPalOrder.pack_id == pack_id) &
                 (PayPalOrder.status == "CREATED") &
-                (PayPalOrder.created_at >= func.now() - timedelta(hours=24))
+                (PayPalOrder.created_at >= func.now() - timedelta(hours=3)) # paypal will expire the order after 3 hours unpaid
             )
         )
 

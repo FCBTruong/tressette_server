@@ -317,10 +317,25 @@ class Match:
             self.task_gen_bot.cancel()
 
         print("check and g2en 2bott")
-        self.task_gen_bot = asyncio.create_task(self._coroutine_gen_bot())
+        time_delay_gen_bot = await self._get_ideal_delay_bot_time()
+        self.task_gen_bot = asyncio.create_task(self._coroutine_gen_bot(time_delay_gen_bot))
     
-    async def _coroutine_gen_bot(self):
-        await asyncio.sleep(4)
+    async def _get_ideal_delay_bot_time(self):
+        # only for solo mode
+        # get user 
+        user_info = None
+        for player in self.players:
+            if player.uid != -1 and not player.is_bot:
+                user_info = await users_info_mgr.get_user_info(player.uid)
+                break
+        if not user_info:
+            return 5
+        if user_info.game_count < 10: # New user will play withbot
+            return 2
+        return 10
+    
+    async def _coroutine_gen_bot(self, time_delay_gen_bot):
+        await asyncio.sleep(time_delay_gen_bot)
         bot_uid = random.randint(10000000, 30000000)
         await self.user_join(bot_uid, is_bot=True)
 
@@ -649,9 +664,6 @@ class Match:
             self.is_end_round = True
         else:
             self.is_end_round = False
-
-        if settings.DEV_MODE:
-            self.is_end_round = True
         
         if self.is_end_round:
             # calculate last trick
@@ -738,9 +750,6 @@ class Match:
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-
-        if settings.DEV_MODE:
-            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
