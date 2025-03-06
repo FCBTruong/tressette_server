@@ -34,13 +34,13 @@
     "web_packs": [
         {
             "pack_id": "web_pack_01",
-            "gold": 2000000,
+            "gold": 1000000,
             "price": 0.99,
             "currency": "EUR"
         },
         {
             "pack_id": "web_pack_02",
-            "gold": 10000000,
+            "gold": 8000000,
             "price": 4.99,
             "currency": "EUR"
         },
