@@ -14,6 +14,7 @@ class BotsMgr:
         else:
             gold = random.randrange(500, 1000)
         avatar_id = random.choice(AVATAR_IDS)
-        user = UserInfo(uid, "bot", gold, 1, str(avatar_id), "", True, 0)
+        name = 'guest_' + str(uid)
+        user = UserInfo(uid, name, gold, 1, str(avatar_id), "", True, 0)
         return user
         

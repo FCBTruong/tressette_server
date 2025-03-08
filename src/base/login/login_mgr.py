@@ -70,9 +70,15 @@ class LoginMgr:
 
                 # Update user info
                 user_info = await session.get(UserInfoSchema, uid)
-                user_info.name = decoded_token.get("name")
-                user_info.avatar_third_party = decoded_token.get("picture")
-                await session.commit()
+                has_change = False
+                if decoded_token.get("name") and user_info.name != decoded_token.get("name"):
+                    user_info.name = decoded_token.get("name")
+                    has_change = True
+                if decoded_token.get("picture") and user_info.avatar_third_party != decoded_token.get("picture"):
+                    user_info.avatar_third_party = decoded_token.get("picture")
+                    has_change = True
+                if has_change:
+                    await session.commit()
             else:
                 # Create a new user
                 basic_user = self.create_new_basic_user()

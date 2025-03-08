@@ -8,7 +8,7 @@ from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
-from src.game.match import LeaveMatchErrors, Match, MatchState, PLAYER_SOLO_MODE, PLAYER_DUO_MODE
+from src.game.match import LeaveMatchErrors, Match, MatchState, PLAYER_SOLO_MODE, PLAYER_DUO_MODE, TressetteMatch
 from src.game.users_info_mgr import users_info_mgr
 from src.game.tressette_config import config as tress_config
 
@@ -69,7 +69,7 @@ class MatchManager:
     async def _create_match(self, bet, player_mode = PLAYER_SOLO_MODE, is_private = False, point_mode = 11) -> Match:
         match_id = self.start_match_id
         logger.info(f"Creating match {match_id}")
-        match = Match(match_id, bet, player_mode=player_mode, point_mode=point_mode)
+        match = TressetteMatch(match_id, bet, player_mode=player_mode, point_mode=point_mode)
         match.set_public(not is_private)
         self.matches[match_id] = match
         self.start_match_id += 1
