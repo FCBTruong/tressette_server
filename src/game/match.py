@@ -78,6 +78,7 @@ class MatchPlayer:
         self.is_bot = False
         self.match_mgr = match_mgr
         self.gold_change = 0
+        self.is_in_game = False
 
     
     def reset_game(self):

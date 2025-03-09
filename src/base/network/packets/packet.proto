@@ -391,7 +391,6 @@ message SetteMezzoNewUserJoinMatch {
 message SetteMezzoPrepareStartGame {
   int32 pot_value = 1;
   repeated int64 players_gold = 2;
-  int32 banker_uid = 3;
 }
 
 message SetteMezzoGameInfo {
@@ -418,4 +417,12 @@ message SetteMezzoGameInfo {
 }
 
 message SetteMezzoQuickPlay {
+}
+
+
+message SetteMezzoStartGame {
+  int32 pot_value = 1;
+  repeated int64 players_gold = 2;
+  repeated int32 uids = 3;
+  repeated int32 cards = 4;
 }

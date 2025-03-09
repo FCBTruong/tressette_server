@@ -14,7 +14,7 @@ from src.constants import REASON_KICK_NOT_ENOUGH_GOLD
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
-from src.game.match import PLAYER_SOLO_MODE, TAX_PERCENT, TIME_AUTO_PLAY, TIME_START_TO_DEAL, Match, MatchBot, MatchPlayer, MatchState, PlayCardErrors
+from src.game.match import PLAYER_SOLO_MODE, TAX_PERCENT, TIME_AUTO_PLAY, TIME_START_TO_DEAL, TRESSETTE_CARDS, Match, MatchBot, MatchPlayer, MatchState, PlayCardErrors
 from src.game.modules import game_exp
 
 logging.basicConfig(
@@ -51,6 +51,7 @@ class SetteMezzoMatch(Match):
         self.hand_in_round = -1
         self.enable_bet_win_score = True
         self.banker_uid = -1
+        self.banker_cards = []
 
         # init slots
         for i in range(self.player_mode):
@@ -66,7 +67,7 @@ class SetteMezzoMatch(Match):
                 pass
             elif self.state == MatchState.PREPARING_START:
                 if self.time_start != -1 and datetime.now().timestamp() > self.time_start:
-                    if self.check_room_full():
+                    if self.check_has_real_players():
                         await self.start_game()
                     else:
                         self.state = MatchState.WAITING
@@ -133,11 +134,10 @@ class SetteMezzoMatch(Match):
             # send game info to user
             await self._send_game_info(user_id)
 
-        if self.check_room_full():
+        if self.state == MatchState.WAITING:
             await self._prepare_start_game()
-            self._clear_coroutine_gen_bot()
-        else:
-            await self._check_and_gen_bot()
+    
+      
 
     async def _check_and_gen_bot(self):
         return False
@@ -169,7 +169,6 @@ class SetteMezzoMatch(Match):
         self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
         pkg = packet_pb2.SetteMezzoPrepareStartGame()
-        pkg.banker_uid = self.banker_uid
         print('Game is starting, wait for 3 seconds')
 
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_PREPARE_START_GAME, pkg)
@@ -251,16 +250,15 @@ class SetteMezzoMatch(Match):
         self.unique_game_id = str(uuid.uuid4())
         # write logs
         for player in self.players:
-            if player.is_bot or player.uid == -1:
-                continue
-            write_log(player.uid, "start_game", "sette_mezzo", [self.unique_match_id, self.unique_game_id, self.bet, \
-                                                                              self.player_mode])
+            if player.uid != -1:
+                player.is_in_game = True
+                write_log(player.uid, "start_game", "sette_mezzo", [self.unique_match_id, self.unique_game_id, self.bet, \
+                                                                                self.player_mode])
 
         print('Start game')
         self.state = MatchState.PLAYING
         self.start_time = datetime.now()
         self.current_turn = 0
-        self.current_hand = -1
         self.time_auto_play = -1
         self.win_player = None
         self.auto_play_count_by_uid.clear()
@@ -270,11 +268,12 @@ class SetteMezzoMatch(Match):
         self.cur_round = 1
         self.is_end_round = False
         self.hand_in_round = -1
-        if self.banker_uid == -1:
-            self.banker_uid = self.players[1].uid
+        self.banker_cards = []
 
         # Init player golds
         for player in self.players:
+            if not player.is_in_game:
+                continue
             if player.is_bot:
                 continue
             p_info = await users_info_mgr.get_user_info(player.uid)
@@ -285,19 +284,33 @@ class SetteMezzoMatch(Match):
         for player in self.players:
             players_gold.append(player.gold)
 
-        pkg = packet_pb2.StartGame()
+        pkg = packet_pb2.SetteMezzoStartGame()
         pkg.pot_value = self.pot_value
         pkg.players_gold.extend(players_gold)
 
-        await self.broadcast_pkg(CMDs.START_GAME, pkg)
+        self.cards = TRESSETTE_CARDS.copy()
+        uids = []
+        cards = []
+        random.shuffle(self.cards)
+        self.banker_cards = self.cards[:1]
+        self.cards = self.cards[1:]
+        uids = [-1]
+        cards.append(-1)
 
-        # effect put pot value
-        await asyncio.sleep(3 if self.bet > 0 else 1)
-        await self.deal_card()
+        for player in self.players:
+            if player.is_in_game:
+                player.cards = self.cards[:1]
+                self.cards = self.cards[1:]
+                uids.append(player.uid)
+                cards.append(player.cards[0])
+        
+        pkg.uids.extend(uids)
+        pkg.cards.extend(cards)
+
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_START_GAME, pkg)
 
         # wait for 2 seconds
         await asyncio.sleep(2)
-        await self._handle_new_hand()
 
     async def user_play_card(self, uid, payload):
         print(f"Receive play card from user {uid}")
@@ -323,28 +336,6 @@ class SetteMezzoMatch(Match):
        self.users_auto_play.pop(uid, None)
 
        await self._send_game_info(uid)
-
-    async def deal_card(self):
-        self.cards = []
-        random.shuffle(self.cards)
-        print(f"Cards: {self.cards}")
-        for i, player in enumerate(self.players):
-            player.cards = self.cards[i*10: (i+1)*10]
-
-     
-        # remove cards dealt
-        self.cards = self.cards[10 * len(self.players):]
-
-        # send to users
-        for player in self.players:
-            # do not send to bots
-            if player.is_bot:
-                continue
-            pkg = packet_pb2.DealCard()
-            pkg.cards.extend(player.cards)
-            pkg.remain_cards = len(self.cards)
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
-    
 
     async def end_hand(self):
         pass
@@ -383,12 +374,14 @@ class SetteMezzoMatch(Match):
     async def end_game(self):
         self.state = MatchState.ENDED
         # send to users
-        pkg = packet_pb2.EndGame()
-        pkg.win_team_id = self.win_team
+        pkg = packet_pb2.SetteMezzoEndGame()
+
+        for player in self.players:
+            player.is_in_game = False
         
-        await self.broadcast_pkg(CMDs.END_GAME, pkg)
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_END_GAME, pkg)
         
-        await asyncio.sleep(3)
+        await asyncio.sleep(2)
 
          # User can quit the room now
         self.state = MatchState.WAITING 
