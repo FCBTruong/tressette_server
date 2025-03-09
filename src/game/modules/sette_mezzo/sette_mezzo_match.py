@@ -9,12 +9,12 @@ import uuid
 from src.base.logs.logs_mgr import write_log
 from src.base.network import connection_manager
 from src.base.network.packets import packet_pb2
-from src.config import settings
+from src.config.settings import settings
 from src.constants import REASON_KICK_NOT_ENOUGH_GOLD
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
-from src.game.match import PLAYER_SOLO_MODE, TAX_PERCENT, TIME_AUTO_PLAY, TIME_START_TO_DEAL, Match, MatchPlayer, MatchState, PlayCardErrors
+from src.game.match import PLAYER_SOLO_MODE, TAX_PERCENT, TIME_AUTO_PLAY, TIME_START_TO_DEAL, Match, MatchBot, MatchPlayer, MatchState, PlayCardErrors
 from src.game.modules import game_exp
 
 logging.basicConfig(
@@ -24,40 +24,36 @@ logging.basicConfig(
 logger = logging.getLogger("scopa_match")  # Name your logger
 
 
-class ScopaMatch(Match):
-    def __init__(self, match_id, bet, player_mode, point_mode):
+class SetteMezzoMatch(Match):
+    def __init__(self, match_id):
         self.match_id = match_id
         self.start_time = datetime.now()
         self.end_time = None
-        self.player_mode = player_mode
+        self.player_mode = 4
         self.players: list[MatchPlayer] = []
         self.cards = []
         self.win_player = None
         self.hand_suit = -1
-        self.bet = bet
+        self.bet = 0
         self.auto_play_count_by_uid = {} # consecutive auto play count
         self.users_auto_play = {} # uids that are auto play, server will not wait for them
         self.state = MatchState.WAITING
         self.current_turn = -1
         self.register_leave_uids = set()
         self.win_team = -1
-        self.team_scores = [0, 0]
         self.pot_value = 0
         self.cur_round = 0
         self.is_end_round = False
         self.unique_match_id = str(uuid.uuid4())
-        self.cards_compare = []
         self.task_gen_bot = None
         self.unique_game_id = ""
         self.is_public = True
         self.hand_in_round = -1
         self.enable_bet_win_score = True
-
-        
-        self.point_to_win = point_mode * 3 # 11, 21
+        self.banker_uid = -1
 
         # init slots
-        for i in range(player_mode):
+        for i in range(self.player_mode):
             p = MatchPlayer(-1, self)
             self.players.append(p)
 
@@ -105,7 +101,10 @@ class ScopaMatch(Match):
             print('Match is full')
             return
         
-        match_player = MatchPlayer(user_id, self)
+        if is_bot:
+            match_player = SetteMezzoBot(user_id, self)
+        else:
+            match_player = MatchPlayer(user_id, self)
 
         match_player.name = user_data.name
         match_player.gold = user_data.gold
@@ -120,7 +119,7 @@ class ScopaMatch(Match):
         self.players[slot_idx] = match_player
         team_id = match_player.team_id
 
-        pkg = packet_pb2.NewUserJoinMatch()
+        pkg = packet_pb2.SetteMezzoNewUserJoinMatch()
         pkg.uid = user_id
         pkg.name = user_data.name
         pkg.seat_server = seat_server_id
@@ -128,7 +127,7 @@ class ScopaMatch(Match):
         pkg.avatar = user_data.avatar
         pkg.gold = user_data.gold
 
-        await self.broadcast_pkg(CMDs.NEW_USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_NEW_USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
         
         if not is_bot:
             # send game info to user
@@ -169,11 +168,11 @@ class ScopaMatch(Match):
         self.state = MatchState.PREPARING_START
         self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
-        pkg = packet_pb2.PrepareStartGame()
-        pkg.time_start = int(self.time_start)
+        pkg = packet_pb2.SetteMezzoPrepareStartGame()
+        pkg.banker_uid = self.banker_uid
         print('Game is starting, wait for 3 seconds')
 
-        await self.broadcast_pkg(CMDs.PREPARE_START_GAME, pkg)
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_PREPARE_START_GAME, pkg)
 
 
     def check_can_join(self, uid: int):
@@ -204,22 +203,17 @@ class ScopaMatch(Match):
     
     async def _send_game_info(self, uid):
         logger.info(f"Sending game info to user {uid}")
-        game_info = packet_pb2.GameInfo()
+        game_info = packet_pb2.SetteMezzoGameInfo()
         game_info.match_id = self.match_id
-        game_info.game_mode = self.game_mode
         game_info.player_mode = self.player_mode
         game_info.game_state = self.state.value
         game_info.current_turn = self.current_turn
-        game_info.cards_compare.extend(self.cards_compare)
         game_info.remain_cards = len(self.cards)
-        game_info.hand_suit = self.hand_suit # current suit of hand
         game_info.is_registered_leave = uid in self.register_leave_uids
         game_info.bet = self.bet
         game_info.pot_value = self.pot_value
         game_info.current_round = self.cur_round
         game_info.hand_in_round = self.hand_in_round
-        game_info.point_to_win = self.point_to_win
-        game_info.enable_bet_win_score = self.enable_bet_win_score
 
         for player in self.players:
             game_info.uids.append(player.uid)
@@ -232,14 +226,14 @@ class ScopaMatch(Match):
             if player.uid == uid:
                 game_info.my_cards.extend(player.cards)
         
-        await game_vars.get_game_client().send_packet(uid, CMDs.GAME_INFO, game_info)
+        await game_vars.get_game_client().send_packet(uid, CMDs.SETTE_MEZZO_GAME_INFO, game_info)
 
     # ALERT: This function is called from match_mgr
     async def user_leave(self, uid, reason = 0):
         pkg = packet_pb2.UserLeaveMatch()
         pkg.uid = uid
         pkg.reason = reason
-        await self.broadcast_pkg(CMDs.USER_LEAVE_MATCH, pkg)
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_USER_LEAVE_MATCH, pkg)
 
         # remove user from match
         for i, player in enumerate(self.players):
@@ -259,8 +253,8 @@ class ScopaMatch(Match):
         for player in self.players:
             if player.is_bot or player.uid == -1:
                 continue
-            write_log(player.uid, "start_game", "", [self.unique_match_id, self.unique_game_id, self.bet, \
-                                                                              self.player_mode, self.game_mode])
+            write_log(player.uid, "start_game", "sette_mezzo", [self.unique_match_id, self.unique_game_id, self.bet, \
+                                                                              self.player_mode])
 
         print('Start game')
         self.state = MatchState.PLAYING
@@ -268,20 +262,16 @@ class ScopaMatch(Match):
         self.current_turn = 0
         self.current_hand = -1
         self.time_auto_play = -1
-        self.cards_compare.clear()
-        self.hand_suit = -1
         self.win_player = None
-        self.win_card = -1
-        self.win_score = 0
         self.auto_play_count_by_uid.clear()
         self.register_leave_uids.clear()
         self.win_team = -1
-        self.team_scores = [0, 0]
         self.pot_value = 0
         self.cur_round = 1
         self.is_end_round = False
-        self.napoli_claimed_status.clear()
         self.hand_in_round = -1
+        if self.banker_uid == -1:
+            self.banker_uid = self.players[1].uid
 
         # Init player golds
         for player in self.players:
@@ -290,27 +280,7 @@ class ScopaMatch(Match):
             p_info = await users_info_mgr.get_user_info(player.uid)
             player.gold = p_info.gold
 
-        # reset players scores:
-        for player in self.players:
-            player.points = 0
-            player.score_last_trick = 0
-            player.cards.clear()
-            player.gold_change = 0
-
-            # get pot user need to contribute
-            pot_user_need_to_contribute = self.bet
-
-            # add to debt, to remove later
-            if not player.is_bot:
-                game_vars.get_debt_mgr().add_debt_ingame(player.uid, pot_user_need_to_contribute)
-            player.gold -= pot_user_need_to_contribute
-
-            self.pot_value += pot_user_need_to_contribute
-            player.gold_change -= pot_user_need_to_contribute
-
-        for i in range(len(self.players)):
-            self.cards_compare.append(-1)
-
+    
         players_gold = []
         for player in self.players:
             players_gold.append(player.gold)
@@ -345,9 +315,6 @@ class ScopaMatch(Match):
         pass
 
     def check_done_hand(self):
-        for card in self.cards_compare:
-            if card == -1:
-                return False
         return True
 
     async def user_reconnect(self, uid):
@@ -364,10 +331,7 @@ class ScopaMatch(Match):
         for i, player in enumerate(self.players):
             player.cards = self.cards[i*10: (i+1)*10]
 
-        # TEST CARDS, DONT USE THIS FUNCTION LIVE
-        # if settings.DEV_MODE:
-        #     self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        
+     
         # remove cards dealt
         self.cards = self.cards[10 * len(self.players):]
 
@@ -418,83 +382,10 @@ class ScopaMatch(Match):
         
     async def end_game(self):
         self.state = MatchState.ENDED
-        if self.team_scores[0] > self.team_scores[1]:
-            self.win_team = 0
-        else:
-            self.win_team = 1
-
-        diff_score = abs(self.team_scores[0] - self.team_scores[1]) // 3
-        total_team_lose_pay = 0
-
-        if self.enable_bet_win_score:
-            for player in self.players:
-                if player.team_id != self.win_team:
-                    glose = min(player.gold, self.bet * diff_score)
-                    total_team_lose_pay += glose
-                    player.gold -= glose
-                    player.gold_change -= glose
-                    game_vars.get_debt_mgr().add_debt_ingame(player.uid, glose)
-
-        gold_win_score_one_player = int(total_team_lose_pay // (self.player_mode / 2))
-
-        pot_received_one_player = int(self.pot_value // (self.player_mode / 2))
-
-        # add gold
-        for player in self.players:
-            if player.team_id == self.win_team:
-                gold_win = pot_received_one_player + gold_win_score_one_player
-                gold_received = int(gold_win - gold_win * TAX_PERCENT)
-                player.gold += gold_received
-                player.gold_change += gold_win
-        
-            if player.uid == -1 or player.is_bot:
-                continue
-
-            user_info = await users_info_mgr.get_user_info(player.uid)
-            user_info.game_count += 1
-            added_exp = int(game_exp.calculate_exp_gain(self.bet))
-
-            if player.team_id == self.win_team:
-                user_info.add_gold(gold_received)
-                user_info.win_count += 1
-                added_exp = added_exp * 2
-
-            user_info.add_exp(added_exp)
-            gold_debt = game_vars.get_debt_mgr().get_debt_ingame(player.uid)
-            user_info.add_gold(-gold_debt)
-            # reset debt
-            game_vars.get_debt_mgr().remove_debt_ingame(player.uid)
-
-            await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
-            await user_info.send_update_money()
-            write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet, player.gold_change])
-
-        uids = []
-        score_totals = []
-        score_last_tricks = []
-        score_cards = []
-        gold_changes = []
-        players_gold = []
-        for player in self.players:
-            uids.append(player.uid)
-            score_cards.append(player.points - player.score_last_trick)
-            score_last_tricks.append(player.score_last_trick)
-            score_totals.append(player.points)
-            gold_changes.append(player.gold_change)
-            players_gold.append(player.gold)
-
-        
         # send to users
         pkg = packet_pb2.EndGame()
         pkg.win_team_id = self.win_team
-        pkg.uids.extend(uids)
-        pkg.score_cards.extend(score_cards)
-        pkg.score_last_tricks.extend(score_last_tricks)
-        pkg.score_totals.extend(score_totals)
-        pkg.gold_changes.extend(gold_changes)
-        pkg.players_gold.extend(players_gold)
-        pkg.gold_win_score = gold_win_score_one_player
-
+        
         await self.broadcast_pkg(CMDs.END_GAME, pkg)
         
         await asyncio.sleep(3)
@@ -589,3 +480,7 @@ class ScopaMatch(Match):
 
     def user_return_to_table(self, uid):
         self.users_auto_play.pop(uid, None)
+
+
+class SetteMezzoBot(MatchBot):
+    pass

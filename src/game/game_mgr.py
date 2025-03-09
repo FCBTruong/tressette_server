@@ -7,12 +7,15 @@ from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
 
-MIN_GOLD_PLAY = 15000
 class GameMgr:
     def on_join_match(self, uid: int, match_id: int):
         pass
 
     async def on_receive_packet(self, uid: int, cmd_id: int, payload):
+        if cmd_id >= 10000 and cmd_id < 11000: # sette mezzo game
+            await game_vars.get_sette_mezzo_mgr().on_receive_packet(uid, cmd_id, payload)
+            return
+        
         match cmd_id:
             case CMDs.QUICK_PLAY:
                 await game_vars.get_match_mgr().receive_quick_play(uid, payload)
@@ -74,6 +77,9 @@ class GameMgr:
         user_info = await users_info_mgr.get_user_info(uid)
 
         if not user_info:
+            return
+        
+        if user_info.gold >= await game_vars.get_match_mgr().get_gold_minimum_play():
             return
 
         if not self.check_can_receive_support(user_info.last_time_received_support):

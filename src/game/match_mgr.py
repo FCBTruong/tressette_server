@@ -11,6 +11,7 @@ from src.game.cmds import CMDs
 from src.game.match import LeaveMatchErrors, Match, MatchState, PLAYER_SOLO_MODE, PLAYER_DUO_MODE, TressetteMatch
 from src.game.users_info_mgr import users_info_mgr
 from src.game.tressette_config import config as tress_config
+from src.game.modules.sette_mezzo.sette_mezzo_match import SetteMezzoMatch
 
 
 logging.basicConfig(
@@ -75,6 +76,14 @@ class MatchManager:
         self.start_match_id += 1
         return match
 
+    async def create_sette_mezzo_match(self) -> Match:
+        match_id = self.start_match_id
+        logger.info(f"Creating match {match_id}")
+        match = SetteMezzoMatch(match_id)
+        self.matches[match_id] = match
+        self.start_match_id += 1
+        return match
+
     async def received_create_table(self, uid, payload):
         create_table_pkg = packet_pb2.CreateTable()
         create_table_pkg.ParseFromString(payload)
@@ -112,7 +121,7 @@ class MatchManager:
 
         
         match = await self._create_match(bet, player_mode, is_private, point_mode)
-        await self._user_join_match(match, uid)
+        await self.user_join_match(match, uid)
 
     async def get_match(self, match_id):
         return self.matches.get(match_id)
@@ -168,7 +177,7 @@ class MatchManager:
         return expect_match
 
     
-    async def _user_join_match(self, match: Match, uid: int):
+    async def user_join_match(self, match: Match, uid: int):
         self.user_matchids[uid] = match.match_id
         await match.user_join(uid)
 
@@ -285,13 +294,13 @@ class MatchManager:
         # check other conditions to join match
         if not match:
             return
-        await self._user_join_match(match, uid)
+        await self.user_join_match(match, uid)
 
     async def _handle_case_bet_in_review(self, uid):
         match = await self._create_match(0)
         
         print(f"User {uid} join match {match.match_id}")
-        await self._user_join_match(match, uid=uid)
+        await self.user_join_match(match, uid=uid)
 
 
     async def _handle_quick_play(self, uid: int):
@@ -323,7 +332,7 @@ class MatchManager:
             match = await self._create_match(bet)
         
         print(f"User {uid} join match {match.match_id}")
-        await self._user_join_match(match, uid=uid)
+        await self.user_join_match(match, uid=uid)
 
         write_log(uid, "quick_play", "", [])
     
@@ -352,7 +361,7 @@ class MatchManager:
             await self._send_response_join_table(uid, JoinMatchErrors.NOT_ENOUGH_GOLD)
             return
         
-        await self._user_join_match(match, uid)
+        await self.user_join_match(match, uid)
 
     async def _send_response_join_table(self, uid, status):
         join_pkg = packet_pb2.JoinTableResponse()

@@ -378,3 +378,44 @@ message PaymentPaypalOrder {
 
 message QuickPlay {
 }
+
+message SetteMezzoNewUserJoinMatch {
+  int32 uid = 1;
+  int64 gold = 2;
+  string name = 3;
+  int32 seat_server = 4;
+  int32 team_id = 5;
+  string avatar = 6;
+}
+
+message SetteMezzoPrepareStartGame {
+  int32 pot_value = 1;
+  repeated int64 players_gold = 2;
+  int32 banker_uid = 3;
+}
+
+message SetteMezzoGameInfo {
+  int32 match_id = 1;
+  int32 game_mode = 2;
+  int32 player_mode = 3;
+  repeated int32 uids = 4;
+  repeated int64 user_golds = 5;
+  repeated string user_names = 6;
+  int32 banker_uid = 7;
+  int32 current_turn = 8;
+  int32 game_state = 9;
+  repeated int32 my_cards = 10;
+  int32 remain_cards = 11;
+  repeated int32 user_points = 12;
+  repeated int32 team_ids = 13;
+  int32 hand_suit = 14;
+  repeated string avatars = 15;
+  bool is_registered_leave = 16;
+  int32 bet = 17;
+  int64 pot_value = 18;
+  int32 current_round = 19;
+  int32 hand_in_round = 20;
+}
+
+message SetteMezzoQuickPlay {
+}

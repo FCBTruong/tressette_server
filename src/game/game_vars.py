@@ -14,6 +14,7 @@ class GameVars:
         self.game_live_performance = None
         self.customer_service_mgr = None
         self.debt_mgr = None
+        self.sette_mezzo_mgr = None
         
     def get_game_client(self):
         if self.game_client is None:
@@ -82,5 +83,11 @@ class GameVars:
             from src.game.debt_mgr import DebtMgr
             self.debt_mgr = DebtMgr()
         return self.debt_mgr
+    
+    def get_sette_mezzo_mgr(self):
+        if self.sette_mezzo_mgr is None:
+            from src.game.modules.sette_mezzo.sette_mezzo_mgr import SetteMezzoMgr
+            self.sette_mezzo_mgr = SetteMezzoMgr()
+        return self.sette_mezzo_mgr
     
 game_vars = GameVars()

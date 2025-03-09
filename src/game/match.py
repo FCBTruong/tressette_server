@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import logging
 import random
 import traceback
+from abc import ABC, abstractmethod
 
 from src.base.logs.logs_mgr import write_log
 from src.base.network.connection_manager import connection_manager
@@ -161,8 +162,21 @@ class MatchBotIntermediate(MatchBot):
 
         return min(winning_cards, key=lambda c: CARD_VALUES[c]) if winning_cards else min_card
 
-class Match:
+class Match(ABC):
+    @abstractmethod
     async def user_play_card(self, uid, payload):
+        pass
+
+    @abstractmethod
+    async def user_join(self, user_id, is_bot=False):
+        pass
+
+    @abstractmethod
+    async def user_leave(self, uid, reason = 0):
+        pass
+
+    @abstractmethod
+    async def user_reconnect(self, uid):
         pass
 
 class TressetteMatch(Match):
