@@ -91,9 +91,12 @@ class LoginMgr:
                     basic_user.login_type = LOGIN_APPLE
                 
                 basic_user.name = decoded_token.get("name")
-                basic_user.avatar = decoded_token.get("picture")
+                
                 basic_user.avatar_third_party = decoded_token.get("picture")
-
+                if not basic_user.avatar_third_party:
+                    basic_user.avatar = str(random.choice(AVATAR_IDS))
+                else:
+                    basic_user.avatar = basic_user.avatar_third_party
 
                 session.add(basic_user)
                 await session.commit()
