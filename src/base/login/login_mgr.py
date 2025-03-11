@@ -70,9 +70,15 @@ class LoginMgr:
 
                 # Update user info
                 user_info = await session.get(UserInfoSchema, uid)
-                user_info.name = decoded_token.get("name")
-                user_info.avatar_third_party = decoded_token.get("picture")
-                await session.commit()
+                has_change = False
+                if decoded_token.get("name") and user_info.name != decoded_token.get("name"):
+                    user_info.name = decoded_token.get("name")
+                    has_change = True
+                if decoded_token.get("picture") and user_info.avatar_third_party != decoded_token.get("picture"):
+                    user_info.avatar_third_party = decoded_token.get("picture")
+                    has_change = True
+                if has_change:
+                    await session.commit()
             else:
                 # Create a new user
                 basic_user = self.create_new_basic_user()
@@ -85,9 +91,12 @@ class LoginMgr:
                     basic_user.login_type = LOGIN_APPLE
                 
                 basic_user.name = decoded_token.get("name")
-                basic_user.avatar = decoded_token.get("picture")
+                
                 basic_user.avatar_third_party = decoded_token.get("picture")
-
+                if not basic_user.avatar_third_party:
+                    basic_user.avatar = str(random.choice(AVATAR_IDS))
+                else:
+                    basic_user.avatar = basic_user.avatar_third_party
 
                 session.add(basic_user)
                 await session.commit()

@@ -29,6 +29,7 @@ message Login {
   string device_model = 3;
   string platform = 4;
   string device_country = 5;
+  int32 app_version_code = 6;
 }
 
 message LoginFirebase {
@@ -151,6 +152,7 @@ message GeneralInfo {
   repeated int32 tressette_bets = 3;
   int32 bet_multiplier_min = 4;
   repeated int32 exp_levels = 5;
+  int32 fee_mode_no_bet = 6;
 }
 
 message EndGame {
@@ -311,6 +313,8 @@ message CreateTable {
   int32 bet = 1;
   int32 player_mode = 2;
   bool is_private = 3;
+  int32 point_mode = 4;
+  bool bet_mode = 5;
 }
 
 message JoinTableById {
@@ -333,6 +337,7 @@ message AppCodeVersion {
   int32 ios_version = 4;
   int32 ios_forced_update_version = 5;
   int32 ios_remind_update_version = 6;
+  int32 ios_reviewing_version = 7;
 }
 
 message PlayCardResponse {
@@ -361,4 +366,63 @@ message CustomerServiceReport {
 
 message AdminBroadcast {
   string mes = 1;
+}
+
+message PaymentPaypalRequestOrder {
+  string pack_id = 1;
+}
+
+message PaymentPaypalOrder {
+  string order_url = 1;
+}
+
+message QuickPlay {
+}
+
+message SetteMezzoNewUserJoinMatch {
+  int32 uid = 1;
+  int64 gold = 2;
+  string name = 3;
+  int32 seat_server = 4;
+  int32 team_id = 5;
+  string avatar = 6;
+}
+
+message SetteMezzoPrepareStartGame {
+  int32 pot_value = 1;
+  repeated int64 players_gold = 2;
+}
+
+message SetteMezzoGameInfo {
+  int32 match_id = 1;
+  int32 game_mode = 2;
+  int32 player_mode = 3;
+  repeated int32 uids = 4;
+  repeated int64 user_golds = 5;
+  repeated string user_names = 6;
+  int32 banker_uid = 7;
+  int32 current_turn = 8;
+  int32 game_state = 9;
+  repeated int32 my_cards = 10;
+  int32 remain_cards = 11;
+  repeated int32 user_points = 12;
+  repeated int32 team_ids = 13;
+  int32 hand_suit = 14;
+  repeated string avatars = 15;
+  bool is_registered_leave = 16;
+  int32 bet = 17;
+  int64 pot_value = 18;
+  int32 current_round = 19;
+  int32 hand_in_round = 20;
+}
+
+message SetteMezzoQuickPlay {
+}
+
+
+message SetteMezzoStartGame {
+  int32 pot_value = 1;
+  repeated int64 players_gold = 2;
+  repeated int32 uids = 3;
+  repeated int32 cards = 4;
 }

@@ -8,8 +8,8 @@ from src.constants import *
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
-from src.base.network.packets.packet_pb2 import ChatMessage  # Import ChatMessage from the protobuf module
 from src.game.tressette_config import config as tress_config
+from src.base.network.connection_manager import connection_manager
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
@@ -27,12 +27,9 @@ class GameClient:
             return 
         match cmd_id:
             case CMDs.LOGOUT:
-                logout_pkg = packet_pb2.Logout()
-                # send logout packet
-                await self.send_packet(uid, CMDs.LOGOUT, logout_pkg)
-                print("Accepted logout")
-                await connection_manager.user_logout(uid)
-                write_log(uid, "logout", "", [])
+                await self._handle_user_logout(uid)
+            case CMDs.DELETE_ACCOUNT:
+                await self._handle_delete_account(uid)
             case _:
                 await game_vars.get_game_mgr().on_receive_packet(uid, cmd_id, payload)
                 await users_info_mgr.on_receive_packet(uid, cmd_id, payload)
@@ -45,6 +42,7 @@ class GameClient:
         general_pkg.time_thinking_in_turn = tress_config.get("time_thinking_in_turn")
         general_pkg.timestamp = int(datetime.now().timestamp())
         general_pkg.bet_multiplier_min = tress_config.get("bet_multiplier_min")
+        general_pkg.fee_mode_no_bet = tress_config.get("fee_mode_no_bet")
 
         tressette_bets = tress_config.get("bets")
         exp_levels = tress_config.get("exp_levels")
@@ -83,7 +81,7 @@ class GameClient:
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
 
         # SEND SHOP CONFIG
-        await payment_mgr.send_shop_config(uid)
+        await payment_mgr.send_shop_config(uid, platform)
 
         # Send friend list
         await game_vars.get_friend_mgr().send_list_friends(uid, send_recommend_if_empty=True)
@@ -96,8 +94,24 @@ class GameClient:
         write_log(uid, "login", "", [device_model, platform, device_country])
 
     async def send_packet(self, uid, cmd_id, pkt):
-        from src.base.network.connection_manager import connection_manager
         await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())
 
      
-    
+    async def _handle_delete_account(self, uid):
+        user_info = await users_info_mgr.get_user_info(uid)
+        if not user_info:
+            return
+        user_info.is_active = False
+        await user_info.commit_to_database('is_active')
+        await self.send_packet(uid, CMDs.DELETE_ACCOUNT, packet_pb2.Empty())
+        await self._handle_user_logout(uid)
+        write_log(uid, "delete_account", "", [])
+
+    async def _handle_user_logout(self, uid):
+        logout_pkg = packet_pb2.Logout()
+        # send logout packet
+        await self.send_packet(uid, CMDs.LOGOUT, logout_pkg)
+        print("Accepted logout")
+        await connection_manager.user_logout(uid)
+        write_log(uid, "logout", "", [])
+   

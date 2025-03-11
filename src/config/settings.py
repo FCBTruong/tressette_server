@@ -29,7 +29,7 @@ class PostgresSettings(DatabaseSettings):
 
     # PsqlORM settings
     POSTGRES_POOL_SIZE: Optional[int] = os.getenv("POSTGRES_POOL_SIZE", 50)
-    POSTGRES_MAX_OVERFLOW: Optional[int] = os.getenv("POSTGRES_MAX_OVERFLOW", 50)
+    POSTGRES_MAX_OVERFLOW: Optional[int] = os.getenv("POSTGRES_MAX_OVERFLOW", 20)
     POSTGRES_POOL_TIMEOUT: Optional[int] = os.getenv("POSTGRES_POOL_TIMEOUT", 30)
     POSTGRES_POOL_RECYCLE: Optional[int] = os.getenv("POSTGRES_POOL_RECYCLE", 3600)
 
@@ -42,7 +42,9 @@ class CommonSettings(BaseSettings):
     ENABLE_CHEAT: Optional[bool] = os.getenv("ENABLE_CHEAT") == "true"
     DEV_MODE: Optional[bool] = os.getenv("DEV_MODE") == "true"
     LOGS_URL: Optional[str] = os.getenv("LOGS_URL")
-    
+    TIME_SEND_LOGS: Optional[int] = os.getenv("TIME_SEND_LOGS", 300)
+    ENABLE_SWAGGER: Optional[bool] = True
+    SERVER_URL: Optional[str] = os.getenv("SERVER_URL", 'https://tressette-dev.clareentertainment.com')
 class Settings(
     EnvironmentSettings,
     PostgresSettings,

@@ -1,191 +1,34 @@
+
+
 import asyncio
-from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import random
 import traceback
-from abc import ABC, abstractmethod
-
+import uuid
 from src.base.logs.logs_mgr import write_log
-from src.base.network.connection_manager import connection_manager
+from src.base.network import connection_manager
 from src.base.network.packets import packet_pb2
-from src.config.settings import settings
-from src.constants import *
+from src.config import settings
+from src.constants import REASON_KICK_NOT_ENOUGH_GOLD
+from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
-from src.game.game_vars import game_vars
-from datetime import datetime, timedelta
-from src.game.tressette_config import config as tress_config
-import uuid
+from src.game.match import PLAYER_SOLO_MODE, TAX_PERCENT, TIME_AUTO_PLAY, TIME_START_TO_DEAL, Match, MatchPlayer, MatchState, PlayCardErrors
 from src.game.modules import game_exp
-from src.game.tressette_constants import *
 
-class MatchState(Enum):
-    WAITING = 0
-    PREPARING_START = 1
-    PLAYING = 2
-    ENDING = 3
-    ENDED = 4
-
-class PlayCardErrors(Enum):
-    SUCCESS = 0
-    NOT_IN_GAME = 1
-    NOT_YOUR_TURN = 2
-    INVALID_CARD = 3
-    NOT_FOUND_CARD = 4
-    INVALID_SUIT = 5
-    NOT_IN_HAND = 6
-
-PLAYER_SOLO_MODE = 2
-PLAYER_DUO_MODE = 4
-TRESSETTE_MODE = 0
-BRISCOLA_MODE = 1
-
-SERVER_SCORE_ONE_POINT = 3
-
-TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
-TIME_AUTO_PLAY_SEVERE = min(3, TIME_AUTO_PLAY)
-TAX_PERCENT = tress_config.get("tax_percent")
-TIME_START_TO_DEAL = 3.5 # seconds
-TIME_DRAW_CARD = 4 # seconds
-TIME_MATCH_MAXIMUM = 60 * 60 # 1 hour -> after this match will be destroyed
-SCORE_WIN_GAME_ELEVEN = 11 * SERVER_SCORE_ONE_POINT
-SCORE_WIN_GAME_TWENTY_ONE = 21 * SERVER_SCORE_ONE_POINT
-# 0 - 39
-TRESSETTE_CARDS = [i for i in range(40)]
-
-class LeaveMatchErrors(Enum):
-    SUCCESS = 0
-    NOT_IN_MATCH = 1
-    MATCH_STARTED = 2
-# Configure the logger
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
 )
-logger = logging.getLogger("game_match")  # Name your logger
+logger = logging.getLogger("scopa_match")  # Name your logger
 
-class MatchPlayer:
-    def __init__(self, uid: int, match_mgr: "Match"):
-        self.uid = uid
-        self.name = ""
-        self.avatar = ""
-        self.gold = 0
-        self.cards = [] # id of cards
-        self.points = 0
-        self.score_last_trick = 0
-        self.team_id = -1
-        self.is_bot = False
-        self.match_mgr = match_mgr
-        self.gold_change = 0
-        self.is_in_game = False
 
-    
-    def reset_game(self):
-        self.cards.clear()
-        self.points = 0
-        self.score_last_trick = 0
-
-    async def on_turn(self):
-        pass
-
-    async def auto_play(self):
-        if len(self.cards) == 0:
-            return
-        card_id = self.cards[0]
-        cur_hand_suit = self.match_mgr.hand_suit
-        if cur_hand_suit != -1:
-            # find suitable card
-            for card in self.cards:
-                if card % 4 == cur_hand_suit:
-                    card_id = card
-                    break
-
-        await self.match_mgr._play_card(self.uid, card_id=card_id, auto=True)
-
-class MatchBot(MatchPlayer):
-    def __init__(self, uid, match_mgr):
-        super().__init__(uid, match_mgr)
-        self.is_bot = True
-
-    async def on_turn(self):
-        print('Bot on turn')
-        # play a card
-        if len(self.cards) == 0:
-            return
-        card_id = self.get_card_to_play()
-        # wait for 1 second
-        time_thinking = random.randrange(1, 3)
-        await asyncio.sleep(time_thinking)
-        await self.match_mgr._play_card(self.uid, card_id=card_id, auto=False)
-
-        # send back to client current cards for testing
-        if settings.ENABLE_CHEAT:
-            await self._send_cheat_view_card()
-    
-    async def _send_cheat_view_card(self):
-        print('Send cheat view card')
-        pkg = packet_pb2.CheatViewCardBot()
-        pkg.cards.extend(self.cards)
-        await self.match_mgr.broadcast_pkg(CMDs.CHEAT_VIEW_CARD_BOT, pkg)
-    
-    async def get_card_to_play(self) -> int:
-        card_id = self.cards[0]
-        cur_hand_suit = self.match_mgr.hand_suit
-        if cur_hand_suit != -1:
-            # find suitable card
-            for card in self.cards:
-                if card % 4 == cur_hand_suit:
-                    card_id = card
-                    break
-        return card_id
-    
-class MatchBotIntermediate(MatchBot):
-    def get_card_to_play(self) -> int:
-        cards_on_table = [card for card in self.match_mgr.cards_compare if card != -1]
-
-        if not cards_on_table:
-            return self.cards[0]  # Play the first card if nothing is on the table
-
-        strong_card = max(cards_on_table, key=lambda c: TRESSETTE_CARD_STRONGS[c // 4])
-
-        cur_hand_suit = self.match_mgr.hand_suit
-        cards_valid = [card for card in self.cards if card % 4 == cur_hand_suit]
-
-        if not cards_valid:
-            return min(self.cards, key=lambda c: CARD_VALUES[c])  # Play the lowest value card
-
-        # Find the smallest valid card
-        min_card = min(cards_valid, key=lambda c: CARD_VALUES[c])
-
-        # Find the smallest card that can win
-        winning_cards = [card for card in cards_valid if TRESSETTE_CARD_STRONGS[card // 4] > TRESSETTE_CARD_STRONGS[strong_card // 4]]
-
-        return min(winning_cards, key=lambda c: CARD_VALUES[c]) if winning_cards else min_card
-
-class Match(ABC):
-    @abstractmethod
-    async def user_play_card(self, uid, payload):
-        pass
-
-    @abstractmethod
-    async def user_join(self, user_id, is_bot=False):
-        pass
-
-    @abstractmethod
-    async def user_leave(self, uid, reason = 0):
-        pass
-
-    @abstractmethod
-    async def user_reconnect(self, uid):
-        pass
-
-class TressetteMatch(Match):
+class ScopaMatch(Match):
     def __init__(self, match_id, bet, player_mode, point_mode):
         self.match_id = match_id
         self.start_time = datetime.now()
         self.end_time = None
-        self.game_mode = TRESSETTE_MODE
         self.player_mode = player_mode
         self.players: list[MatchPlayer] = []
         self.cards = []
@@ -207,7 +50,6 @@ class TressetteMatch(Match):
         self.task_gen_bot = None
         self.unique_game_id = ""
         self.is_public = True
-        self.napoli_claimed_status = {}
         self.hand_in_round = -1
         self.enable_bet_win_score = True
 
@@ -225,16 +67,7 @@ class TressetteMatch(Match):
     async def loop(self):
         try:
             if self.state == MatchState.PLAYING:
-                # check overtime
-                if datetime.now() - self.start_time > timedelta(seconds=TIME_MATCH_MAXIMUM):
-                    await self.end_game()
-                    return
-                
-                # check auto play
-                if self.current_turn != -1 and self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
-                    player = self.players[self.current_turn]
-                    if player:
-                        await player.auto_play()
+                pass
             elif self.state == MatchState.PREPARING_START:
                 if self.time_start != -1 and datetime.now().timestamp() > self.time_start:
                     if self.check_room_full():
@@ -271,10 +104,8 @@ class TressetteMatch(Match):
         if slot_idx == -1:
             print('Match is full')
             return
-        if is_bot:
-            match_player = MatchBotIntermediate(user_id, self)
-        else:
-            match_player = MatchPlayer(user_id, self)
+        
+        match_player = MatchPlayer(user_id, self)
 
         match_player.name = user_data.name
         match_player.gold = user_data.gold
@@ -297,7 +128,7 @@ class TressetteMatch(Match):
         pkg.avatar = user_data.avatar
         pkg.gold = user_data.gold
 
-        await self.broadcast_pkg(CMDs.NEW__USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
+        await self.broadcast_pkg(CMDs.NEW_USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
         
         if not is_bot:
             # send game info to user
@@ -310,33 +141,7 @@ class TressetteMatch(Match):
             await self._check_and_gen_bot()
 
     async def _check_and_gen_bot(self):
-        print("check and gen bott")
-        if not self.is_public:
-            return
-        print("check and g2en bott")
-        
-        if self.state != MatchState.WAITING:
-            return
-        
-        if self.player_mode != PLAYER_SOLO_MODE:
-            return
-        
-        if self.bet > 0:
-            max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
-            if self.bet > max_bet_to_gen_bot:
-                return
-            
-            ccu = await game_vars.get_game_live_performance().get_ccu()
-            if ccu > tress_config.get('ccu_to_gen_bot'):
-                return # not gen bot if ccu > 100
-            
-        print("check and3 g2en bott")
-        if self.task_gen_bot is not None:
-            self.task_gen_bot.cancel()
-
-        print("check and g2en 2bott")
-        time_delay_gen_bot = await self._get_ideal_delay_bot_time()
-        self.task_gen_bot = asyncio.create_task(self._coroutine_gen_bot(time_delay_gen_bot))
+        return False
     
     async def _get_ideal_delay_bot_time(self):
         # only for solo mode
@@ -353,9 +158,7 @@ class TressetteMatch(Match):
         return 10
     
     async def _coroutine_gen_bot(self, time_delay_gen_bot):
-        await asyncio.sleep(time_delay_gen_bot)
-        bot_uid = random.randint(10000000, 30000000)
-        await self.user_join(bot_uid, is_bot=True)
+        return
 
     def _clear_coroutine_gen_bot(self):
         if self.task_gen_bot is not None:
@@ -379,7 +182,7 @@ class TressetteMatch(Match):
         return False
     
     def get_min_gold_play(self):
-        return self.bet * tress_config.get('bet_multiplier_min')
+        return 0
     
     def check_room_full(self) -> bool:
         for player in self.players:
@@ -539,90 +342,7 @@ class TressetteMatch(Match):
         await game_vars.get_game_client().send_packet(uid, CMDs.PLAY_CARD_RESPONSE, pkg)
 
     async def _play_card(self, uid, card_id, auto=False):
-        # # test
-        # await self.end_game()
-        # return
-        if self.state != MatchState.PLAYING:
-            logger.error("Game is not in progress")
-            await self._send_card_play_response(uid, PlayCardErrors.NOT_IN_GAME)
-            return
-        
-        if self.check_done_hand():
-            logger.error("hand is done, wait for next hand")
-            await self._send_card_play_response(uid, PlayCardErrors.NOT_IN_HAND)
-            return
-    
-
-        # check whether it is user turn
-        if self.current_turn == -1 or self.players[self.current_turn].uid != uid:
-            logger.error(f"User {uid} is not in turn, current turn: {self.current_turn}, user turn: {self.players[self.current_turn].uid}")
-            await self._send_card_play_response(uid, PlayCardErrors.NOT_YOUR_TURN)
-            return
-        
-        # check whether user has the card
-        player = self.players[self.current_turn]
-        if card_id not in player.cards:
-            logger.error(f"User {uid} does not have card {card_id}")
-            await self._send_card_play_response(uid, PlayCardErrors.NOT_FOUND_CARD)
-            return
-        
-        if self.hand_suit == -1:
-            self.hand_suit = card_id % 4
-        else:
-            card_suit = card_id % 4
-            if card_suit != self.hand_suit:
-                for card in player.cards:
-                    if card % 4 == self.hand_suit:
-                        logger.error(f"User {uid} must play card with suit {self.hand_suit}")
-                        await self._send_card_play_response(uid, PlayCardErrors.INVALID_SUIT)
-                        return
-
-        # Now user can play card
-        if not auto:
-            self.users_auto_play.pop(uid, None)
-            self.auto_play_count_by_uid.pop(uid, None)
-        else:
-            self.auto_play_count_by_uid[uid] = self.auto_play_count_by_uid.get(uid, 0) + 1
-            if self.auto_play_count_by_uid[uid] >= 3:
-                self.users_auto_play[uid] = True
-            
-        # remove card from player
-        print('remove card id: ', card_id, ' auto: ', auto)
-        player.cards.remove(card_id)
-        self.cards_compare[self.current_turn] = card_id
-        self.time_auto_play = -1
-
-        is_finish_hand = self.check_done_hand()
-        if not is_finish_hand:
-            self.current_turn = (self.current_turn + 1) % len(self.players)
-        else:
-            self.current_turn = -1
-    
-        # send to others
-        pkg = packet_pb2.PlayCard()
-        pkg.uid = uid
-        pkg.card_id = card_id
-        pkg.auto = auto
-        pkg.current_turn = self.current_turn
-        pkg.hand_suit = self.hand_suit
-
-        await self.broadcast_pkg(CMDs.PLAY_CARD, pkg)
-
-        # Check done hand
-        if is_finish_hand:
-            print('Finishhand, end hand')
-            await self.end_hand()
-        else:
-            # next uid
-            next_uid = self.players[self.current_turn].uid
-            await self.players[self.current_turn].on_turn()
-
-            if next_uid in self.users_auto_play:
-                # people that are auto play
-                self.time_auto_play = TIME_AUTO_PLAY_SEVERE + datetime.now().timestamp()
-            else:
-                # normal people
-                self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+        pass
 
     def check_done_hand(self):
         for card in self.cards_compare:
@@ -638,7 +358,7 @@ class TressetteMatch(Match):
        await self._send_game_info(uid)
 
     async def deal_card(self):
-        self.cards = TRESSETTE_CARDS.copy()
+        self.cards = []
         random.shuffle(self.cards)
         print(f"Cards: {self.cards}")
         for i, player in enumerate(self.players):
@@ -663,64 +383,7 @@ class TressetteMatch(Match):
     
 
     async def end_hand(self):
-        win_card = self.get_win_card_in_hand()
-        win_player = self.players[self.cards_compare.index(win_card)]
-        self.win_player = win_player
-        win_score = self.get_win_score_in_hand()
-        win_player.points += win_score
-
-        # reset hand
-        self.cards_compare.clear()
-        for _ in range(self.player_mode):
-            self.cards_compare.append(-1)
-
-        self.current_hand += 1
-
-        # check is end round
-        if len(self.players[0].cards) == 0: # test = 9
-            # logic end round
-            self.is_end_round = True
-        else:
-            self.is_end_round = False
-            if settings.DEV_MODE:
-                self.is_end_round = True
-        
-        if self.is_end_round:
-            # calculate last trick
-            #BONUS 1 point for the last trick to the team that wins it
-            win_player.points += 3
-            win_player.score_last_trick += 3
-
-        pkg = packet_pb2.EndHand()
-        pkg.is_end_round = self.is_end_round
-        pkg.win_uid = win_player.uid
-        pkg.win_card = win_card
-        pkg.win_point = win_score
-        for player in self.players:
-            pkg.user_points.append(player.points)
-
-        # send to others
-        await asyncio.sleep(0.5)
-
-        await self.broadcast_pkg(CMDs.END_HAND, pkg)
-
-        # effect show win cards
-        await asyncio.sleep(2)
-        
-        # # draw new cards
-        if self._is_end_game():
-            await self.end_game()
-            return
-        
-        if not self.is_end_round:
-            # Still has cards to draw
-            if len(self.cards) > 0:
-                await self._handle_draw_card()
-                await asyncio.sleep(TIME_DRAW_CARD)
-            await self._handle_new_hand()
-        else:
-            # create new round
-            await self._on_end_round()
+        pass
     
     async def _on_end_round(self):
         # wait for 2 seconds
@@ -728,90 +391,16 @@ class TressetteMatch(Match):
         await self._on_new_round()
 
     async def _on_new_round(self):
-        self.cur_round += 1
-        self.is_end_round = False
-        self.napoli_claimed_status.clear()
-        self.hand_in_round = -1
-
-        # When new round start, all redudant points need to be removed, example 3, 1/3 -> 3, 4 2/3 -> 4
-        for player in self.players:
-            redundant_points = player.points % 3
-            player.points -= redundant_points
-
-        players_gold = []
-        # players need to contribute to pot again
-        for player in self.players:
-            # get pot user need to contribute
-            pot_user_need_to_contribute = self.bet
-            self.pot_value += pot_user_need_to_contribute
-            player.gold_change -= pot_user_need_to_contribute
-
-            player.gold -= pot_user_need_to_contribute
-            if not player.is_bot:
-                game_vars.get_debt_mgr().add_debt_ingame(player.uid, pot_user_need_to_contribute)
-
-            players_gold.append(player.gold)
-
-        # Send new round
-        pkg = packet_pb2.NewRound()
-        pkg.current_round = self.cur_round
-        pkg.pot_value = self.pot_value
-        pkg.players_gold.extend(players_gold)
-
-        await self.broadcast_pkg(CMDs.NEW_ROUND, pkg)
-
-        await asyncio.sleep(3 if self.bet > 0 else 1)
-        await self.deal_card()
-        await asyncio.sleep(2)
-        await self._handle_new_hand()
+        pass
 
     def _is_end_game(self):
-        # check if one team reach 21 * 3 points then end game
-        self.team_scores = [0, 0]
-        for player in self.players:
-            self.team_scores[player.team_id] += player.points
-        
-        if settings.DEV_MODE:
-            return True
-            if self.cur_round >= 2:
-                return True
-        if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
-            return True
         return False
     
     async def _handle_draw_card(self):
-        draw_cards = []
-        for player in self.players:
-            new_card = self._draw_card()
-            player.cards.append(new_card)
-            draw_cards.append(new_card)
-        
-        # send to users
-        pkg = packet_pb2.DrawCard()
-        pkg.cards.extend(draw_cards)
-
-        await self.broadcast_pkg(CMDs.DRAW_CARD, pkg)
+        return
 
     async def _handle_new_hand(self):
-        self.current_hand += 1
-        self.hand_suit = -1
-        self.hand_in_round += 1
-
-        # next turn is the winner of last hand
-        if self.win_player is not None:
-            self.current_turn = self.players.index(self.win_player)
-        else:
-            self.current_turn = 0
-
-        self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
-
-        print(f"New hand")
-        pkg = packet_pb2.NewHand()
-        pkg.current_turn = self.current_turn
-
-        await self.broadcast_pkg(CMDs.NEW_HAND, pkg)
-
-        await self.players[self.current_turn].on_turn()
+        return
 
     def _draw_card(self):
         card = self.cards.pop(0)
@@ -821,26 +410,12 @@ class TressetteMatch(Match):
         return self.state == MatchState.WAITING or self.state == MatchState.PREPARING_START
     
     def get_win_card_in_hand(self):
-        # valid cards in hand, same defined suit
-        cards_valid = []
-        for card in self.cards_compare:
-            if card % 4 == self.hand_suit:
-                cards_valid.append(card)
-
-        win_card = cards_valid[0]
-        for card in cards_valid:
-            if TRESSETTE_CARD_STRONGS[card // 4] > TRESSETTE_CARD_STRONGS[win_card // 4]:
-                win_card = card
-        return win_card
+        return
 
     def get_win_score_in_hand(self):
-        total_score = 0
-        for card in self.cards_compare:
-            total_score += CARD_VALUES[card]
-        return total_score
+        return 0
 
         
-
     async def end_game(self):
         self.state = MatchState.ENDED
         if self.team_scores[0] > self.team_scores[1]:
@@ -1012,68 +587,5 @@ class TressetteMatch(Match):
             bot_uid = random.randint(5000000, 30000000)
             await self.user_join(bot_uid, is_bot=True)
 
-    async def receive_game_action_napoli(self, uid, payload):
-        if self.napoli_claimed_status.get(uid):
-            return
-    
-        p = None
-        for player in self.players:
-            if player.uid == uid:
-                p = player
-                break
-        if p is None:
-            return
-        napoli_sets = self.find_napoli(p.cards)
-        if len(napoli_sets) == 0:
-            return
-        
-        napoli_suits = []
-        for napoli_set in napoli_sets:
-            set_suit = napoli_set[0] % 4
-            napoli_suits.append(set_suit)
-
-        self.napoli_claimed_status[uid] = True
-        # add 3 (1 point) for each napoli set
-        point_add = len(napoli_sets) * SERVER_SCORE_ONE_POINT
-        p.points += point_add
-
-        # send to all users
-        pkg = packet_pb2.GameActionNapoli()
-        pkg.uid = uid
-        pkg.point_add = point_add
-        pkg.suits.extend(napoli_suits)
-
-        await self.broadcast_pkg(CMDs.GAME_ACTION_NAPOLI, pkg)
-
-    def find_napoli(self, hand):
-        napoli_sets = []
-        
-        # Check for Napoli in each suit
-        for suit in range(4):
-            ace = suit
-            two = suit + 4
-            three = suit + 8
-
-            if ace in hand and two in hand and three in hand:
-                napoli_sets.append([ace, two, three])
-        
-        return napoli_sets
-    
     def user_return_to_table(self, uid):
         self.users_auto_play.pop(uid, None)
-
-
-# Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
-CARD_VALUES = {
-    0: 3, 1: 3, 2: 3, 3: 3,  # Aces (1 point * 3)
-    4: 1, 5: 1, 6: 1, 7: 1,  # 2s
-    8: 1, 9: 1, 10: 1, 11: 1,  # 3s (1 point * 3)
-    12: 0, 13: 0, 14: 0, 15: 0,  # 4s
-    16: 0, 17: 0, 18: 0, 19: 0,  # 5s
-    20: 0, 21: 0, 22: 0, 23: 0,  # 6s
-    24: 0, 25: 0, 26: 0, 27: 0,  # 7s
-    28: 1, 29: 1, 30: 1, 31: 1,  # Jacks (1/3 point * 3 = 1)
-    32: 1, 33: 1, 34: 1, 35: 1,  # Queens (1/3 point * 3 = 1)
-    36: 1, 37: 1, 38: 1, 39: 1   # Kings (1/3 point * 3 = 1)
-}
-

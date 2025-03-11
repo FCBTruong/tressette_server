@@ -1,0 +1,29 @@
+
+from src.base.network.packets import packet_pb2
+from src.game.game_vars import game_vars
+from src.game.cmds import CMDs
+
+
+class SetteMezzoMgr:
+    
+    async def on_receive_packet(self, uid: int, cmd_id: int, payload):
+        match cmd_id:
+            case CMDs.SETTE_MEZZO_QUICK_PLAY:
+                await self._quick_play(uid, payload)
+                pass
+
+    async def _quick_play(self, uid: int, payload):
+        quick_play_pkg = packet_pb2.SetteMezzoQuickPlay()
+        quick_play_pkg.ParseFromString(payload)
+
+        match = await game_vars.get_match_mgr().get_match_of_user(uid)
+        if match:
+            print(f"User {uid} is in a match, reconnecting")
+            await match.user_reconnect(uid)
+            return
+        
+        match = await game_vars.get_match_mgr().create_sette_mezzo_match()
+        await game_vars.get_match_mgr().user_join_match(match, uid)
+        
+
+        

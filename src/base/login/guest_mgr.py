@@ -13,6 +13,7 @@ class GuestMgr:
     async def create_guest_account(self) -> str:
         # Generate a random UUID (UUID4)
         guest_id = str(uuid.uuid4())
+        uid = None
 
         async with PsqlOrm.get().session() as session:
             # Create a new user model
@@ -42,10 +43,11 @@ class GuestMgr:
             guest_model = GuestsSchema()
             guest_model.guest_id = guest_id
             guest_model.uid = user_model.uid
+            uid = user_model.uid
 
             # Add the guest record to the session
             session.add(guest_model)
             # Commit the session to save the guest record
             await session.commit()
-        write_log(guest_id, "new_user", "guest", [])
+        write_log(uid, "new_user", "guest", [])
         return guest_id
