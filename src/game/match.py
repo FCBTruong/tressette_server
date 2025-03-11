@@ -606,13 +606,15 @@ class TressetteMatch(Match):
         pkg.current_turn = self.current_turn
         pkg.hand_suit = self.hand_suit
 
-        await self.broadcast_pkg(CMDs.PLAY_CARD, pkg)
-
         # Check done hand
         if is_finish_hand:
             print('Finishhand, end hand')
-            await self.end_hand()
+
+            # add some information to package PlayCard (is end hand, who win, win point ...)
+            await self.end_hand(pkg)
         else:
+            await self.broadcast_pkg(CMDs.PLAY_CARD, pkg)
+
             # next uid
             next_uid = self.players[self.current_turn].uid
             await self.players[self.current_turn].on_turn()
@@ -662,7 +664,7 @@ class TressetteMatch(Match):
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
     
 
-    async def end_hand(self):
+    async def end_hand(self, play_card_pkg):
         win_card = self.get_win_card_in_hand()
         win_player = self.players[self.cards_compare.index(win_card)]
         self.win_player = win_player
@@ -689,6 +691,14 @@ class TressetteMatch(Match):
             win_player.points += 3
             win_player.score_last_trick += 3
 
+        play_card_pkg.is_end_hand = True
+        play_card_pkg.win_uid = win_player.uid
+        play_card_pkg.win_card = win_card
+        play_card_pkg.win_point = win_score
+        play_card_pkg.is_end_round = self.is_end_round
+        await self.broadcast_pkg(CMDs.PLAY_CARD, play_card_pkg)
+
+        # this end hand packet will not use in the future
         pkg = packet_pb2.EndHand()
         pkg.is_end_round = self.is_end_round
         pkg.win_uid = win_player.uid

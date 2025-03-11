@@ -118,6 +118,11 @@ message PlayCard {
   bool auto = 3;
   int32 current_turn = 4;
   int32 hand_suit = 5;
+  bool is_end_hand = 6;
+  int32 win_uid = 7;
+  int32 win_point = 8;
+  bool is_end_round = 9;
+  int32 win_card = 10;
 }
 
 message StartGame {
