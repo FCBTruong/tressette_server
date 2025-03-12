@@ -11,6 +11,7 @@ from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
 from src.constants import *
+from src.game import game_logic
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
@@ -155,15 +156,58 @@ class MatchBotIntermediate(MatchBot):
         cards_valid = [card for card in self.cards if card % 4 == cur_hand_suit]
 
         if not cards_valid:
-            return min(self.cards, key=lambda c: CARD_VALUES[c])  # Play the lowest value card
+            weakest_card = min(self.cards, key=lambda c: (TRESSETTE_CARD_VALUES[c], TRESSETTE_CARD_STRONGS[c // 4]))
+            return weakest_card
 
         # Find the smallest valid card
-        min_card = min(cards_valid, key=lambda c: CARD_VALUES[c])
+        min_card = min(cards_valid, key=lambda c: TRESSETTE_CARD_VALUES[c])
 
         # Find the smallest card that can win
         winning_cards = [card for card in cards_valid if TRESSETTE_CARD_STRONGS[card // 4] > TRESSETTE_CARD_STRONGS[strong_card // 4]]
 
-        return min(winning_cards, key=lambda c: CARD_VALUES[c]) if winning_cards else min_card
+        return min(winning_cards, key=lambda c: TRESSETTE_CARD_VALUES[c]) if winning_cards else min_card
+
+class MatchBotAdvance(MatchBot):
+    bot_model = 'B'
+    def _pick_best_card(self):
+        try :
+            print("_pick_best_card")
+            opponent = None
+            for p in self.match_mgr.players:
+                if p.uid != self.uid:
+                    opponent = p
+                    break
+            opponent_cards = opponent.cards
+            should_player_card = game_logic.pick_winning_card_first(self.cards, opponent_cards)
+            # play card that can win, if can not win, play weakest and smallest card
+            return should_player_card
+
+        except Exception as e:
+            print(e)
+            return self.cards[0]
+    
+    def get_card_to_play(self) -> int:
+        cards_on_table = [card for card in self.match_mgr.cards_compare if card != -1]
+
+        if not cards_on_table:
+            return self._pick_best_card()  # Play the first card if nothing is on the table
+
+        strong_card = max(cards_on_table, key=lambda c: TRESSETTE_CARD_STRONGS[c // 4])
+
+        cur_hand_suit = self.match_mgr.hand_suit
+        cards_valid = [card for card in self.cards if card % 4 == cur_hand_suit]
+
+        if not cards_valid:
+            weakest_card = min(self.cards, key=lambda c: (TRESSETTE_CARD_VALUES[c], TRESSETTE_CARD_STRONGS[c // 4]))
+            return weakest_card
+
+        # Find the smallest valid card
+        min_card = min(cards_valid, key=lambda c: TRESSETTE_CARD_VALUES[c])
+
+        # Find the smallest card that can win
+        winning_cards = [card for card in cards_valid if TRESSETTE_CARD_STRONGS[card // 4] > TRESSETTE_CARD_STRONGS[strong_card // 4]]
+
+        return min(winning_cards, key=lambda c: TRESSETTE_CARD_VALUES[c]) if winning_cards else min_card
 
 class Match(ABC):
     @abstractmethod
@@ -274,7 +318,26 @@ class TressetteMatch(Match):
             print('Match is full')
             return
         if is_bot:
-            match_player = MatchBotIntermediate(user_id, self)
+            bot_model = 0
+
+            if self.player_mode == PLAYER_SOLO_MODE:
+                # get info user to decide bot model
+                for player in self.players:
+                    if player.uid != -1 and not player.is_bot:
+                        user_info = await users_info_mgr.get_user_info(player.uid)
+                        if user_info.game_count < 3:
+                            bot_model = 0
+                        else:
+                            win_rate = user_info.win_count * 1.0 / user_info.game_count
+                            if win_rate > 0.8:
+                                bot_model = 1
+                            elif win_rate > 0.5:
+                                bot_model = random.randint(0, 1)
+                        break
+            if bot_model == 0:
+                match_player = MatchBotIntermediate(user_id, self)
+            else:
+                match_player = MatchBotAdvance(user_id, self)
         else:
             match_player = MatchPlayer(user_id, self)
 
@@ -780,8 +843,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        if settings.DEV_MODE:
-            return True
+        # if settings.DEV_MODE:
+        #     return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -844,7 +907,7 @@ class TressetteMatch(Match):
     def get_win_score_in_hand(self):
         total_score = 0
         for card in self.cards_compare:
-            total_score += CARD_VALUES[card]
+            total_score += TRESSETTE_CARD_VALUES[card]
         return total_score
 
         
@@ -1074,18 +1137,4 @@ class TressetteMatch(Match):
     def user_return_to_table(self, uid):
         self.users_auto_play.pop(uid, None)
 
-
-# Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
-CARD_VALUES = {
-    0: 3, 1: 3, 2: 3, 3: 3,  # Aces (1 point * 3)
-    4: 1, 5: 1, 6: 1, 7: 1,  # 2s
-    8: 1, 9: 1, 10: 1, 11: 1,  # 3s (1 point * 3)
-    12: 0, 13: 0, 14: 0, 15: 0,  # 4s
-    16: 0, 17: 0, 18: 0, 19: 0,  # 5s
-    20: 0, 21: 0, 22: 0, 23: 0,  # 6s
-    24: 0, 25: 0, 26: 0, 27: 0,  # 7s
-    28: 1, 29: 1, 30: 1, 31: 1,  # Jacks (1/3 point * 3 = 1)
-    32: 1, 33: 1, 34: 1, 35: 1,  # Queens (1/3 point * 3 = 1)
-    36: 1, 37: 1, 38: 1, 39: 1   # Kings (1/3 point * 3 = 1)
-}
 
