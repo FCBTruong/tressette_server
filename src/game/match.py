@@ -104,6 +104,7 @@ class MatchPlayer:
         await self.match_mgr._play_card(self.uid, card_id=card_id, auto=True)
 
 class MatchBot(MatchPlayer):
+    bot_model = ''
     def __init__(self, uid, match_mgr):
         super().__init__(uid, match_mgr)
         self.is_bot = True
@@ -141,6 +142,7 @@ class MatchBot(MatchPlayer):
         return card_id
     
 class MatchBotIntermediate(MatchBot):
+    bot_model = 'A'
     def get_card_to_play(self) -> int:
         cards_on_table = [card for card in self.match_mgr.cards_compare if card != -1]
 
@@ -778,6 +780,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
+        if settings.DEV_MODE:
+            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -877,6 +881,10 @@ class TressetteMatch(Match):
                 player.gold_change += gold_win
         
             if player.uid == -1 or player.is_bot:
+                is_bot_win = '0'
+                if player.team_id == self.win_team:
+                    is_bot_win = '1'
+                write_log(-1, "end_game_bot", player.bot_model, [is_bot_win, self.unique_match_id, self.unique_game_id, self.bet])
                 continue
 
             user_info = await users_info_mgr.get_user_info(player.uid)
