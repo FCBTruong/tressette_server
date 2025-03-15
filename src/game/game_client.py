@@ -36,7 +36,7 @@ class GameClient:
                 await game_vars.get_friend_mgr().on_receive_packet(uid, cmd_id, payload)
                 await game_vars.get_customer_service_mgr().on_receive_packet(uid, cmd_id, payload)
 
-    async def user_login_success(self, uid, device_model, platform, device_country):
+    async def user_login_success(self, uid, device_model, platform, device_country, app_version_code):
         logger.info(f"User with ID {uid} has successfully logged in")
         general_pkg = packet_pb2.GeneralInfo()
         general_pkg.time_thinking_in_turn = tress_config.get("time_thinking_in_turn")
@@ -91,7 +91,7 @@ class GameClient:
         await game_vars.get_game_mgr().on_user_login(uid)
 
         # Write log login
-        write_log(uid, "login", "", [device_model, platform, device_country])
+        write_log(uid, "login", "", [device_model, platform, device_country, app_version_code])
 
     async def send_packet(self, uid, cmd_id, pkt):
         await connection_manager.send_packet_to_user(uid=uid, cmd_id=cmd_id, payload=pkt.SerializeToString())

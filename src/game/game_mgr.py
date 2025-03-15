@@ -79,7 +79,7 @@ class GameMgr:
         if not user_info:
             return
         
-        if user_info.gold >= await game_vars.get_match_mgr().get_gold_minimum_play():
+        if user_info.gold >= game_vars.get_match_mgr().get_gold_minimum_play():
             return
 
         if not self.check_can_receive_support(user_info.last_time_received_support):
