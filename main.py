@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import HTMLResponse
 from src.base.network.connection_manager import connection_manager
 from src.base.payment.google_pay import verify_purchase
+from src.base.telegram import telegram_bot
 from src.config.settings import settings
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
@@ -21,6 +22,8 @@ logger = logging.getLogger("main")  # Name your logger
 
 async def lifespan(app: FastAPI):
     print("Application startup complete.")
+    if not settings.ENABLE_CHEAT:
+        await telegram_bot.send_message(f"Server started")
     yield
 if settings.ENABLE_SWAGGER:
     app = FastAPI(lifespan=lifespan)

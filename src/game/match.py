@@ -342,7 +342,7 @@ class TressetteMatch(Match):
                                 bot_model = 1
                             elif win_rate > 0.6:
                                 bot_model = random.randint(0, 1)
-                            elif win_rate < 0.3:
+                            elif win_rate < 0.2:
                                 bot_model = 2
                         break
             if bot_model == 0:

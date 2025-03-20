@@ -73,7 +73,7 @@ class GameMgr:
         return True
     
     async def _claim_support(self, uid: int):
-        GOLD_SUPPORT = 50000
+        GOLD_SUPPORT = 40000
         user_info = await users_info_mgr.get_user_info(uid)
 
         if not user_info:
