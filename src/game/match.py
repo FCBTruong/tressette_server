@@ -318,7 +318,7 @@ class TressetteMatch(Match):
             print('Match is full')
             return
         if is_bot:
-            bot_model = 0
+            bot_model = 0 # bot medium
 
             if self.player_mode == PLAYER_SOLO_MODE:
                 # get info user to decide bot model
@@ -340,8 +340,10 @@ class TressetteMatch(Match):
                         else:
                             if win_rate > 0.8:
                                 bot_model = 1
-                            elif win_rate > 0.5:
+                            elif win_rate > 0.6:
                                 bot_model = random.randint(0, 1)
+                            elif win_rate < 0.3:
+                                bot_model = 2
                         break
             if bot_model == 0:
                 match_player = MatchBotIntermediate(user_id, self)
@@ -723,8 +725,8 @@ class TressetteMatch(Match):
             player.cards = self.cards[i*10: (i+1)*10]
 
         # TEST CARDS, DONT USE THIS FUNCTION LIVE
-        if settings.DEV_MODE:
-            self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        # if settings.DEV_MODE:
+        #     self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         
         # remove cards dealt
         self.cards = self.cards[10 * len(self.players):]
