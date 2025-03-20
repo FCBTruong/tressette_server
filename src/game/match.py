@@ -105,7 +105,7 @@ class MatchPlayer:
         await self.match_mgr._play_card(self.uid, card_id=card_id, auto=True)
 
 class MatchBot(MatchPlayer):
-    bot_model = ''
+    bot_model = 'C'
     def __init__(self, uid, match_mgr):
         super().__init__(uid, match_mgr)
         self.is_bot = True
@@ -131,7 +131,7 @@ class MatchBot(MatchPlayer):
         pkg.cards.extend(self.cards)
         await self.match_mgr.broadcast_pkg(CMDs.CHEAT_VIEW_CARD_BOT, pkg)
     
-    async def get_card_to_play(self) -> int:
+    def get_card_to_play(self) -> int:
         card_id = self.cards[0]
         cur_hand_suit = self.match_mgr.hand_suit
         if cur_hand_suit != -1:
@@ -325,10 +325,19 @@ class TressetteMatch(Match):
                 for player in self.players:
                     if player.uid != -1 and not player.is_bot:
                         user_info = await users_info_mgr.get_user_info(player.uid)
-                        if user_info.game_count < 3:
-                            bot_model = 0
-                        else:
+                        win_rate = 0
+                        if user_info.game_count > 0:
                             win_rate = user_info.win_count * 1.0 / user_info.game_count
+
+                        # BOT 0: Medium, BOT 2: Stupid, BOT 1: Hard
+                        if user_info.game_count == 0:
+                            bot_model = 2 # bot 2 is stupid
+                        elif user_info.game_count < 5:
+                            if win_rate > 0.5:
+                                bot_model = 0
+                            else:
+                                bot_model = 2
+                        else:
                             if win_rate > 0.8:
                                 bot_model = 1
                             elif win_rate > 0.5:
@@ -336,6 +345,8 @@ class TressetteMatch(Match):
                         break
             if bot_model == 0:
                 match_player = MatchBotIntermediate(user_id, self)
+            elif bot_model == 2:
+                match_player = MatchBot(user_id, self)
             else:
                 match_player = MatchBotAdvance(user_id, self)
         else:
@@ -712,8 +723,8 @@ class TressetteMatch(Match):
             player.cards = self.cards[i*10: (i+1)*10]
 
         # TEST CARDS, DONT USE THIS FUNCTION LIVE
-        # if settings.DEV_MODE:
-        #     self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        if settings.DEV_MODE:
+            self.players[0].cards = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
         
         # remove cards dealt
         self.cards = self.cards[10 * len(self.players):]
