@@ -103,6 +103,9 @@ class MatchPlayer:
                     break
 
         await self.match_mgr._play_card(self.uid, card_id=card_id, auto=True)
+    
+    def random_chat(self):
+        pass
 
 class MatchBot(MatchPlayer):
     bot_model = 'C'
@@ -141,6 +144,15 @@ class MatchBot(MatchPlayer):
                     card_id = card
                     break
         return card_id
+    
+    def random_chat(self):
+        if random.random() < 0.25:  # 25% chance to send a chat
+            async def delayed_chat():
+                await asyncio.sleep(random.uniform(0.5, 3))  # Random delay between 0.5s and 3s
+                await self.match_mgr.broadcast_chat_emoticon(self.uid, random.choice(CHAT_EMO_IDS))
+            
+            asyncio.create_task(delayed_chat())  # Run in background
+
     
 class MatchBotIntermediate(MatchBot):
     bot_model = 'A'
@@ -224,6 +236,14 @@ class Match(ABC):
 
     @abstractmethod
     async def user_reconnect(self, uid):
+        pass
+
+    @abstractmethod
+    async def loop(self):
+        pass
+
+    @abstractmethod
+    async def broadcast_chat_emoticon(self, uid, emoticon):
         pass
 
 class TressetteMatch(Match):
@@ -807,6 +827,10 @@ class TressetteMatch(Match):
         else:
             # create new round
             await self._on_end_round()
+
+        for p in self.players:
+            if p.is_bot:
+                p.random_chat()
     
     async def _on_end_round(self):
         # wait for 2 seconds
@@ -1017,6 +1041,11 @@ class TressetteMatch(Match):
 
         # for user register exit room, or auto play, or disconnect
         await self.update_users_staying_endgame()
+
+        #reset game: score
+        for player in self.players:
+            player.points = 0
+            player.cards.clear()
 
         # next game
         await asyncio.sleep(5)

@@ -15,7 +15,8 @@ class GameVars:
         self.customer_service_mgr = None
         self.debt_mgr = None
         self.sette_mezzo_mgr = None
-        
+        self.mission_mgr = None
+
     def get_game_client(self):
         if self.game_client is None:
             from src.game.game_client import GameClient
@@ -89,5 +90,11 @@ class GameVars:
             from src.game.modules.sette_mezzo.sette_mezzo_mgr import SetteMezzoMgr
             self.sette_mezzo_mgr = SetteMezzoMgr()
         return self.sette_mezzo_mgr
+    
+    def get_mission_mgr(self):
+        if self.mission_mgr is None:
+            from src.game.modules.mission.mission_mgr import MissionMgr
+            self.mission_mgr = MissionMgr()
+        return self.mission_mgr
     
 game_vars = GameVars()
