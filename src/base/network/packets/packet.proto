@@ -250,6 +250,7 @@ message FriendList {
   repeated int32 levels = 4;
   repeated int64 golds = 5;
   repeated bool onlines = 6;
+  repeated bool is_playings = 7;
 }
 
 message FriendRequests {

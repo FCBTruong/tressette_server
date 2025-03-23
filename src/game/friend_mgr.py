@@ -116,16 +116,21 @@ class FriendMgr:
         golds = []
         onlines = []
         uids = []
+        playings = []
         for friend_id in friend_ids:
             user_info = await users_info_mgr.get_user_info(friend_id)
             if user_info and user_info.is_active:
                 is_online = connection_manager.check_user_active_online(friend_id)
+                is_playing = False
+                if is_online:
+                    is_playing = await game_vars.get_match_mgr().is_user_in_match(friend_id)
                 onlines.append(is_online)
                 uids.append(friend_id)
                 names.append(user_info.name)
                 avatars.append(user_info.avatar)
                 levels.append(user_info.level)
                 golds.append(user_info.gold)
+                playings.append(is_playing)
 
         pkg.uids.extend(uids)
         pkg.names.extend(names)
@@ -133,6 +138,7 @@ class FriendMgr:
         pkg.levels.extend(levels)
         pkg.golds.extend(golds)
         pkg.onlines.extend(onlines)
+        pkg.is_playings.extend(playings)
 
         await game_vars.get_game_client().send_packet(uid, CMDs.FRIEND_LIST, pkg)
                 
