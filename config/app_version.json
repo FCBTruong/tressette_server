@@ -1,10 +1,10 @@
 {
-    "android_version": 3,
+    "android_version": 5,
     "android_forced_update_version": 1,
-    "android_remind_update_version": 0,
+    "android_remind_update_version": 4,
 
-    "ios_version": 1,
+    "ios_version": 3,
     "ios_forced_update_version": 0,
-    "ios_remind_update_version": 0,
+    "ios_remind_update_version": 2,
     "ios_reviewing_version": 2
 }
