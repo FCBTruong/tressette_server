@@ -1,6 +1,6 @@
 import asyncio
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import random
 import traceback
@@ -249,7 +249,7 @@ class Match(ABC):
 class TressetteMatch(Match):
     def __init__(self, match_id, bet, player_mode, point_mode):
         self.match_id = match_id
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)
         self.end_time = None
         self.game_mode = TRESSETTE_MODE
         self.player_mode = player_mode
@@ -292,17 +292,17 @@ class TressetteMatch(Match):
         try:
             if self.state == MatchState.PLAYING:
                 # check overtime
-                if datetime.now() - self.start_time > timedelta(seconds=TIME_MATCH_MAXIMUM):
+                if datetime.now(timezone.utc) - self.start_time > timedelta(seconds=TIME_MATCH_MAXIMUM):
                     await self.end_game()
                     return
                 
                 # check auto play
-                if self.current_turn != -1 and self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
+                if self.current_turn != -1 and self.time_auto_play != -1 and datetime.now(timezone.utc).timestamp() > self.time_auto_play:
                     player = self.players[self.current_turn]
                     if player:
                         await player.auto_play()
             elif self.state == MatchState.PREPARING_START:
-                if self.time_start != -1 and datetime.now().timestamp() > self.time_start:
+                if self.time_start != -1 and datetime.now(timezone.utc).timestamp() > self.time_start:
                     if self.check_room_full():
                         await self.start_game()
                     else:
@@ -315,7 +315,7 @@ class TressetteMatch(Match):
 
     def end_match(self):
         self.state = MatchState.ENDED
-        self.end_time = datetime.now()
+        self.end_time = datetime.now(timezone.utc)
 
     async def user_join(self, user_id, is_bot=False):
         # check user in match
@@ -462,7 +462,7 @@ class TressetteMatch(Match):
 
     async def _prepare_start_game(self):
         self.state = MatchState.PREPARING_START
-        self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
+        self.time_start = datetime.now(timezone.utc).timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
         pkg = packet_pb2.PrepareStartGame()
         pkg.time_start = int(self.time_start)
@@ -559,7 +559,7 @@ class TressetteMatch(Match):
 
         print('Start game')
         self.state = MatchState.PLAYING
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)
         self.current_turn = 0
         self.current_hand = -1
         self.time_auto_play = -1
@@ -719,10 +719,10 @@ class TressetteMatch(Match):
 
             if next_uid in self.users_auto_play:
                 # people that are auto play
-                self.time_auto_play = TIME_AUTO_PLAY_SEVERE + datetime.now().timestamp()
+                self.time_auto_play = TIME_AUTO_PLAY_SEVERE + datetime.now(timezone.utc).timestamp()
             else:
                 # normal people
-                self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+                self.time_auto_play = TIME_AUTO_PLAY + datetime.now(timezone.utc).timestamp()
 
     def check_done_hand(self):
         for card in self.cards_compare:
@@ -911,7 +911,7 @@ class TressetteMatch(Match):
         else:
             self.current_turn = 0
 
-        self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+        self.time_auto_play = TIME_AUTO_PLAY + datetime.now(timezone.utc).timestamp()
 
         print(f"New hand")
         pkg = packet_pb2.NewHand()

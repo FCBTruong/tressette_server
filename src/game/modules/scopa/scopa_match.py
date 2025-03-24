@@ -1,7 +1,7 @@
 
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import random
 import traceback
@@ -27,7 +27,7 @@ logger = logging.getLogger("scopa_match")  # Name your logger
 class ScopaMatch(Match):
     def __init__(self, match_id, bet, player_mode, point_mode):
         self.match_id = match_id
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)
         self.end_time = None
         self.player_mode = player_mode
         self.players: list[MatchPlayer] = []
@@ -69,7 +69,7 @@ class ScopaMatch(Match):
             if self.state == MatchState.PLAYING:
                 pass
             elif self.state == MatchState.PREPARING_START:
-                if self.time_start != -1 and datetime.now().timestamp() > self.time_start:
+                if self.time_start != -1 and datetime.now(timezone.utc).timestamp() > self.time_start:
                     if self.check_room_full():
                         await self.start_game()
                     else:
@@ -82,7 +82,7 @@ class ScopaMatch(Match):
 
     def end_match(self):
         self.state = MatchState.ENDED
-        self.end_time = datetime.now()
+        self.end_time = datetime.now(timezone.utc)
 
     async def user_join(self, user_id, is_bot=False):
         # check user in match
@@ -167,7 +167,7 @@ class ScopaMatch(Match):
 
     async def _prepare_start_game(self):
         self.state = MatchState.PREPARING_START
-        self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
+        self.time_start = datetime.now(timezone.utc).timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
         pkg = packet_pb2.PrepareStartGame()
         pkg.time_start = int(self.time_start)
@@ -264,7 +264,7 @@ class ScopaMatch(Match):
 
         print('Start game')
         self.state = MatchState.PLAYING
-        self.start_time = datetime.now()
+        self.start_time = datetime.now(timezone.utc)
         self.current_turn = 0
         self.current_hand = -1
         self.time_auto_play = -1

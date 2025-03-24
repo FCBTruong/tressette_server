@@ -89,3 +89,14 @@ class PayPalOrder(Base):
 
     # Relationship to UserInfoSchema
     user = relationship("UserInfoSchema", back_populates="paypal_orders")
+
+
+class RankingSeasonSchema(Base):
+    __tablename__ = 'ranking_seasons'
+
+    season_id = Column(Integer, primary_key=True, autoincrement=True)
+    time_start = Column(DateTime, nullable=False)
+    time_end = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
