@@ -21,7 +21,7 @@ def write_log(uid, action, sub_action, extras):
 
     global log_buffer
     log_buffer.append({
-        "log_time": datetime.now(timezone.utc).isoformat(),
+        "log_time": datetime.now().isoformat(),
         "uid": uid,
         "action": action,
         "sub_action": sub_action,

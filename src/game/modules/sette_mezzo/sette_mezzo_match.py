@@ -27,7 +27,7 @@ logger = logging.getLogger("scopa_match")  # Name your logger
 class SetteMezzoMatch(Match):
     def __init__(self, match_id):
         self.match_id = match_id
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now()
         self.end_time = None
         self.player_mode = 4
         self.players: list[MatchPlayer] = []
@@ -66,7 +66,7 @@ class SetteMezzoMatch(Match):
             if self.state == MatchState.PLAYING:
                 pass
             elif self.state == MatchState.PREPARING_START:
-                if self.time_start != -1 and datetime.now(timezone.utc).timestamp() > self.time_start:
+                if self.time_start != -1 and datetime.now().timestamp() > self.time_start:
                     if self.check_has_real_players():
                         await self.start_game()
                     else:
@@ -79,7 +79,7 @@ class SetteMezzoMatch(Match):
 
     def end_match(self):
         self.state = MatchState.ENDED
-        self.end_time = datetime.now(timezone.utc)
+        self.end_time = datetime.now()
 
     async def user_join(self, user_id, is_bot=False):
         # check user in match
@@ -166,7 +166,7 @@ class SetteMezzoMatch(Match):
 
     async def _prepare_start_game(self):
         self.state = MatchState.PREPARING_START
-        self.time_start = datetime.now(timezone.utc).timestamp() + TIME_START_TO_DEAL
+        self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
         pkg = packet_pb2.SetteMezzoPrepareStartGame()
         print('Game is starting, wait for 3 seconds')
@@ -257,7 +257,7 @@ class SetteMezzoMatch(Match):
 
         print('Start game')
         self.state = MatchState.PLAYING
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now()
         self.current_turn = 0
         self.time_auto_play = -1
         self.win_player = None

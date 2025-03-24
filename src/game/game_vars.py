@@ -16,6 +16,7 @@ class GameVars:
         self.debt_mgr = None
         self.sette_mezzo_mgr = None
         self.mission_mgr = None
+        self.ranking_mgr = None
 
     def get_game_client(self):
         if self.game_client is None:
@@ -96,5 +97,16 @@ class GameVars:
             from src.game.modules.mission.mission_mgr import MissionMgr
             self.mission_mgr = MissionMgr()
         return self.mission_mgr
+    
+    def get_ranking_mgr(self):
+        if self.ranking_mgr is None:
+            from src.game.modules.ranking.ranking_mgr import RankingMgr
+            self.ranking_mgr = RankingMgr()
+        return self.ranking_mgr
+    
+    # this function is called when the server starts
+    async def init_game_vars(self):
+        await self.get_ranking_mgr().init_season()
+        pass
     
 game_vars = GameVars()

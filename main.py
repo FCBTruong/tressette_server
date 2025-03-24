@@ -24,6 +24,9 @@ async def lifespan(app: FastAPI):
     print("Application startup complete.")
     if not settings.ENABLE_CHEAT:
         await telegram_bot.send_message(f"Server started")
+
+    # init game vars
+    await game_vars.init_game_vars()
     yield
 if settings.ENABLE_SWAGGER:
     app = FastAPI(lifespan=lifespan)

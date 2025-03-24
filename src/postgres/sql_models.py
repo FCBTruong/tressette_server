@@ -95,8 +95,8 @@ class RankingSeasonSchema(Base):
     __tablename__ = 'ranking_seasons'
 
     season_id = Column(Integer, primary_key=True, autoincrement=True)
-    time_start = Column(DateTime, nullable=False)
-    time_end = Column(DateTime, nullable=False)
+    time_start = Column(TIMESTAMP, nullable=False)
+    time_end = Column(TIMESTAMP, nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
-    created_at = Column(DateTime, default=func.now())
-    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())

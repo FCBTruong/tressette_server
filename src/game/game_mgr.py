@@ -61,10 +61,10 @@ class GameMgr:
 
     def check_can_receive_support(self, timestamp: int) -> bool:
         # Convert the given timestamp to a date
-        last_support_date = datetime.fromtimestamp(timestamp, tz=timezone.utc).date()
+        last_support_date = datetime.fromtimestamp(timestamp).date()
 
         # Get the current date
-        current_date = datetime.now(timezone.utc).date()
+        current_date = datetime.now().date()
 
         # Check if the last support date is today
         if last_support_date == current_date:
@@ -87,7 +87,7 @@ class GameMgr:
         
         user_info.add_gold(GOLD_SUPPORT)
 
-        user_info.last_time_received_support = int(datetime.now(timezone.utc).timestamp())
+        user_info.last_time_received_support = int(datetime.now().timestamp())
         await user_info.commit_to_database('gold', 'last_time_received_support')
         await user_info.send_update_money()
 
