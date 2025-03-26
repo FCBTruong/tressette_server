@@ -93,8 +93,8 @@ class RankingMgr:
                 self.players.append(player_info)
                 self.player_map[player.uid] = player_info
 
-            if settings.DEV_MODE:
-                self.season_info.time_end = datetime.now() + timedelta(seconds=20) # add 200 seconds for testing
+            # if settings.DEV_MODE:
+            #     self.season_info.time_end = datetime.now() + timedelta(seconds=20) # add 200 seconds for testing
 
 
         if not self.season_info:
@@ -161,35 +161,34 @@ class RankingMgr:
                 player_db.score = score
                 await session.commit()
 
-        # Find new position (since the list is sorted in descending order)
-        insert_pos = bisect.bisect_right([p.score for p in self.players], score, key=lambda x: -x)
+        # Extract scores but negate them (to handle descending order as ascending)
+        scores = [-p.score for p in self.players]
 
-        # Insert player at correct position
+        # Find the correct insertion position
+        insert_pos = bisect.bisect_left(scores, -player_to_update.score)
+
+        # Insert player at the correct position
         self.players.insert(insert_pos, player_to_update)
 
-    async def add_player(self, uid: int, score: int):
+    async def add_player(self, uid: int):
         if not self.season_info:
             return
 
         player = RankingPlayerInfo()
 
         player.uid = uid
-        player.score = score
+        player.score = 0
 
         # save to db
         async with PsqlOrm.get().session() as session:
             new_player = RankingPlayersSchema()
             new_player.season_id = self.season_info.season_id
             new_player.uid = uid
-            new_player.score = score
+            new_player.score = 0
             session.add(new_player)
             await session.commit()
 
-        # Find position to insert player
-        insert_pos = bisect.bisect_right([p.score for p in self.players], score, key=lambda x: -x)
-
-        # Insert player at correct position
-        self.players.insert(insert_pos, player)
+        self.players.append(player)
         self.player_map[uid] = player
 
 
@@ -197,7 +196,7 @@ class RankingMgr:
         if not self.season_info:
             return
         if not self.player_map.get(uid):
-            await self.add_player(uid, 0)
+            await self.add_player(uid)
 
         await self.send_ranking_info(uid)
 
@@ -205,8 +204,8 @@ class RankingMgr:
         if not self.season_info:
             return
         if not self.player_map.get(uid):
-            await self.add_player(uid, 0)
-            
+            await self.add_player(uid)
+
         # send ranking info to user
         rank_pkg = packet_pb2.RankingInfo()
         rank_pkg.season_id = self.season_info.season_id
@@ -250,6 +249,6 @@ class RankingMgr:
         player = self.player_map.get(uid)
         if not player:
             # add player to ranking
-            await self.add_player(uid, 1)   
+            await self.add_player(uid)   
             return
         await self.update_user_score(uid, player.score + 1)
