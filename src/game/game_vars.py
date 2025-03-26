@@ -107,6 +107,6 @@ class GameVars:
     # this function is called when the server starts
     async def init_game_vars(self):
         await self.get_ranking_mgr().init_season()
-        pass
+        
     
 game_vars = GameVars()

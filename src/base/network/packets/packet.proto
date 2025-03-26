@@ -432,3 +432,9 @@ message SetteMezzoStartGame {
   repeated int32 uids = 3;
   repeated int32 cards = 4;
 }
+
+message RankingInfo {
+  int32 season_id = 1;
+  int32 time_start = 2;
+  int32 time_end = 3;
+}

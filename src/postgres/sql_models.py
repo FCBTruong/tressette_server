@@ -100,3 +100,25 @@ class RankingSeasonSchema(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(TIMESTAMP, default=func.now())
     updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
+
+class RankingRewardsSchema(Base):
+    __tablename__ = 'ranking_rewards'
+
+    reward_id = Column(Integer, primary_key=True, autoincrement=True)
+    season_id = Column(Integer, ForeignKey('ranking_seasons.season_id'), nullable=False)
+    uid = Column(Integer, ForeignKey('user_info.uid'), nullable=False)
+    rank = Column(Integer, nullable=False)
+    gold_reward = Column(Integer, nullable=False)
+    claimed = Column(Boolean, nullable=False, default=False)
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
+
+class RankingPlayersSchema(Base):
+    __tablename__ = 'ranking_players'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    season_id = Column(Integer, ForeignKey('ranking_seasons.season_id'), nullable=False)
+    uid = Column(Integer, ForeignKey('user_info.uid'), nullable=False)
+    score = Column(Integer, nullable=False)
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())

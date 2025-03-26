@@ -1,4 +1,5 @@
 
+import asyncio
 import logging
 import traceback
 from typing import Optional
@@ -26,7 +27,7 @@ async def lifespan(app: FastAPI):
         await telegram_bot.send_message(f"Server started")
 
     # init game vars
-    await game_vars.init_game_vars()
+    asyncio.create_task(game_vars.init_game_vars())
     yield
 if settings.ENABLE_SWAGGER:
     app = FastAPI(lifespan=lifespan)
