@@ -880,8 +880,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        # if settings.DEV_MODE:
-        #     return True
+        if settings.DEV_MODE:
+            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -995,6 +995,8 @@ class TressetteMatch(Match):
                 user_info.add_gold(gold_received)
                 user_info.win_count += 1
                 added_exp = added_exp * 2
+
+                await game_vars.get_ranking_mgr().on_user_win_game(player.uid)
 
             user_info.add_exp(added_exp)
             gold_debt = game_vars.get_debt_mgr().get_debt_ingame(player.uid)

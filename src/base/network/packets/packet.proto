@@ -437,4 +437,12 @@ message RankingInfo {
   int32 season_id = 1;
   int32 time_start = 2;
   int32 time_end = 3;
+  repeated int32 rewards = 4;
+  repeated int32 uids = 5;
+  repeated string avatars = 6;
+  repeated string names = 7;
+  repeated int32 scores = 8;
+  int32 my_rank = 9;
+  int32 my_score = 10;
 }
+

@@ -1,5 +1,5 @@
 
-from sqlalchemy import DECIMAL, TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Text, func
+from sqlalchemy import DECIMAL, TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
@@ -104,7 +104,7 @@ class RankingSeasonSchema(Base):
 class RankingRewardsSchema(Base):
     __tablename__ = 'ranking_rewards'
 
-    reward_id = Column(Integer, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     season_id = Column(Integer, ForeignKey('ranking_seasons.season_id'), nullable=False)
     uid = Column(Integer, ForeignKey('user_info.uid'), nullable=False)
     rank = Column(Integer, nullable=False)
@@ -122,3 +122,4 @@ class RankingPlayersSchema(Base):
     score = Column(Integer, nullable=False)
     created_at = Column(TIMESTAMP, default=func.now())
     updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
+
