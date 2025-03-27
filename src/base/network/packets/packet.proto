@@ -446,3 +446,12 @@ message RankingInfo {
   int32 my_score = 10;
 }
 
+message RankingResult {
+  int32 season_id = 1;
+  int32 gold_reward = 2;
+  int32 rank = 3;
+}
+
+message RankingClaimReward {
+  int32 season_id = 1;
+}

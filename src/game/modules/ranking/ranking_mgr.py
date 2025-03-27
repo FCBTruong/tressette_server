@@ -63,7 +63,9 @@ class RankingMgr:
         match cmd_id:
             case CMDs.RANKING_INFO:
                 await self.send_ranking_info(uid)
-
+            case CMDs.RANKING_CLAIM_REWARD:
+                print("Claim reward")
+                await self.claim_reward(uid, payload)
         return
     
     async def init_season(self):
@@ -81,22 +83,22 @@ class RankingMgr:
                 self.season_info.time_end = active_season.time_end
                 self.season_info.season_id = active_season.season_id
 
-            # load players
-            result = await session.execute(
-                select(RankingPlayersSchema).where(RankingPlayersSchema.season_id == self.season_info.season_id)
-            )
-            players = result.scalars().all()
-            for player in players:
-                player_info = RankingPlayerInfo()
-                player_info.uid = player.uid
-                player_info.score = player.score
-                self.players.append(player_info)
-                self.player_map[player.uid] = player_info
+                # load players
+                result = await session.execute(
+                    select(RankingPlayersSchema).where(RankingPlayersSchema.season_id == self.season_info.season_id)
+                )
+                players = result.scalars().all()
+                for player in players:
+                    player_info = RankingPlayerInfo()
+                    player_info.uid = player.uid
+                    player_info.score = player.score
+                    self.players.append(player_info)
+                    self.player_map[player.uid] = player_info
 
-            # if settings.DEV_MODE:
-            #     self.season_info.time_end = datetime.now() + timedelta(seconds=20) # add 200 seconds for testing
+                # if settings.DEV_MODE:
+                #     self.season_info.time_end = datetime.now() + timedelta(seconds=20) # add 200 seconds for testing
 
-
+        self.sort_ranking()
         if not self.season_info:
             await self.new_season()
 
@@ -105,6 +107,9 @@ class RankingMgr:
             await self.check_season_end()
             await asyncio.sleep(10) # check every minute
     
+    def sort_ranking(self):
+        self.players.sort(key=lambda x: x.score, reverse=True)
+
     async def new_season(self):
         # create new season
         self.players.clear()
@@ -123,7 +128,7 @@ class RankingMgr:
     async def check_season_end(self):
         if not self.season_info:
             return
-        print("Checking season end")
+
         if datetime.now() > self.season_info.time_end:
             await self.end_season()
             await self.new_season()
@@ -200,6 +205,20 @@ class RankingMgr:
 
         await self.send_ranking_info(uid)
 
+        async with PsqlOrm.get().session() as session:
+            result = await session.execute(
+                select(RankingRewardsSchema).where(
+                    (RankingRewardsSchema.uid == uid) & (RankingRewardsSchema.claimed == False)
+                )
+            )
+            rewards = result.scalars().all()
+            for reward in rewards:
+                rank_result_pkg = packet_pb2.RankingResult()
+                rank_result_pkg.rank = reward.rank
+                rank_result_pkg.gold_reward = reward.gold_reward
+                rank_result_pkg.season_id = reward.season_id
+                await game_vars.get_game_client().send_packet(uid, CMDs.RANKING_RESULT, rank_result_pkg)
+
     async def send_ranking_info(self, uid: int):
         if not self.season_info:
             return
@@ -252,3 +271,30 @@ class RankingMgr:
             await self.add_player(uid)   
             return
         await self.update_user_score(uid, player.score + 1)
+
+    async def claim_reward(self, uid: int, payload):
+        claim_pkg = packet_pb2.RankingClaimReward()
+        claim_pkg.ParseFromString(payload)
+        season_id = claim_pkg.season_id
+        print("Claim reward", season_id)
+
+        async with PsqlOrm.get().session() as session:
+            result = await session.execute(
+                select(RankingRewardsSchema)
+                .where(
+                    (RankingRewardsSchema.uid == uid)
+                    & (RankingRewardsSchema.claimed == False)
+                    & (RankingRewardsSchema.season_id == season_id)
+                )
+            )
+            reward = result.scalars().first()
+            if not reward:
+                return
+            reward.claimed = True
+            # add gold to user
+            user_info = await users_info_mgr.get_user_info(uid)
+            user_info.add_gold(reward.gold_reward)
+            await user_info.commit_to_database('gold')
+            await session.commit()
+            await user_info.send_update_money()
+            
