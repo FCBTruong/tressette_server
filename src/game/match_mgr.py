@@ -3,6 +3,7 @@
 import asyncio
 from enum import Enum
 import logging
+import random
 
 from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
@@ -332,7 +333,9 @@ class MatchManager:
                 expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
             bet = self.find_largest_bet_below(expect_bet)
 
-            match = await self._create_match(bet)
+            # random point mode
+            point_mode = random.choice([11, 21])
+            match = await self._create_match(bet, PLAYER_SOLO_MODE, False, point_mode)
         
         print(f"User {uid} join match {match.match_id}")
         await self.user_join_match(match, uid=uid)

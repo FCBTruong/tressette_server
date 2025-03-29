@@ -2,7 +2,7 @@
     "time_thinking_in_turn": 15,
     "bet_multiplier_min": 10,
     "tax_percent": 0.1,
-    "max_bet_to_gen_bot": 100000,
+    "max_bet_to_gen_bot": 20000,
     "ccu_to_gen_bot": 100,
     "level_min_transfer_money": 5,
     "startup_gold_auth": 100000,
