@@ -38,13 +38,17 @@ class GameClient:
                 await game_vars.get_ranking_mgr().on_receive_packet(uid, cmd_id, payload)
 
     async def user_login_success(self, uid, device_model, platform, device_country, app_version_code):
+        user_info = await users_info_mgr.get_user_info(uid)
+        timestamp_now = int(datetime.now().timestamp()) # seconds since epoch
         logger.info(f"User with ID {uid} has successfully logged in")
         general_pkg = packet_pb2.GeneralInfo()
         general_pkg.time_thinking_in_turn = tress_config.get("time_thinking_in_turn")
-        general_pkg.timestamp = int(datetime.now().timestamp())
+        general_pkg.timestamp = timestamp_now
         general_pkg.bet_multiplier_min = tress_config.get("bet_multiplier_min")
         general_pkg.fee_mode_no_bet = tress_config.get("fee_mode_no_bet")
 
+        general_pkg.enable_ads = user_info.time_show_ads < timestamp_now
+    
         tressette_bets = tress_config.get("bets")
         exp_levels = tress_config.get("exp_levels")
         general_pkg.tressette_bets.extend(tressette_bets)
@@ -53,8 +57,7 @@ class GameClient:
 
         user_pkg = packet_pb2.UserInfo()
         startup_gold = 0
-        
-        user_info = await users_info_mgr.get_user_info(uid)
+    
 
         if not user_info.received_startup:
             user_info.received_startup = True
@@ -77,6 +80,9 @@ class GameClient:
         user_pkg.support_num = 1 if game_vars.get_game_mgr().check_can_receive_support(user_info.last_time_received_support) else 0
         user_pkg.startup_gold = startup_gold
         logger.info(f"User info: {user_info.gold}")
+
+        user_pkg.time_show_ads = user_info.time_show_ads
+        user_pkg.has_first_buy = user_info.num_payments == 0
 
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)

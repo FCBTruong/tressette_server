@@ -49,7 +49,7 @@ class UsersInfoMgr:
                     "avatar_third_party": user_info.avatar_third_party,
                     "is_active": user_info.is_active,
                     "last_time_received_support": user_info.last_time_received_support,
-                    "received_startup": user_info.received_startup
+                    "received_startup": user_info.received_startup,
                 }
                 
                 user_inf = UserInfo(**user_info_data)
@@ -57,6 +57,8 @@ class UsersInfoMgr:
                 user_inf.game_count = user_info.game_count
                 user_inf.exp = user_info.exp
                 user_inf.login_type = user_info.login_type
+                user_inf.num_payments = user_info.num_payments
+                user_inf.time_show_ads = user_info.time_show_ads
                 
                 self.users[uid] = user_inf
                 return user_inf

@@ -62,6 +62,8 @@ message UserInfo {
   int32 game_count = 12;
   int64 exp = 13;
   int32 startup_gold = 14;
+  bool has_first_buy = 15;
+  int32 time_show_ads = 16;
 }
 
 message GameInfo {
@@ -158,6 +160,7 @@ message GeneralInfo {
   int32 bet_multiplier_min = 4;
   repeated int32 exp_levels = 5;
   int32 fee_mode_no_bet = 6;
+  bool enable_ads = 7;
 }
 
 message EndGame {
@@ -190,6 +193,7 @@ message PaymentGoogleConsume {
 
 message PaymentSuccess {
   int64 gold = 1;
+  string pack_id = 2;
 }
 
 message UpdateMoney {
@@ -208,6 +212,7 @@ message ShopConfig {
   repeated int64 golds = 2;
   repeated double prices = 3;
   repeated string currencies = 4;
+  repeated int32 no_ads_days = 5;
 }
 
 message GuestAccount {
@@ -454,4 +459,8 @@ message RankingResult {
 
 message RankingClaimReward {
   int32 season_id = 1;
+}
+
+message UpdateAds {
+  int32 time_show_ads = 1;
 }

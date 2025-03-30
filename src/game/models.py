@@ -22,6 +22,8 @@ class UserInfo:
     win_count: int
     received_startup: bool
     login_type: int
+    num_payments: int
+    time_show_ads: int
     def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool,
                  last_time_received_support: int, received_startup: bool = True):
         self.uid = uid
@@ -88,7 +90,11 @@ class UserInfo:
         pkg_money = packet_pb2.UpdateMoney()
         pkg_money.gold = self.gold
         await game_vars.get_game_client().send_packet(self.uid, CMDs.UPDATE_MONEY, pkg_money)
-
+    
+    async def send_update_ads(self):
+        pkg_ads = packet_pb2.UpdateAds()
+        pkg_ads.time_show_ads = self.time_show_ads
+        await game_vars.get_game_client().send_packet(self.uid, CMDs.UPDATE_ADS, pkg_ads)
 
     async def commit_to_database(self, *fields):
         """

@@ -484,9 +484,9 @@ class TressetteMatch(Match):
                 break
         if not user_info:
             return 5
-        if user_info.game_count < 3: # New user will play withbot
-            return 2
-        return 10
+        if user_info.game_count < 1: # New user will play withbot
+            return 1
+        return random.randint(10, 15)
     
     async def _coroutine_gen_bot(self, time_delay_gen_bot):
         await asyncio.sleep(time_delay_gen_bot)
@@ -1088,7 +1088,7 @@ class TressetteMatch(Match):
             player.cards.clear()
 
         # next game
-        await asyncio.sleep(5)
+        await asyncio.sleep(8)
         if self.check_room_full():
             await self._prepare_start_game()
 
