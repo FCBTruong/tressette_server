@@ -165,8 +165,9 @@ def get_pack_info(pack_id):
     for pack in web_packs:
         if pack.get("pack_id") == pack_id:
             return pack
-    if config.get("first_buy") and pack_id == config.get("first_buy").get("pack_id"):
-        return config.get("first_buy")
+    first_buy_offer = config.get("first_buy_offer")
+    if first_buy_offer and first_buy_offer.get("pack_id") == pack_id:
+        return first_buy_offer
 
     return None
 
