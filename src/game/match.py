@@ -362,7 +362,7 @@ class TressetteMatch(Match):
         if not is_bot:
             user_data = await users_info_mgr.get_user_info(user_id)
         else:
-            user_data = await game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
+            user_data = game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
 
         # find empty slot
         slot_idx = -1   
@@ -490,7 +490,7 @@ class TressetteMatch(Match):
     
     async def _coroutine_gen_bot(self, time_delay_gen_bot):
         await asyncio.sleep(time_delay_gen_bot)
-        bot_uid = random.randint(10000000, 30000000)
+        bot_uid = game_vars.get_bots_mgr().get_free_bot_uid()
         await self.user_join(bot_uid, is_bot=True)
 
     def _clear_coroutine_gen_bot(self):
@@ -949,7 +949,11 @@ class TressetteMatch(Match):
         else:
             self.current_turn = 0
 
-        self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+        if self.win_player.uid in self.users_auto_play:
+            # people that are auto play
+            self.time_auto_play = TIME_AUTO_PLAY_SEVERE + datetime.now().timestamp()
+        else:
+            self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
         print(f"New hand")
         pkg = packet_pb2.NewHand()
@@ -1097,6 +1101,8 @@ class TressetteMatch(Match):
         for i, player in enumerate(self.players):
             if player.is_bot:
                 await self.user_leave(player.uid)
+                # clean bot data
+                game_vars.get_bots_mgr().destroy_bot(player.uid)
                 
         # Kick users auto playing, or register exit room
         for uid in self.register_leave_uids:
@@ -1166,7 +1172,7 @@ class TressetteMatch(Match):
 
     async def cheat_add_bot(self):
         if settings.ENABLE_CHEAT:
-            bot_uid = random.randint(5000000, 30000000)
+            bot_uid = game_vars.get_bots_mgr().get_free_bot_uid()
             await self.user_join(bot_uid, is_bot=True)
 
     async def receive_game_action_napoli(self, uid, payload):

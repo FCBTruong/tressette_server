@@ -153,6 +153,9 @@ class FriendMgr:
         # get user info
         err = 0
         user_info = await users_info_mgr.get_user_info(search_uid)
+        if not user_info:
+            # try search bot
+            user_info = game_vars.get_bots_mgr().get_bot(search_uid)
 
         pkg_response = packet_pb2.SearchFriendResponse()
         if not user_info or user_info.is_active == False:

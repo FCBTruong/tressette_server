@@ -93,7 +93,7 @@ class ScopaMatch(Match):
         if not is_bot:
             user_data = await users_info_mgr.get_user_info(user_id)
         else:
-            user_data = await game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
+            user_data = game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
 
         # find empty slot
         slot_idx = -1   
