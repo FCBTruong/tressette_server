@@ -282,6 +282,10 @@ class Match(ABC):
     async def broadcast_chat_emoticon(self, uid, emoticon):
         pass
 
+    @abstractmethod
+    async def broadcast_chat_message(self, uid, message):
+        pass
+
 class TressetteMatch(Match):
     def __init__(self, match_id, bet, player_mode, point_mode):
         self.match_id = match_id
@@ -486,6 +490,8 @@ class TressetteMatch(Match):
             return 5
         if user_info.game_count < 1: # New user will play withbot
             return 1
+        elif user_info.game_count > 10:
+            return random.randint(15, 30)
         return random.randint(10, 15)
     
     async def _coroutine_gen_bot(self, time_delay_gen_bot):
@@ -949,7 +955,7 @@ class TressetteMatch(Match):
         else:
             self.current_turn = 0
 
-        if self.win_player.uid in self.users_auto_play:
+        if self.win_player and self.win_player.uid in self.users_auto_play:
             # people that are auto play
             self.time_auto_play = TIME_AUTO_PLAY_SEVERE + datetime.now().timestamp()
         else:
