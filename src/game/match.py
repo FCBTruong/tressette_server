@@ -1098,8 +1098,8 @@ class TressetteMatch(Match):
             player.cards.clear()
 
         # next game
-        await asyncio.sleep(8)
-        if self.check_room_full():
+        await asyncio.sleep(9)
+        if self.check_room_full() and self.state == MatchState.WAITING:
             await self._prepare_start_game()
 
     async def update_users_staying_endgame(self):
