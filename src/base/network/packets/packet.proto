@@ -215,6 +215,11 @@ message ShopConfig {
   repeated double prices = 3;
   repeated string currencies = 4;
   repeated int32 no_ads_days = 5;
+  int32 gold_offer_first = 6;
+  int32 no_ads_day_offer_first = 7;
+  int32 price_offer_first = 8;
+  string currency_offer_first = 9;
+  string pack_id_offer_first = 10;
 }
 
 message GuestAccount {

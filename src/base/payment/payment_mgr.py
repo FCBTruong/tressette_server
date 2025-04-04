@@ -156,6 +156,7 @@ async def _purchase_success(uid, pack_id, method):
 
     write_log(uid, "payment_success", method, [pack_id, before_gold, user_info.gold])
 
+FIRST_BUY_OFFER_PACK_ID = "first_buy_offer"
 def get_pack_info(pack_id):
     packs = config.get("packs")
     for pack in packs:
@@ -165,7 +166,7 @@ def get_pack_info(pack_id):
     for pack in web_packs:
         if pack.get("pack_id") == pack_id:
             return pack
-    first_buy_offer = config.get("first_buy_offer")
+    first_buy_offer = config.get(FIRST_BUY_OFFER_PACK_ID)
     if first_buy_offer and first_buy_offer.get("pack_id") == pack_id:
         return first_buy_offer
 
@@ -200,6 +201,14 @@ async def send_shop_config(uid, platform):
     pkg.prices.extend(prices)
     pkg.currencies.extend(currencies)
     pkg.no_ads_days.extend(no_ads_days)
+
+    first_buy_offer = get_pack_info(FIRST_BUY_OFFER_PACK_ID)
+    pkg.gold_offer_first = first_buy_offer.get("gold")
+    pkg.price_offer_first = first_buy_offer.get("price")
+    pkg.currency_offer_first = first_buy_offer.get("currency")
+    pkg.pack_id_offer_first = FIRST_BUY_OFFER_PACK_ID
+    pkg.no_ads_day_offer_first = first_buy_offer.get("no_ads_days")
+
     await game_vars.get_game_client().send_packet(uid, CMDs.SHOP_CONFIG, pkg)
     print(f"Send shop config to user {uid}", CMDs.SHOP_CONFIG)
 
