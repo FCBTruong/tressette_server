@@ -1,4 +1,5 @@
 
+from datetime import datetime
 import json
 import logging
 # from src.cache import redis_cache
@@ -107,5 +108,14 @@ class UsersInfoMgr:
         await user.commit_gold()
         await user.send_update_money()
         print(f"User {uid} cheat gold {gold}")
+
+    async def check_user_vip(self, uid: int) -> bool:
+        user = await self.get_user_info(uid)
+        if not user:
+            return False
+        current_time = int(datetime.now().timestamp())
+        if user.time_show_ads > current_time:
+            return True
+        return False
 
 users_info_mgr = UsersInfoMgr()

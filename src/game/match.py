@@ -436,6 +436,10 @@ class TressetteMatch(Match):
         pkg.team_id = team_id
         pkg.avatar = user_data.avatar
         pkg.gold = user_data.gold
+        pkg.is_vip = await users_info_mgr.check_user_vip(user_id)
+
+        if settings.DEV_MODE:
+            pkg.is_vip = True
 
         await self.broadcast_pkg(CMDs.NEW__USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
         
@@ -567,6 +571,9 @@ class TressetteMatch(Match):
             game_info.user_points.append(player.points)
             game_info.team_ids.append(player.team_id)
             game_info.avatars.append(player.avatar)
+            
+            is_player_vip = await users_info_mgr.check_user_vip(player.uid)
+            game_info.is_vips.append(is_player_vip)
 
             if player.uid == uid:
                 game_info.my_cards.extend(player.cards)

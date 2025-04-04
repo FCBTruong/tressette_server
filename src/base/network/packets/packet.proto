@@ -89,6 +89,7 @@ message GameInfo {
   int32 hand_in_round = 20;
   int32 point_to_win = 21;
   bool enable_bet_win_score = 22;
+  repeated bool is_vips = 23;
 }
 
 message RegisterLeaveGame {
@@ -102,6 +103,7 @@ message NewUserJoinMatch {
   int32 seat_server = 4;
   int32 team_id = 5;
   string avatar = 6;
+  bool is_vip = 7;
 }
 
 message UserLeaveMatch {
