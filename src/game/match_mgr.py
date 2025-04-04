@@ -334,7 +334,10 @@ class MatchManager:
             bet = self.find_largest_bet_below(expect_bet)
 
             # random point mode
-            point_mode = random.choice([11, 21])
+            if user.game_count == 0:
+                point_mode = 11
+            else:
+                point_mode = random.choice([11, 21])
             match = await self._create_match(bet, PLAYER_SOLO_MODE, False, point_mode)
         
         print(f"User {uid} join match {match.match_id}")
@@ -408,3 +411,8 @@ class MatchManager:
         match = await self.get_match_of_user(uid)
         if match:
             match.user_return_to_table(uid)
+
+    async def user_ready(self, uid):
+        match = await self.get_match_of_user(uid)
+        if match:
+            match.user_ready(uid)

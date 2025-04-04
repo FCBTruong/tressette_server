@@ -286,6 +286,14 @@ class Match(ABC):
     async def broadcast_chat_message(self, uid, message):
         pass
 
+    @abstractmethod
+    def user_return_to_table(self, uid):
+        pass
+
+    @abstractmethod
+    def user_ready(self, uid):
+        pass
+
 class TressetteMatch(Match):
     def __init__(self, match_id, bet, player_mode, point_mode):
         self.match_id = match_id
@@ -1237,5 +1245,9 @@ class TressetteMatch(Match):
     
     def user_return_to_table(self, uid):
         self.users_auto_play.pop(uid, None)
+
+    def user_ready(self, uid):
+        print("user " + str(uid) + " is ready to play")
+        pass
 
 
