@@ -346,7 +346,7 @@ class MatchManager:
         write_log(uid, "quick_play", "", [])
     
     
-    async def _handle_user_join_by_match_id(self, uid, match_id):
+    async def  _handle_user_join_by_match_id(self, uid, match_id):
         # check if user is in a match
         is_in_match = await self.is_user_in_match(uid)
         if is_in_match:

@@ -294,6 +294,10 @@ class Match(ABC):
     def user_ready(self, uid):
         pass
 
+    @abstractmethod
+    def check_room_full(self) -> bool:
+        pass
+
 class TressetteMatch(Match):
     def __init__(self, match_id, bet, player_mode, point_mode):
         self.match_id = match_id
@@ -324,6 +328,7 @@ class TressetteMatch(Match):
         self.napoli_claimed_status = {}
         self.hand_in_round = -1
         self.enable_bet_win_score = True
+        self.game_ready = True
 
         
         self.point_to_win = point_mode * 3 # 11, 21
@@ -356,14 +361,12 @@ class TressetteMatch(Match):
                     else:
                         self.state = MatchState.WAITING
                         self.time_start = -1
+            elif self.state == MatchState.WAITING:
+                if self.game_ready and self.check_room_full():
+                    await self._prepare_start_game()
         except Exception as e:
             traceback.print_exc()
             raise e
-
-
-    def end_match(self):
-        self.state = MatchState.ENDED
-        self.end_time = datetime.now()
 
     async def user_join(self, user_id, is_bot=False):
         # check user in match
@@ -455,11 +458,11 @@ class TressetteMatch(Match):
             # send game info to user
             await self._send_game_info(user_id)
 
-        if self.check_room_full():
-            await self._prepare_start_game()
-            self._clear_coroutine_gen_bot()
-        else:
-            await self._check_and_gen_bot()
+        if self.state == MatchState.WAITING:
+            if self.check_room_full():
+                self._clear_coroutine_gen_bot()
+            else:
+                await self._check_and_gen_bot()
 
     async def _check_and_gen_bot(self):
         print("check and gen bott")
@@ -618,6 +621,7 @@ class TressetteMatch(Match):
 
         print('Start game')
         self.state = MatchState.PLAYING
+        self.game_ready = False
         self.start_time = datetime.now()
         self.current_turn = 0
         self.current_hand = -1
@@ -939,8 +943,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        if settings.DEV_MODE:
-            return True
+        # if settings.DEV_MODE:
+        #     return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -1101,11 +1105,10 @@ class TressetteMatch(Match):
         
         await asyncio.sleep(3)
 
-         # User can quit the room now
-        self.state = MatchState.WAITING 
-
+    
         # for user register exit room, or auto play, or disconnect
         await self.update_users_staying_endgame()
+        self.state = MatchState.WAITING 
 
         #reset game: score
         for player in self.players:
@@ -1114,8 +1117,7 @@ class TressetteMatch(Match):
 
         # next game
         await asyncio.sleep(9)
-        if self.check_room_full() and self.state == MatchState.WAITING:
-            await self._prepare_start_game()
+        self.game_ready = True
 
     async def update_users_staying_endgame(self):
         # Remove all bots
