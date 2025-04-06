@@ -1105,10 +1105,9 @@ class TressetteMatch(Match):
         
         await asyncio.sleep(3)
 
-    
+        self.state = MatchState.WAITING
         # for user register exit room, or auto play, or disconnect
-        await self.update_users_staying_endgame()
-        self.state = MatchState.WAITING 
+        await self.update_users_staying_endgame() 
 
         #reset game: score
         for player in self.players:

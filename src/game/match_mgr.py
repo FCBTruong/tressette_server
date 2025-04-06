@@ -50,11 +50,9 @@ class MatchManager:
         """The main loop to manage matches."""
         try:
             while True:
-                tasks = []
                 for match in list(self.matches.values()):  # Use list() to avoid mutation issues.
-                    tasks.append(self._run_match(match))
+                    asyncio.create_task(self._run_match(match))  # Fire and forget
                 
-                await asyncio.gather(*tasks, return_exceptions=True)
                 await asyncio.sleep(0.5)
         except asyncio.CancelledError:
             logger.info("MatchManager loop has been stopped.")
