@@ -7,7 +7,7 @@
     "level_min_transfer_money": 5,
     "startup_gold_auth": 100000,
     "startup_gold_guest_acc": 40000,
-    "fee_mode_no_bet": 20000,
+    "fee_mode_no_bet": 10000,
     "bets": [
         1000,
         3000,
