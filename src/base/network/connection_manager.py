@@ -297,6 +297,7 @@ class ConnectionManager:
         token = login_firebase_pkg.login_token
 
         sub_type = login_firebase_pkg.sub_type
+        guest_id = login_firebase_pkg.guest_id
         if sub_type != 0:
             if sub_type == 1:  # Google
                 # Firebase Auth not working for iOS, Web, so need to login through server
@@ -315,7 +316,7 @@ class ConnectionManager:
                 token = apple_login_inf['firebase_token']
 
 
-        game_token = await game_vars.get_login_mgr().login_firebase(token)
+        game_token = await game_vars.get_login_mgr().login_firebase(token, guest_id)
         if not game_token:
             print("Unauthorized")
             return

@@ -51,7 +51,7 @@ class LoginMgr:
         return user_model
 
     # Return permanent token (90days)
-    async def login_firebase(self, token):
+    async def login_firebase(self, token, guest_id=''):
         try:
             print("Verifying token Firebase")
             decoded_token = auth.verify_id_token(token)
@@ -80,31 +80,55 @@ class LoginMgr:
                 if has_change:
                     await session.commit()
             else:
-                # Create a new user
-                basic_user = self.create_new_basic_user()
-
+                login_type = 0
                 if sign_in_provider == "facebook.com":
-                    basic_user.login_type = LOGIN_FACEBOOK
+                    login_type = LOGIN_FACEBOOK
                 elif sign_in_provider == "google.com":
-                    basic_user.login_type = LOGIN_GOOGLE
+                    login_type = LOGIN_GOOGLE
                 elif sign_in_provider == "apple.com":
-                    basic_user.login_type = LOGIN_APPLE
+                    login_type = LOGIN_APPLE
                 
-                basic_user.name = decoded_token.get("name")
-                
-                basic_user.avatar_third_party = decoded_token.get("picture")
-                if not basic_user.avatar_third_party:
-                    basic_user.avatar = str(random.choice(AVATAR_IDS))
-                else:
-                    basic_user.avatar = basic_user.avatar_third_party
+                user_name = decoded_token.get("name")
+                if not user_name:
+                    user_name = "Tressette Player"
+                avatar_url = decoded_token.get("picture")
+              
+                is_exist_acc = False
+                if guest_id != '':
+                    # try get user info by guest id
+                    guest = await session.get(GuestsSchema, guest_id)
+                    if guest:
+                        uid = guest.uid
+                        is_exist_acc = True
+                if is_exist_acc:
+                    # Update user info
+                    user_info = await session.get(UserInfoSchema, uid)
+                    user_info.login_type = login_type
+                    user_info.avatar_third_party = avatar_url
+                    if avatar_url:
+                        user_info.avatar = avatar_url
 
-                session.add(basic_user)
-                await session.commit()
-                await session.refresh(basic_user)
+                    user_info.name = user_name
+                    await session.commit()
+                else:
+                    # Create a new user
+                    basic_user = self.create_new_basic_user()
+                    basic_user.name = user_name
+                
+                    basic_user.avatar_third_party = decoded_token.get("picture")
+                    if not basic_user.avatar_third_party:
+                        basic_user.avatar = str(random.choice(AVATAR_IDS))
+                    else:
+                        basic_user.avatar = basic_user.avatar_third_party
+
+                    session.add(basic_user)
+                    await session.commit()
+                    await session.refresh(basic_user)
+                    uid = basic_user.uid
 
                 firebase_auth = FirebaseAuthSchema()
                 firebase_auth.firebase_user_id = firebase_uid
-                firebase_auth.uid = basic_user.uid
+                firebase_auth.uid = uid
                 firebase_auth.name = decoded_token.get("name")
                 firebase_auth.sign_in_provider = sign_in_provider
                 firebase_auth.email = decoded_token.get("email")
@@ -112,7 +136,6 @@ class LoginMgr:
 
                 session.add(firebase_auth)
                 await session.commit()
-                uid = basic_user.uid
 
                 write_log(uid, "new_user", "firebase", [])
         
