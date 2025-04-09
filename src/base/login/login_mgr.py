@@ -52,14 +52,20 @@ class LoginMgr:
 
     # Return permanent token (90days)
     async def login_firebase(self, token, guest_id=''):
-        try:
-            print("Verifying token Firebase")
-            decoded_token = auth.verify_id_token(token)
-            firebase_uid = decoded_token.get("user_id")
-            sign_in_provider = decoded_token.get("firebase").get("sign_in_provider")
-        except Exception as e:
-            print(e)
-            return None
+        if not settings.DEV_MODE:
+            try:
+                print("Verifying token Firebase")
+                decoded_token = auth.verify_id_token(token)
+                firebase_uid = decoded_token.get("user_id")
+                sign_in_provider = decoded_token.get("firebase").get("sign_in_provider")
+            except Exception as e:
+                print(e)
+                return None
+        else:
+            firebase_uid = token
+            decoded_token = {
+            }
+            sign_in_provider = "google.com"
         
         print(f"Decoded token: {decoded_token}")
         async with PsqlOrm.get().session() as session:
@@ -69,7 +75,7 @@ class LoginMgr:
                 uid = firebase_auth.uid
 
                 # Update user info
-                user_info = await session.get(UserInfoSchema, uid)
+                user_info = await users_info_mgr.get_user_info(uid)
                 has_change = False
                 if decoded_token.get("name") and user_info.name != decoded_token.get("name"):
                     user_info.name = decoded_token.get("name")
@@ -78,7 +84,7 @@ class LoginMgr:
                     user_info.avatar_third_party = decoded_token.get("picture")
                     has_change = True
                 if has_change:
-                    await session.commit()
+                    await user_info.commit_to_database('avatar_third_party', 'name')
             else:
                 login_type = 0
                 if sign_in_provider == "facebook.com":
@@ -102,14 +108,16 @@ class LoginMgr:
                         is_exist_acc = True
                 if is_exist_acc:
                     # Update user info
-                    user_info = await session.get(UserInfoSchema, uid)
+                    user_info = await users_info_mgr.get_user_info(uid)
+                    if user_info.login_type != LOGIN_GUEST: # allow link only guest account
+                        return
                     user_info.login_type = login_type
                     user_info.avatar_third_party = avatar_url
                     if avatar_url:
                         user_info.avatar = avatar_url
 
                     user_info.name = user_name
-                    await session.commit()
+                    await user_info.commit_to_database('avatar_third_party', 'name', 'login_type', 'avatar')
                 else:
                     # Create a new user
                     basic_user = self.create_new_basic_user()
