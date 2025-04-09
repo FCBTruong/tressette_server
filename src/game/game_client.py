@@ -76,7 +76,7 @@ class GameClient:
         user_pkg.gold = user_info.gold
         user_pkg.avatar = user_info.avatar
         user_pkg.level = user_info.level
-        user_pkg.avatar_third_party = user_info.avatar_third_party
+        user_pkg.avatar_third_party = user_info.avatar_third_party if user_info.avatar_third_party else ""
         user_pkg.support_num = 1 if game_vars.get_game_mgr().check_can_receive_support(user_info.last_time_received_support) else 0
         user_pkg.startup_gold = startup_gold
         user_pkg.login_type = user_info.login_type
