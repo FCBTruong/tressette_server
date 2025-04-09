@@ -52,7 +52,12 @@ class LoginMgr:
 
     # Return permanent token (90days)
     async def login_firebase(self, token, guest_id=''):
-        if not settings.DEV_MODE:
+        if settings.DEV_MODE:
+            firebase_uid = token
+            decoded_token = {
+            }
+            sign_in_provider = "google.com"
+        else:
             try:
                 print("Verifying token Firebase")
                 decoded_token = auth.verify_id_token(token)
@@ -61,11 +66,6 @@ class LoginMgr:
             except Exception as e:
                 print(e)
                 return None
-        else:
-            firebase_uid = token
-            decoded_token = {
-            }
-            sign_in_provider = "google.com"
         
         print(f"Decoded token: {decoded_token}")
         async with PsqlOrm.get().session() as session:
@@ -128,6 +128,7 @@ class LoginMgr:
                         basic_user.avatar = str(random.choice(AVATAR_IDS))
                     else:
                         basic_user.avatar = basic_user.avatar_third_party
+                    basic_user.login_type = login_type
 
                     session.add(basic_user)
                     await session.commit()
