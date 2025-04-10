@@ -36,6 +36,7 @@ class GameClient:
                 await game_vars.get_friend_mgr().on_receive_packet(uid, cmd_id, payload)
                 await game_vars.get_customer_service_mgr().on_receive_packet(uid, cmd_id, payload)
                 await game_vars.get_ranking_mgr().on_receive_packet(uid, cmd_id, payload)
+                await game_vars.get_ads_mgr().on_receive_packet(uid, cmd_id, payload)
 
     async def user_login_success(self, uid, device_model, platform, device_country, app_version_code):
         user_info = await users_info_mgr.get_user_info(uid)
@@ -80,6 +81,10 @@ class GameClient:
         user_pkg.support_num = 1 if game_vars.get_game_mgr().check_can_receive_support(user_info.last_time_received_support) else 0
         user_pkg.startup_gold = startup_gold
         user_pkg.login_type = user_info.login_type
+        if user_info.game_count < 5:
+            user_pkg.time_ads_reward = -1
+        else:
+            user_pkg.time_ads_reward = user_info.time_ads_reward
         logger.info(f"User info: {user_info.gold}")
 
         user_pkg.time_show_ads = user_info.time_show_ads

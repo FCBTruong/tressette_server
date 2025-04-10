@@ -24,6 +24,8 @@ class UserInfoSchema(Base):
     received_startup=Column(Boolean, default=False)
     num_payments = Column(Integer, default=0)
     time_show_ads = Column(Integer, default=0)
+    time_ads_reward = Column(Integer, default=0) # if timestamp > this, user can receive ads reward
+    num_claimed_ads = Column(Integer, default=0) # number of ads claimed
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
     paypal_orders = relationship("PayPalOrder", back_populates="user")

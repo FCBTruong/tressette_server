@@ -152,6 +152,7 @@ class MatchManager:
         expect_match = None
         best_match = None
         best_diff = float('inf')
+        should_choose_duo = random.choice([True, False]) # 50 %
         
         for match_id, match in self.matches.items():
             if not match.is_public:
@@ -159,7 +160,10 @@ class MatchManager:
             if match.bet == 0:
                 # Bet = 0 is for review
                 continue
-            if match.state == MatchState.WAITING and not match.check_room_full() and match.player_mode != PLAYER_DUO_MODE:
+
+            if match.player_mode == PLAYER_DUO_MODE and not should_choose_duo:
+                continue
+            if match.state == MatchState.WAITING and not match.check_room_full():
                 # For current, only solo mode for quick play
                 min_gold = match.get_min_gold_play()
                 
@@ -317,26 +321,25 @@ class MatchManager:
             return
 
         # STEP JOIN A MATCH
-        match = await self.find_a_suitable_match_quickplay(user.gold)
+        if user.game_count == 0:
+            # for new user, should create new match instead
+            match = await self._create_match(1000, PLAYER_SOLO_MODE, False, 11)
+        else:
+            match = await self.find_a_suitable_match_quickplay(user.gold)
+            if not match:
+                # Expect bet
+                ccu = await game_vars.get_game_live_performance().get_ccu()
+                if ccu < 20:
+                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 3))
+                    expect_bet = min(expect_bet, 1000) # prevent spam bot
+                elif ccu < 100:
+                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 4))
+                else:
+                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
+                bet = self.find_largest_bet_below(expect_bet)
 
-        if not match:
-            # Expect bet
-            ccu = await game_vars.get_game_live_performance().get_ccu()
-            if ccu < 20:
-                expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 3))
-                expect_bet = min(expect_bet, 1000) # prevent spam bot
-            elif ccu < 100:
-                expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 4))
-            else:
-                expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
-            bet = self.find_largest_bet_below(expect_bet)
-
-            # random point mode
-            if user.game_count == 0:
-                point_mode = 11
-            else:
                 point_mode = random.choice([11, 21])
-            match = await self._create_match(bet, PLAYER_SOLO_MODE, False, point_mode)
+                match = await self._create_match(bet, PLAYER_SOLO_MODE, False, point_mode)
         
         print(f"User {uid} join match {match.match_id}")
         await self.user_join_match(match, uid=uid)

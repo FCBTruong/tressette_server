@@ -17,6 +17,7 @@ class GameVars:
         self.sette_mezzo_mgr = None
         self.mission_mgr = None
         self.ranking_mgr = None
+        self.ads_mgr = None
 
     def get_game_client(self):
         if self.game_client is None:
@@ -103,6 +104,12 @@ class GameVars:
             from src.game.modules.ranking.ranking_mgr import RankingMgr
             self.ranking_mgr = RankingMgr()
         return self.ranking_mgr
+    
+    def get_ads_mgr(self):
+        if self.ads_mgr is None:
+            from src.game.modules.ads.ads_mgr import AdsMgr
+            self.ads_mgr = AdsMgr()
+        return self.ads_mgr
     
     # this function is called when the server starts
     async def init_game_vars(self):

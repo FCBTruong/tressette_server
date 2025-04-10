@@ -24,6 +24,8 @@ class UserInfo:
     login_type: int
     num_payments: int
     time_show_ads: int
+    time_ads_reward: int
+    num_claimed_ads: int
     def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool,
                  last_time_received_support: int, received_startup: bool = True):
         self.uid = uid

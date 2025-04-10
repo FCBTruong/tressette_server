@@ -66,6 +66,7 @@ message UserInfo {
   bool has_first_buy = 15;
   int32 time_show_ads = 16;
   int32 login_type = 17;
+  int32 time_ads_reward = 18;
 }
 
 message GameInfo {
@@ -473,4 +474,9 @@ message RankingClaimReward {
 
 message UpdateAds {
   int32 time_show_ads = 1;
+}
+
+message AdsReward {
+  int32 gold = 1;
+  int32 time_ads_reward = 2;
 }

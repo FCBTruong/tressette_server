@@ -510,6 +510,8 @@ class TressetteMatch(Match):
             return 1
         elif user_info.game_count > 10:
             return random.randint(15, 30)
+        elif user_info.game_count > 20:
+            return random.randint(20, 50)
         return random.randint(10, 15)
     
     async def _coroutine_gen_bot(self, time_delay_gen_bot):
@@ -523,15 +525,6 @@ class TressetteMatch(Match):
             self.task_gen_bot = None
 
     async def _prepare_start_game(self):
-        # check all user in room is ready
-        for player in self.players:
-            if player.uid != -1 and not player.is_bot:
-                if not self.user_ready_status.get(player.uid, False):
-                    return
-                
-        # clear user ready status
-        self.user_ready_status.clear()
-
         self.state = MatchState.PREPARING_START
         self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
