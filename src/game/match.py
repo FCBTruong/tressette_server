@@ -329,6 +329,7 @@ class TressetteMatch(Match):
         self.hand_in_round = -1
         self.enable_bet_win_score = True
         self.game_ready = True
+        self.user_ready_status = {}
 
         
         self.point_to_win = point_mode * 3 # 11, 21
@@ -388,6 +389,8 @@ class TressetteMatch(Match):
         if slot_idx == -1:
             print('Match is full')
             return
+        
+        self.user_ready_status[user_id] = True
         if is_bot:
             bot_model = 0 # bot medium
 
@@ -520,6 +523,15 @@ class TressetteMatch(Match):
             self.task_gen_bot = None
 
     async def _prepare_start_game(self):
+        # check all user in room is ready
+        for player in self.players:
+            if player.uid != -1 and not player.is_bot:
+                if not self.user_ready_status.get(player.uid, False):
+                    return
+                
+        # clear user ready status
+        self.user_ready_status.clear()
+
         self.state = MatchState.PREPARING_START
         self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
@@ -943,8 +955,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        # if settings.DEV_MODE:
-        #     return True
+        if settings.DEV_MODE:
+            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -1018,6 +1030,7 @@ class TressetteMatch(Match):
 
     async def end_game(self):
         self.state = MatchState.ENDED
+
         if self.team_scores[0] > self.team_scores[1]:
             self.win_team = 0
         else:
@@ -1249,6 +1262,7 @@ class TressetteMatch(Match):
 
     def user_ready(self, uid):
         print("user " + str(uid) + " is ready to play")
+        self.user_ready_status[uid] = True
         pass
 
 

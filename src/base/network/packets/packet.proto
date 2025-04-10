@@ -251,6 +251,7 @@ message SearchFriendResponse {
   int32 error = 7;
   int32 level = 8;
   int64 exp = 9;
+  bool is_verified = 10;
 }
 
 message CheatGoldUser {

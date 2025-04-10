@@ -170,6 +170,7 @@ class FriendMgr:
             pkg_response.exp = user_info.exp
             pkg_response.win_count = user_info.win_count
             pkg_response.game_count = user_info.game_count
+            pkg_response.is_verified = user_info.login_type != LOGIN_GUEST
 
         pkg_response.error = err
         # send response
