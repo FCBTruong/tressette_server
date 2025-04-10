@@ -36,11 +36,12 @@ class AdsMgr:
                     # Weighted:
                     roll = random.random()
                     if roll < 0.80:
-                        gold_reward = random.randint(10000, 20000)  # 80%
+                        gold_reward = random.randint(10000, 15000)  # 80%
                     elif roll < 0.95:
-                        gold_reward = random.randint(30000, 40000)  # 15%
+                        gold_reward = random.randint(15000, 30000)  # 15%
                     else:
-                        gold_reward = random.randint(40000, 50000)  # 5%
+                        gold_reward = random.randint(30000, 40000)  # 5%
+                gold_reward = round(gold_reward, -3)
                 pkg.gold = gold_reward
                 pkg.time_ads_reward = user_info.time_ads_reward
 
@@ -48,6 +49,6 @@ class AdsMgr:
                 user_info.add_gold(gold_reward)
                 await user_info.commit_gold()
                 await user_info.send_update_money()
-                
+
                 await game_vars.get_game_client().send_packet(uid, CMDs.CLAIM_ADS_REWARD, pkg)
                 pass

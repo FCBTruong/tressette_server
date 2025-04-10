@@ -419,6 +419,9 @@ class TressetteMatch(Match):
                             elif win_rate < 0.2:
                                 bot_model = 2
                         break
+            else:
+                bot_model = 0 # currently only one model for duo mode
+
             if bot_model == 0:
                 match_player = MatchBotIntermediate(user_id, self)
             elif bot_model == 2:
@@ -476,9 +479,6 @@ class TressetteMatch(Match):
         if self.state != MatchState.WAITING:
             return
         
-        if self.player_mode != PLAYER_SOLO_MODE:
-            return
-        
         if self.bet > 0:
             max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
             if self.bet > max_bet_to_gen_bot:
@@ -506,6 +506,13 @@ class TressetteMatch(Match):
                 break
         if not user_info:
             return 5
+        
+        if settings.DEV_MODE:
+            return 1
+        
+        if self.player_mode != PLAYER_SOLO_MODE:
+            return random.randint(10, 50)
+        
         if user_info.game_count < 1: # New user will play withbot
             return 1
         elif user_info.game_count > 10:
@@ -1127,10 +1134,18 @@ class TressetteMatch(Match):
     async def update_users_staying_endgame(self):
         # Remove all bots
         for i, player in enumerate(self.players):
-            if player.is_bot:
-                await self.user_leave(player.uid)
-                # clean bot data
-                game_vars.get_bots_mgr().destroy_bot(player.uid)
+            # for mode 2vs2, should remove randomly
+            if self.player_mode == PLAYER_SOLO_MODE:
+                if player.is_bot:
+                    await self.user_leave(player.uid)
+                    # clean bot data
+                    game_vars.get_bots_mgr().destroy_bot(player.uid)
+            else:
+                # remove random bots
+                if player.is_bot and random.randint(0, 1) == 0:
+                    await self.user_leave(player.uid)
+                    # clean bot data
+                    game_vars.get_bots_mgr().destroy_bot(player.uid)
                 
         # Kick users auto playing, or register exit room
         for uid in self.register_leave_uids:

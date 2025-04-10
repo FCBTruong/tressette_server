@@ -97,6 +97,10 @@ class MatchManager:
         if player_mode != PLAYER_DUO_MODE and player_mode != PLAYER_SOLO_MODE:
             print(f"Invalid player mode {player_mode}")
             return
+        if player_mode == PLAYER_DUO_MODE:
+            # point need to be 21
+            point_mode = 21
+            
         # check if user has enough gold to create table this bet
         user_info = await users_info_mgr.get_user_info(uid)
         if user_info.gold < self.get_gold_minimum_play():
