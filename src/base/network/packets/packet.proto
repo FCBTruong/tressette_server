@@ -480,3 +480,7 @@ message AdsReward {
   int32 gold = 1;
   int32 time_ads_reward = 2;
 }
+
+message ChangeUserName {
+  string name = 1;
+}

@@ -71,7 +71,8 @@ class UsersInfoMgr:
         match cmd_id:
             case CMDs.CHANGE_AVATAR:
                 await self._handle_change_avatar(uid, payload)
-
+            case CMDs.CHANGE_USER_NAME:
+                await self._handle_change_user_name(uid, payload)
             case CMDs.CHEAT_GOLD_USER:
                 await self._handle_cheat_gold_user(uid, payload)
             case _:
@@ -119,5 +120,25 @@ class UsersInfoMgr:
         if user.time_show_ads > current_time:
             return True
         return False
+    
+    async def _handle_change_user_name(self, uid: int, payload):
+        user = await self.get_user_info(uid)
+
+        # only user with name "tressette player" can change name
+        if user.name != "tressette player":
+            logger.error(f"User {uid} try to change name {user.name}")
+            return
+        pkg = packet_pb2.ChangeUserName()
+        pkg.ParseFromString(payload)
+        new_name = pkg.name
+        
+        # valid new name
+        if len(new_name) > 25:
+            logger.error(f"User {uid} try to change to invalid name {new_name}")
+            return
+        # update and save to database
+        user.name = new_name
+        await user.commit_to_database('name')
+        
 
 users_info_mgr = UsersInfoMgr()

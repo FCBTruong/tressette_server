@@ -96,7 +96,7 @@ class LoginMgr:
                 
                 user_name = decoded_token.get("name")
                 if not user_name:
-                    user_name = "Tressette Player"
+                    user_name = "tressette player"
                 avatar_url = decoded_token.get("picture")
               
                 is_exist_acc = False
