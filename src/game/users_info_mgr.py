@@ -133,7 +133,7 @@ class UsersInfoMgr:
         new_name = pkg.name
         
         # valid new name
-        if len(new_name) > 25:
+        if len(new_name) > 20 or len(new_name) < 1:
             logger.error(f"User {uid} try to change to invalid name {new_name}")
             return
         # update and save to database

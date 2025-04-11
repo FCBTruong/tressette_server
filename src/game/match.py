@@ -1152,7 +1152,7 @@ class TressetteMatch(Match):
         # Remove all bots
         for i, player in enumerate(self.players):
             if player.is_bot:
-                should_remove_bot = False
+                should_remove_bot = True
                 if self.player_mode == PLAYER_SOLO_MODE:
                     # mode 2v2, remove randomly
                     should_remove_bot = random.randint(0, 1) == 0
