@@ -1153,9 +1153,13 @@ class TressetteMatch(Match):
         for i, player in enumerate(self.players):
             if player.is_bot:
                 should_remove_bot = True
-                if self.player_mode == PLAYER_SOLO_MODE:
+                if self.player_mode == PLAYER_DUO_MODE:
                     # mode 2v2, remove randomly
                     should_remove_bot = random.randint(0, 1) == 0
+                else:
+                    should_remove_bot = random.randint(0, 1) == 0
+                if player.gold < self.get_min_gold_play():
+                    should_remove_bot = True
                 if should_remove_bot:
                     await self.user_leave(player.uid)
                     # clean bot data
