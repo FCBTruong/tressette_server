@@ -532,6 +532,22 @@ class TressetteMatch(Match):
             self.task_gen_bot = None
 
     async def _prepare_start_game(self):
+        # before really start game, check if all players are ready
+        # check if all players are ready
+        is_all_ready = True
+        for player in self.players:
+            if player.uid == -1 or player.is_bot:
+                continue
+            if not self.user_ready_status.get(player.uid, False):
+                print('Not all players are ready')
+                is_all_ready = False
+                # Kick user out of match
+                await game_vars.get_match_mgr().handle_user_leave_match(player.uid)  
+                continue
+        if not is_all_ready:
+            print('Not all players are ready')
+            return
+        
         self.state = MatchState.PREPARING_START
         self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
@@ -634,6 +650,7 @@ class TressetteMatch(Match):
         print('Start game')
         self.state = MatchState.PLAYING
         self.game_ready = False
+        self.user_ready_status.clear()
         self.start_time = datetime.now()
         self.current_turn = 0
         self.current_hand = -1
@@ -1134,18 +1151,16 @@ class TressetteMatch(Match):
     async def update_users_staying_endgame(self):
         # Remove all bots
         for i, player in enumerate(self.players):
-            # for mode 2vs2, should remove randomly
-            if self.player_mode == PLAYER_SOLO_MODE:
-                if player.is_bot:
+            if player.is_bot:
+                should_remove_bot = False
+                if self.player_mode == PLAYER_SOLO_MODE:
+                    # mode 2v2, remove randomly
+                    should_remove_bot = random.randint(0, 1) == 0
+                if should_remove_bot:
                     await self.user_leave(player.uid)
                     # clean bot data
                     game_vars.get_bots_mgr().destroy_bot(player.uid)
-            else:
-                # remove random bots
-                if player.is_bot and random.randint(0, 1) == 0:
-                    await self.user_leave(player.uid)
-                    # clean bot data
-                    game_vars.get_bots_mgr().destroy_bot(player.uid)
+            
                 
         # Kick users auto playing, or register exit room
         for uid in self.register_leave_uids:
