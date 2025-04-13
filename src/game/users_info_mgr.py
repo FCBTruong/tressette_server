@@ -45,13 +45,15 @@ class UsersInfoMgr:
                             "avatar_third_party": '',
                             "is_active": True,
                             "last_time_received_support": 0,
-                            "received_startup": True
+                            "received_startup": True,
                         }
                         
                 user_inf = UserInfo(**user_info_data)
                 user_inf.win_count = 0
                 user_inf.game_count = 0
                 user_inf.exp = 0
+                user_inf.time_show_ads = 0
+                user_inf.login_type = 0
             
                 return user_inf
         

@@ -390,8 +390,6 @@ class MatchManager:
         await self._handle_user_join_by_match_id(uid, match_id)
 
     async def receive_quick_play(self, uid, payload):
-        quick_play_pkg = packet_pb2.QuickPlay()
-        quick_play_pkg.ParseFromString(payload)
         await self._handle_quick_play(uid)
 
     def find_largest_bet_below(self, expect_bet):

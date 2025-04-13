@@ -459,8 +459,8 @@ class TressetteMatch(Match):
                 print("bot model advance...")
                 match_player = MatchBotAdvance(user_id, self)
             
-            # if settings.DEV_MODE:
-            #     match_player = MatchBotSuper(user_id, self)
+            if settings.DEV_MODE:
+                match_player = MatchBotSuper(user_id, self)
 
         else:
             match_player = MatchPlayer(user_id, self)
