@@ -265,6 +265,7 @@ class MatchBotSuper(MatchBot):
             print("opp_future_cards", opp_future_cards)
             print("current_card", current_card)
             print("max_depth", max_depth)
+            print("point_to_win", self.match_mgr.point_to_win)
 
         card = find_optimal_card(
             leading_player,
