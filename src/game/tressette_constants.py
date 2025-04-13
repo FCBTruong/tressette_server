@@ -25,3 +25,21 @@ TRESSETTE_CARD_VALUES = {
     32: 1, 33: 1, 34: 1, 35: 1,  # Queens (1/3 point * 3 = 1)
     36: 1, 37: 1, 38: 1, 39: 1   # Kings (1/3 point * 3 = 1)
 }
+
+def get_score(card):
+    return TRESSETTE_CARD_VALUES[card]
+
+def get_suit(card):
+    # Returns suit as remainder of dividing by 4 (0..3).
+    return card % 4
+
+def get_stronger_card(card1, card2):
+    # Compare rank strengths based on card//4 => rank
+    rank1 = card1 // 4
+    rank2 = card2 // 4
+    if TRESSETTE_CARD_STRONGS[rank1] > TRESSETTE_CARD_STRONGS[rank2]:
+        return card1
+    elif TRESSETTE_CARD_STRONGS[rank1] < TRESSETTE_CARD_STRONGS[rank2]:
+        return card2
+    else:
+        return None  # Tie in strength

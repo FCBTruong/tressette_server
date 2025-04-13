@@ -12,6 +12,7 @@ from src.base.network.packets import packet_pb2
 from src.config.settings import settings
 from src.constants import *
 from src.game import game_logic
+from src.game.bot.minimax_tressette import find_optimal_card
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
@@ -227,7 +228,6 @@ class MatchBotSuper(MatchBot):
     
     def get_card_to_play(self) -> int:
         # only for solo mode
-        from src.game.bot.minimax_tressette import bot_play
         bot_cards = self.cards.copy()
         opp_cards = []
         for p in self.match_mgr.players:
@@ -246,18 +246,40 @@ class MatchBotSuper(MatchBot):
         if len(self.match_mgr.cards_compare) > 0:
             current_card = self.match_mgr.cards_compare[0]
         else:
-            current_card = -1
-        # print params
-        print("bot_cards", bot_cards)
-        print("opp_cards", opp_cards)
-        print("bot_future_cards", bot_future_cards)
-        print("opp_future_cards", opp_future_cards)
-        print("current_card", current_card)
-        card = bot_play(bot_cards, opp_cards, bot_future_cards, opp_future_cards, current_card)
+            current_card = None
+
+        if current_card == -1:
+            current_card = None
+        
+        bot_score = self.match_mgr.team_scores[self.team_id]
+        player_score = self.match_mgr.team_scores[1 - self.team_id]
+        leading_player = 'player' if current_card is not None else 'bot'
+        if settings.DEV_MODE:
+            print("leading_player", leading_player)
+            print("bot_score", bot_score)
+            print("player_score", player_score)
+            print("bot_cards", bot_cards)
+            print("opp_cards", opp_cards)
+            print("bot_future_cards", bot_future_cards)
+            print("opp_future_cards", opp_future_cards)
+            print("current_card", current_card)
+
+        card = find_optimal_card(
+            leading_player,
+            self.match_mgr.team_scores[self.team_id],
+            self.match_mgr.team_scores[1 - self.team_id], 
+            bot_cards, opp_cards, bot_future_cards, opp_future_cards,
+            get_suit=get_suit,
+            get_score=get_score,
+            get_stronger_card=get_stronger_card,
+            point_to_win=self.match_mgr.point_to_win,
+            leading_card=current_card,
+            )
         return card
   
 
 class Match(ABC):
+    players: list[MatchPlayer]
     @abstractmethod
     async def user_play_card(self, uid, payload):
         pass
@@ -412,24 +434,30 @@ class TressetteMatch(Match):
                             else:
                                 bot_model = 2
                         else:
-                            if win_rate > 0.9:
-                                bot_model = 1
-                            elif win_rate > 0.6:
-                                bot_model = random.randint(0, 1)
-                            elif win_rate < 0.2:
+                            if win_rate > 0.3:
+                                bot_model = random.choice([0, 3])
+                            else:
                                 bot_model = 2
                         break
             else:
                 bot_model = 0 # currently only one model for duo mode
 
             if bot_model == 0:
+                print("bot model medium...")
                 match_player = MatchBotIntermediate(user_id, self)
             elif bot_model == 2:
+                print("bot model stupid...")
                 match_player = MatchBot(user_id, self)
+            elif bot_model == 3:
+                print("bot model super...")
+                match_player = MatchBotSuper(user_id, self)
             else:
+                print("bot model advance...")
                 match_player = MatchBotAdvance(user_id, self)
+            
+            # if settings.DEV_MODE:
+            #     match_player = MatchBotSuper(user_id, self)
 
-            # match_player = MatchBotSuper(user_id, self)
         else:
             match_player = MatchPlayer(user_id, self)
 
@@ -972,8 +1000,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        if settings.DEV_MODE:
-            return True
+        # if settings.DEV_MODE:
+        #     return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True

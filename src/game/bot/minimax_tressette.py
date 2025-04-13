@@ -1,176 +1,284 @@
-import random
-import math
-import copy
-
-# Card points based on Tressette rules
-CARD_POINTS = {
-    0: 1, 1: 1, 2: 1, 3: 1,   # Aces
-    28: 1/3, 29: 1/3, 30: 1/3, 31: 1/3,  # Kings
-    32: 1/3, 33: 1/3, 34: 1/3, 35: 1/3,  # Queens
-    36: 1/3, 37: 1/3, 38: 1/3, 39: 1/3    # Jacks
-}
-
-# Tressette card ranking (higher is stronger)
-TRESSETTE_RANKING = {
-    2: 100,  # 3
-    1: 99,   # 2
-    0: 98,   # Ace
-    9: 97,   # K
-    8: 96,   # Q
-    7: 95,   # J
-    6: 94,   # 7
-    5: 93,   # 6
-    4: 92,   # 5
-    3: 91    # 4
-}
-
-def get_suit(card):
-    return card % 4  
-
-def get_rank(card):
-    return TRESSETTE_RANKING.get(card // 4, 0)
-
-def compare_cards(card1, card2, leading_suit):
-    """Returns True if card1 wins against card2 given the leading suit."""
-    suit1, suit2 = get_suit(card1), get_suit(card2)
-    rank1, rank2 = get_rank(card1), get_rank(card2)
-    if suit1 == suit2:
-        return rank1 > rank2
-    elif suit1 == leading_suit:
-        return True
-    elif suit2 == leading_suit:
-        return False
-    else:
-        return rank1 > rank2
-
-def simulate_trick(lead_card, follow_card, lead_is_bot):
+def find_optimal_card(
+    leading_player,
+    bot_score,
+    player_score,
+    bot_cards,
+    player_cards,
+    next_bot_cards,
+    next_player_cards,
+    get_suit,
+    get_score,
+    get_stronger_card,
+    point_to_win,
+    leading_card=None,
+    max_depth=2,  # <-- added depth parameter
+):
     """
-    Simulate a completed trick.
+    A MINIMAX-style function with limited depth search.
     
-    Returns:
-      score: positive if bot wins (points gained), negative if loses.
-      winner_is_bot: boolean.
+    If we reach `depth == 0` (or run out of cards), 
+    we estimate a score instead of continuing recursion.
     """
-    # The leading suit is that of the lead_card.
-    leading_suit = get_suit(lead_card)
-    # Determine trick winner.
-    if lead_is_bot:
-        bot_card, opp_card = lead_card, follow_card
-    else:
-        bot_card, opp_card = follow_card, lead_card
 
-    if compare_cards(bot_card, opp_card, leading_suit):
-        # Winner is bot.
-        score = CARD_POINTS.get(bot_card, 0) + CARD_POINTS.get(opp_card, 0)
-        return score, True
-    else:
-        score = CARD_POINTS.get(bot_card, 0) + CARD_POINTS.get(opp_card, 0)
-        return -score, False
+    # Simple memo to avoid recomputing states
+    memo = {}
 
-def get_valid_moves(cards, current_card):
-    """
-    Returns moves (cards) that follow suit if possible; otherwise, all cards.
-    """
-    if current_card == -1:
-        return cards[:]
-    valid = [card for card in cards if get_suit(card) == get_suit(current_card)]
-    return valid if valid else cards[:]
+    def heuristic(bot_score, player_score, bot_cards, player_cards):
+        """
+        Simple heuristic used when we reach `depth == 0`.
+        For example, just compute:
+        - current bot_score
+        - plus sum of bot's card values
+        - minus player's potential if you want
+        Here we do a naive approach: bot_score - player_score.
+        """
+        return bot_score - player_score
 
-def minimax(bot_cards, opp_cards, bot_future, opp_future, current_card, is_bot_turn, depth, alpha, beta):
-    """
-    Recursive minimax search for the current trick.
-    
-    Parameters:
-      bot_cards, opp_cards: current cards in hand.
-      bot_future, opp_future: cards that will be drawn after current trick.
-      current_card: card already played in this trick (-1 if none).
-      is_bot_turn: True if it's the bot's turn to play.
-      depth: recursion depth (used as a terminal condition).
-      alpha, beta: for alpha-beta pruning.
-      
-    Returns:
-      (score, move): score is the net score difference (bot minus opponent) for optimal play.
-                     move is the card the bot should play (only set at the root level).
-    """
-    # Terminal condition: if both players have played a card for the trick.
-    if current_card != -1 and not is_bot_turn:
-        # Both moves are played; simulate trick outcome.
-        # In our simulation, the card in current_card is the lead card,
-        # and the card just played is the follow card.
-        # We assume that after this trick, future cards will be drawn (but for simplicity,
-        # we stop at one trick).
-        score, _ = simulate_trick(current_card, 0, True)  # dummy follow card; already simulated.
-        return score, None
+    def play_hand(
+        leading_player,
+        bot_score,
+        player_score,
+        bot_cards,
+        player_cards,
+        next_bot_cards,
+        next_player_cards,
+        leading_card,
+        depth,
+    ):
+        """
+        Return: (best_final_bot_score, best_final_player_score, best_move)
+        'best_move' is relevant only if 'leading_player' == 'bot' on this call.
+        """
 
-    # Terminal condition: depth limit reached.
-    if depth == 0:
-        return 0, None
+        # If out of cards, or if we've reached depth limit, use heuristic or final scores.
+        if not bot_cards and not player_cards:
+            # End of round, no further moves
+            return bot_score, player_score, None
+        
+        if depth <= 0:
+            # Return an approximate outcome, using a quick heuristic difference
+            # We only need to return a numeric measure, but for consistency we
+            # store that measure in bot_score, and keep player's score secondary.
+            h_value = heuristic(bot_score, player_score, bot_cards, player_cards)
+            # We'll interpret it as if final_bot_score = h_value. 
+            # The true player score is still unknown, so store partial data.
+            return h_value, player_score, None
 
-    if is_bot_turn:
-        best_score = -math.inf
-        best_move = None
-        valid_moves = get_valid_moves(bot_cards, current_card)
-        for card in valid_moves:
-            # Copy current state for simulation.
-            new_bot = bot_cards.copy()
-            new_bot.remove(card)
-            # When bot plays, if no card is on the table, this card becomes the lead.
-            new_current = card if current_card == -1 else current_card
+        memo_key = (
+            leading_player,
+            bot_score,
+            player_score,
+            tuple(bot_cards),
+            tuple(player_cards),
+            tuple(next_bot_cards),
+            tuple(next_player_cards),
+            leading_card,
+            depth,
+        )
+        if memo_key in memo:
+            return memo[memo_key]
 
-            # For simplicity, assume opponent will then move.
-            score, _ = minimax(new_bot, opp_cards, bot_future, opp_future, new_current, False, depth - 1, alpha, beta)
-            if score > best_score:
-                best_score = score
-                best_move = card
-            alpha = max(alpha, best_score)
-            if beta <= alpha:
-                break
-        return best_score, best_move
-    else:
-        # Opponent turn.
-        worst_score = math.inf
-        valid_moves = get_valid_moves(opp_cards, current_card)
-        for card in valid_moves:
-            new_opp = opp_cards.copy()
-            new_opp.remove(card)
-            # Now the trick is complete; simulate the trick.
-            # current_card is lead, and card is opponent's play.
-            score, _ = simulate_trick(current_card, card, True)
-            # In a full simulation we would add minimax result of subsequent rounds,
-            # but here we assume one-trick evaluation.
-            if score < worst_score:
-                worst_score = score
-            beta = min(beta, worst_score)
-            if beta <= alpha:
-                break
-        return worst_score, None
+        # --- BOT LEADS ---
+        if leading_player == "bot":
+            best_final_bot_score = float("-inf")
+            best_final_player_score = float("-inf")
+            best_bot_move = None
 
-def bot_play(bot_cards, opp_cards, bot_future, opp_future, current_card):
-    """
-    Returns the card that the bot should play based on minimax search.
-    """
-    # For simplicity, we set a small depth since we're simulating a single trick.
-    depth = 4
-    _, move = minimax(bot_cards, opp_cards, bot_future, opp_future, current_card, True, depth, -math.inf, math.inf)
-    # If minimax fails to pick a move, default to a valid move.
-    if move is None:
-        move = get_valid_moves(bot_cards, current_card)[0]
-    return move
+            for bot_card in bot_cards:
+                lead_suit = get_suit(bot_card)
+                # Player must follow suit if possible
+                valid_responses = [
+                    c for c in player_cards if get_suit(c) == lead_suit
+                ] or player_cards
 
-# Example usage:
-if __name__ == "__main__":
-    # Example hands (the bot "knows" all cards)
-    bot_cards = [32, 3, 18, 5, 16, 11, 4, 10, 17]
-    opp_cards = [19, 15, 34, 22, 29, 21, 14, 0]
-    bot_future = [1, 12, 23, 35]
-    opp_future = [0, 11, 22, 33]
-    
-    # Case 1: Bot is following (opponent already played a card).
-    current_card = 23  # Opponent's card as lead (for example)
-    chosen = bot_play_minimax(bot_cards, opp_cards, bot_future, opp_future, current_card)
-    print(f"Minimax (following): Bot plays {chosen} (Rank: {get_rank(chosen)}, Suit: {get_suit(chosen)})")
-    
-    # Case 2: Bot leads (current_card = -1).
-    current_card = -1
-    chosen = bot_play_minimax(bot_cards, opp_cards, bot_future, opp_future, current_card)
-    print(f"Minimax (leading): Bot plays {chosen} (Rank: {get_rank(chosen)}, Suit: {get_suit(chosen)})")
+                # Player tries to minimize bot's final score
+                worst_bot_score_for_this_move = float("inf")
+                worst_player_score_for_this_move = float("-inf")
+
+                for p_card in valid_responses:
+                    # Calculate trick points
+                    points = get_score(bot_card) + get_score(p_card)
+                    if get_suit(bot_card) == get_suit(p_card):
+                        winner = get_stronger_card(bot_card, p_card)
+                        if winner == bot_card:
+                            new_bot_score = bot_score + points
+                            new_player_score = player_score
+                            next_leader = "bot"
+                        else:
+                            new_bot_score = bot_score
+                            new_player_score = player_score + points
+                            next_leader = "player"
+                    else:
+                        # Different suit => leading card (bot_card) wins
+                        new_bot_score = bot_score + points
+                        new_player_score = player_score
+                        next_leader = "bot"
+
+                    # Check immediate 21
+                    if new_bot_score >= point_to_win or new_player_score >= point_to_win:
+                        # If it's possibly last trick: last trick bonus
+                        if len(bot_cards) == 1 and len(player_cards) == 1:
+                            if next_leader == "bot":
+                                new_bot_score += 3
+                            else:
+                                new_player_score += 3
+                        final_bot_s, final_player_s = new_bot_score, new_player_score
+                    else:
+                        # Remove used cards
+                        new_bot_cards = [c for c in bot_cards if c != bot_card]
+                        new_player_cards = [c for c in player_cards if c != p_card]
+
+                        # Draw if possible
+                        if next_bot_cards and next_player_cards:
+                            new_bot_cards.append(next_bot_cards[0])
+                            new_player_cards.append(next_player_cards[0])
+                            nb_remaining = next_bot_cards[1:]
+                            np_remaining = next_player_cards[1:]
+                        else:
+                            nb_remaining = next_bot_cards
+                            np_remaining = next_player_cards
+
+                        # Recurse with depth-1
+                        final_bot_s, final_player_s, _ = play_hand(
+                            next_leader,
+                            new_bot_score,
+                            new_player_score,
+                            new_bot_cards,
+                            new_player_cards,
+                            nb_remaining,
+                            np_remaining,
+                            leading_card=None,  # new leader picks a card
+                            depth=depth - 1,
+                        )
+
+                    # The player wants to produce the worst outcome for the bot
+                    if final_bot_s < worst_bot_score_for_this_move:
+                        worst_bot_score_for_this_move = final_bot_s
+                        worst_player_score_for_this_move = final_player_s
+
+                # Bot tries to pick the move that yields the best final_bot_score
+                if worst_bot_score_for_this_move > best_final_bot_score:
+                    best_final_bot_score = worst_bot_score_for_this_move
+                    best_final_player_score = worst_player_score_for_this_move
+                    best_bot_move = bot_card
+
+            memo[memo_key] = (best_final_bot_score, best_final_player_score, best_bot_move)
+            return memo[memo_key]
+
+        # --- PLAYER LEADS ---
+        else:
+            # If leading_card is None, the player picks a lead from their hand.
+            if leading_card is None:
+                # Player tries to *minimize* bot's final outcome
+                worst_bot_score = float("inf")
+                worst_player_score = float("-inf")
+                # The "best_move" concept only applies to bot leading,
+                # so we set it to None here
+                best_bot_move = None
+
+                for p_card in player_cards:
+                    new_bot_s, new_player_s, _ = play_hand(
+                        "player",
+                        bot_score,
+                        player_score,
+                        bot_cards,
+                        player_cards,
+                        next_bot_cards,
+                        next_player_cards,
+                        leading_card=p_card,  # The actual lead
+                        depth=depth,
+                    )
+
+                    if new_bot_s < worst_bot_score:
+                        worst_bot_score = new_bot_s
+                        worst_player_score = new_player_s
+
+                memo[memo_key] = (worst_bot_score, worst_player_score, best_bot_move)
+                return memo[memo_key]
+
+            else:
+                # leading_card is known
+                p_card = leading_card
+                lead_suit = get_suit(p_card)
+                # Bot must respond with same suit if possible
+                valid_bot_cards = [c for c in bot_cards if get_suit(c) == lead_suit] or bot_cards
+
+                best_final_bot_score = float("-inf")
+                best_final_player_score = float("-inf")
+                best_bot_move = None
+
+                for bot_card in valid_bot_cards:
+                    points = get_score(p_card) + get_score(bot_card)
+                    if get_suit(p_card) == get_suit(bot_card):
+                        winner = get_stronger_card(p_card, bot_card)
+                        if winner == bot_card:
+                            new_bot_score = bot_score + points
+                            new_player_score = player_score
+                            next_leader = "bot"
+                        else:
+                            new_bot_score = bot_score
+                            new_player_score = player_score + points
+                            next_leader = "player"
+                    else:
+                        # Player's card automatically wins
+                        new_bot_score = bot_score
+                        new_player_score = player_score + points
+                        next_leader = "player"
+
+                    if new_bot_score >= point_to_win or new_player_score >= point_to_win:
+                        if len(bot_cards) == 1 and len(player_cards) == 1:
+                            if next_leader == "bot":
+                                new_bot_score += 3
+                            else:
+                                new_player_score += 3
+                        final_bot_s, final_player_s = new_bot_score, new_player_score
+                    else:
+                        new_bot_cards = [c for c in bot_cards if c != bot_card]
+                        new_player_cards = [c for c in player_cards if c != p_card]
+
+                        # Draw
+                        if next_bot_cards and next_player_cards:
+                            new_bot_cards.append(next_bot_cards[0])
+                            new_player_cards.append(next_player_cards[0])
+                            nb_remaining = next_bot_cards[1:]
+                            np_remaining = next_player_cards[1:]
+                        else:
+                            nb_remaining = next_bot_cards
+                            np_remaining = next_player_cards
+
+                        final_bot_s, final_player_s, _ = play_hand(
+                            next_leader,
+                            new_bot_score,
+                            new_player_score,
+                            new_bot_cards,
+                            new_player_cards,
+                            nb_remaining,
+                            np_remaining,
+                            leading_card=None,
+                            depth=depth - 1,
+                        )
+
+                    # From the bot’s perspective, we want to maximize final_bot_s
+                    if final_bot_s > best_final_bot_score:
+                        best_final_bot_score = final_bot_s
+                        best_final_player_score = final_player_s
+                        best_bot_move = bot_card
+
+                memo[memo_key] = (best_final_bot_score, best_final_player_score, best_bot_move)
+                return memo[memo_key]
+
+    # Kick off the search
+    final_bot_score, final_player_score, bot_move = play_hand(
+        leading_player,
+        bot_score,
+        player_score,
+        bot_cards,
+        player_cards,
+        next_bot_cards,
+        next_player_cards,
+        leading_card,
+        depth=max_depth,
+    )
+
+    # If leading_player=='bot', bot_move is what we choose to play right now.
+    return bot_move
