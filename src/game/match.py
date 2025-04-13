@@ -508,7 +508,7 @@ class TressetteMatch(Match):
             return
         
         if self.bet > 0:
-            max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
+            max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot') if self.player_mode == PLAYER_SOLO_MODE else tress_config.get('max_bet_to_gen_bot_duo')
             if self.bet > max_bet_to_gen_bot:
                 return
             

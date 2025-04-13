@@ -100,7 +100,7 @@ class MatchManager:
         if player_mode == PLAYER_DUO_MODE:
             # point need to be 21
             point_mode = 21
-            
+
         # check if user has enough gold to create table this bet
         user_info = await users_info_mgr.get_user_info(uid)
         if user_info.gold < self.get_gold_minimum_play():
@@ -335,7 +335,7 @@ class MatchManager:
                 ccu = await game_vars.get_game_live_performance().get_ccu()
                 if ccu < 20:
                     expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 3))
-                    expect_bet = min(expect_bet, 1000) # prevent spam bot
+                    expect_bet = min(expect_bet, 100000) # prevent spam bot
                 elif ccu < 100:
                     expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 4))
                 else:
