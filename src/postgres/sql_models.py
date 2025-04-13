@@ -1,5 +1,5 @@
 
-from sqlalchemy import DECIMAL, TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Text, func
+from sqlalchemy import DECIMAL, TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
@@ -22,6 +22,10 @@ class UserInfoSchema(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     last_time_received_support = Column(Integer, default=0)
     received_startup=Column(Boolean, default=False)
+    num_payments = Column(Integer, default=0)
+    time_show_ads = Column(Integer, default=0)
+    time_ads_reward = Column(Integer, default=0) # if timestamp > this, user can receive ads reward
+    num_claimed_ads = Column(Integer, default=0) # number of ads claimed
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
     paypal_orders = relationship("PayPalOrder", back_populates="user")
@@ -89,3 +93,37 @@ class PayPalOrder(Base):
 
     # Relationship to UserInfoSchema
     user = relationship("UserInfoSchema", back_populates="paypal_orders")
+
+
+class RankingSeasonSchema(Base):
+    __tablename__ = 'ranking_seasons'
+
+    season_id = Column(Integer, primary_key=True, autoincrement=True)
+    time_start = Column(TIMESTAMP, nullable=False)
+    time_end = Column(TIMESTAMP, nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
+
+class RankingRewardsSchema(Base):
+    __tablename__ = 'ranking_rewards'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    season_id = Column(Integer, ForeignKey('ranking_seasons.season_id'), nullable=False)
+    uid = Column(Integer, ForeignKey('user_info.uid'), nullable=False)
+    rank = Column(Integer, nullable=False)
+    gold_reward = Column(Integer, nullable=False)
+    claimed = Column(Boolean, nullable=False, default=False)
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
+
+class RankingPlayersSchema(Base):
+    __tablename__ = 'ranking_players'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    season_id = Column(Integer, ForeignKey('ranking_seasons.season_id'), nullable=False)
+    uid = Column(Integer, ForeignKey('user_info.uid'), nullable=False)
+    score = Column(Integer, nullable=False)
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
+

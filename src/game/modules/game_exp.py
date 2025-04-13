@@ -10,7 +10,7 @@ def calculate_exp_gain(bet_amount: float) -> float:
     :return: Experience points gained from the bet amount.
     """
     if bet_amount <= 0:
-        return 0  # No gain for invalid or zero bet amount.
+        return 20  # For ios play with no bet
 
     scaling_factor = 0.01  # Adjust to control the output level.
     log_bet = math.log2(bet_amount)  # Calculate log2 once to avoid redundancy.

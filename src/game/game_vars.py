@@ -15,7 +15,10 @@ class GameVars:
         self.customer_service_mgr = None
         self.debt_mgr = None
         self.sette_mezzo_mgr = None
-        
+        self.mission_mgr = None
+        self.ranking_mgr = None
+        self.ads_mgr = None
+
     def get_game_client(self):
         if self.game_client is None:
             from src.game.game_client import GameClient
@@ -89,5 +92,28 @@ class GameVars:
             from src.game.modules.sette_mezzo.sette_mezzo_mgr import SetteMezzoMgr
             self.sette_mezzo_mgr = SetteMezzoMgr()
         return self.sette_mezzo_mgr
+    
+    def get_mission_mgr(self):
+        if self.mission_mgr is None:
+            from src.game.modules.mission.mission_mgr import MissionMgr
+            self.mission_mgr = MissionMgr()
+        return self.mission_mgr
+    
+    def get_ranking_mgr(self):
+        if self.ranking_mgr is None:
+            from src.game.modules.ranking.ranking_mgr import RankingMgr
+            self.ranking_mgr = RankingMgr()
+        return self.ranking_mgr
+    
+    def get_ads_mgr(self):
+        if self.ads_mgr is None:
+            from src.game.modules.ads.ads_mgr import AdsMgr
+            self.ads_mgr = AdsMgr()
+        return self.ads_mgr
+    
+    # this function is called when the server starts
+    async def init_game_vars(self):
+        await self.get_ranking_mgr().init_season()
+        
     
 game_vars = GameVars()

@@ -127,14 +127,27 @@ async def _purchase_success(uid, pack_id, method):
     pack_info = get_pack_info(pack_id)
     pkg = packet_pb2.PaymentSuccess()
     pkg.gold = pack_info.get("gold")
+    pkg.pack_id = pack_id
 
     user_info = await users_info_mgr.get_user_info(uid)
 
     before_gold = user_info.gold
     user_info.add_gold(pack_info.get("gold"))
+    user_info.num_payments += 1
 
-    # save to database
-    await user_info.commit_gold()
+    if pack_info.get("no_ads_days"):
+        timestamp_now = int(datetime.now().timestamp())
+        delta_no_ads = pack_info.get("no_ads_days") * 86400
+        if user_info.time_show_ads < timestamp_now:
+            user_info.time_show_ads = timestamp_now + delta_no_ads
+        else:
+            user_info.time_show_ads += delta_no_ads
+
+        await user_info.commit_to_database('gold', 'num_payments', 'time_show_ads')
+        await user_info.send_update_ads()
+    else:
+        # save to database
+        await user_info.commit_to_database('gold', 'num_payments')
     
     await user_info.send_update_money()
 
@@ -143,6 +156,7 @@ async def _purchase_success(uid, pack_id, method):
 
     write_log(uid, "payment_success", method, [pack_id, before_gold, user_info.gold])
 
+FIRST_BUY_OFFER_PACK_ID = "first_buy_offer"
 def get_pack_info(pack_id):
     packs = config.get("packs")
     for pack in packs:
@@ -152,6 +166,10 @@ def get_pack_info(pack_id):
     for pack in web_packs:
         if pack.get("pack_id") == pack_id:
             return pack
+    first_buy_offer = config.get(FIRST_BUY_OFFER_PACK_ID)
+    if first_buy_offer and first_buy_offer.get("pack_id") == pack_id:
+        return first_buy_offer
+
     return None
 
 def get_shop_config():
@@ -164,6 +182,7 @@ async def send_shop_config(uid, platform):
     golds = []
     prices = []
     currencies = []
+    no_ads_days = []
     
     if platform == "web":
         packs = shop_config.get("web_packs")
@@ -175,11 +194,21 @@ async def send_shop_config(uid, platform):
         golds.append(p.get("gold"))
         prices.append(p.get("price"))
         currencies.append(p.get("currency"))
+        no_ads_days.append(p.get("no_ads_days", 0))
 
     pkg.pack_ids.extend(pack_ids)
     pkg.golds.extend(golds)
     pkg.prices.extend(prices)
     pkg.currencies.extend(currencies)
+    pkg.no_ads_days.extend(no_ads_days)
+
+    first_buy_offer = get_pack_info(FIRST_BUY_OFFER_PACK_ID)
+    pkg.gold_offer_first = first_buy_offer.get("gold")
+    pkg.price_offer_first = first_buy_offer.get("price")
+    pkg.currency_offer_first = first_buy_offer.get("currency")
+    pkg.pack_id_offer_first = FIRST_BUY_OFFER_PACK_ID
+    pkg.no_ads_day_offer_first = first_buy_offer.get("no_ads_days")
+
     await game_vars.get_game_client().send_packet(uid, CMDs.SHOP_CONFIG, pkg)
     print(f"Send shop config to user {uid}", CMDs.SHOP_CONFIG)
 

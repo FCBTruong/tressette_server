@@ -1,6 +1,6 @@
 import asyncio
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import random
 import traceback
@@ -11,6 +11,8 @@ from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
 from src.constants import *
+from src.game import game_logic
+from src.game.bot.minimax_tressette import find_optimal_card
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
@@ -102,8 +104,12 @@ class MatchPlayer:
                     break
 
         await self.match_mgr._play_card(self.uid, card_id=card_id, auto=True)
+    
+    def random_chat(self):
+        pass
 
 class MatchBot(MatchPlayer):
+    bot_model = 'C'
     def __init__(self, uid, match_mgr):
         super().__init__(uid, match_mgr)
         self.is_bot = True
@@ -129,7 +135,7 @@ class MatchBot(MatchPlayer):
         pkg.cards.extend(self.cards)
         await self.match_mgr.broadcast_pkg(CMDs.CHEAT_VIEW_CARD_BOT, pkg)
     
-    async def get_card_to_play(self) -> int:
+    def get_card_to_play(self) -> int:
         card_id = self.cards[0]
         cur_hand_suit = self.match_mgr.hand_suit
         if cur_hand_suit != -1:
@@ -140,7 +146,17 @@ class MatchBot(MatchPlayer):
                     break
         return card_id
     
+    def random_chat(self):
+        if random.random() < 0.1:  # 10% chance to send a chat
+            async def delayed_chat():
+                await asyncio.sleep(random.uniform(0.5, 3))  # Random delay between 0.5s and 3s
+                await self.match_mgr.broadcast_chat_emoticon(self.uid, random.choice(CHAT_EMO_IDS))
+            
+            asyncio.create_task(delayed_chat())  # Run in background
+
+    
 class MatchBotIntermediate(MatchBot):
+    bot_model = 'A'
     def get_card_to_play(self) -> int:
         cards_on_table = [card for card in self.match_mgr.cards_compare if card != -1]
 
@@ -153,17 +169,121 @@ class MatchBotIntermediate(MatchBot):
         cards_valid = [card for card in self.cards if card % 4 == cur_hand_suit]
 
         if not cards_valid:
-            return min(self.cards, key=lambda c: CARD_VALUES[c])  # Play the lowest value card
+            weakest_card = min(self.cards, key=lambda c: (TRESSETTE_CARD_VALUES[c], TRESSETTE_CARD_STRONGS[c // 4]))
+            return weakest_card
 
         # Find the smallest valid card
-        min_card = min(cards_valid, key=lambda c: CARD_VALUES[c])
+        min_card = min(cards_valid, key=lambda c: TRESSETTE_CARD_VALUES[c])
 
         # Find the smallest card that can win
         winning_cards = [card for card in cards_valid if TRESSETTE_CARD_STRONGS[card // 4] > TRESSETTE_CARD_STRONGS[strong_card // 4]]
 
-        return min(winning_cards, key=lambda c: CARD_VALUES[c]) if winning_cards else min_card
+        return min(winning_cards, key=lambda c: TRESSETTE_CARD_VALUES[c]) if winning_cards else min_card
+
+class MatchBotAdvance(MatchBot):
+    bot_model = 'B'
+    def _pick_best_card(self):
+        try :
+            print("_pick_best_card")
+            opponent = None
+            for p in self.match_mgr.players:
+                if p.uid != self.uid:
+                    opponent = p
+                    break
+            opponent_cards = opponent.cards
+            should_player_card = game_logic.pick_winning_card_first(self.cards, opponent_cards)
+            # play card that can win, if can not win, play weakest and smallest card
+            return should_player_card
+
+        except Exception as e:
+            print(e)
+            return self.cards[0]
+    
+    def get_card_to_play(self) -> int:
+        cards_on_table = [card for card in self.match_mgr.cards_compare if card != -1]
+
+        if not cards_on_table:
+            return self._pick_best_card()  # Play the first card if nothing is on the table
+
+        strong_card = max(cards_on_table, key=lambda c: TRESSETTE_CARD_STRONGS[c // 4])
+
+        cur_hand_suit = self.match_mgr.hand_suit
+        cards_valid = [card for card in self.cards if card % 4 == cur_hand_suit]
+
+        if not cards_valid:
+            weakest_card = min(self.cards, key=lambda c: (TRESSETTE_CARD_VALUES[c], TRESSETTE_CARD_STRONGS[c // 4]))
+            return weakest_card
+
+        # Find the smallest valid card
+        min_card = min(cards_valid, key=lambda c: TRESSETTE_CARD_VALUES[c])
+
+        # Find the smallest card that can win
+        winning_cards = [card for card in cards_valid if TRESSETTE_CARD_STRONGS[card // 4] > TRESSETTE_CARD_STRONGS[strong_card // 4]]
+
+        return min(winning_cards, key=lambda c: TRESSETTE_CARD_VALUES[c]) if winning_cards else min_card
+
+class MatchBotSuper(MatchBot):
+    bot_model = 'D'
+   
+    
+    def get_card_to_play(self) -> int:
+        # only for solo mode
+        bot_cards = self.cards.copy()
+        opp_cards = []
+        for p in self.match_mgr.players:
+            if p.uid != self.uid:
+                opp_cards = p.cards.copy()
+                break
+        bot_future_cards = []
+        opp_future_cards = []
+        i = 0
+        for c in self.match_mgr.cards:
+            if i % 2 == 0:
+                opp_future_cards.append(c)
+            else:
+                bot_future_cards.append(c)
+            i += 1
+        if len(self.match_mgr.cards_compare) > 0:
+            current_card = self.match_mgr.cards_compare[0]
+        else:
+            current_card = None
+
+        if current_card == -1:
+            current_card = None
+        
+        bot_score = self.match_mgr.team_scores[self.team_id]
+        player_score = self.match_mgr.team_scores[1 - self.team_id]
+        leading_player = 'player' if current_card is not None else 'bot'
+        max_depth = 2
+        if settings.DEV_MODE:
+            print("leading_player", leading_player)
+            print("bot_score", bot_score)
+            print("player_score", player_score)
+            print("bot_cards", bot_cards)
+            print("opp_cards", opp_cards)
+            print("bot_future_cards", bot_future_cards)
+            print("opp_future_cards", opp_future_cards)
+            print("current_card", current_card)
+            print("max_depth", max_depth)
+            print("point_to_win", self.match_mgr.point_to_win)
+
+        card = find_optimal_card(
+            leading_player,
+            self.match_mgr.team_scores[self.team_id],
+            self.match_mgr.team_scores[1 - self.team_id], 
+            bot_cards, opp_cards, bot_future_cards, opp_future_cards,
+            get_suit=get_suit,
+            get_score=get_score,
+            get_stronger_card=get_stronger_card,
+            point_to_win=self.match_mgr.point_to_win,
+            leading_card=current_card,
+            max_depth=max_depth,
+            )
+        return card
+  
 
 class Match(ABC):
+    players: list[MatchPlayer]
     @abstractmethod
     async def user_play_card(self, uid, payload):
         pass
@@ -178,6 +298,30 @@ class Match(ABC):
 
     @abstractmethod
     async def user_reconnect(self, uid):
+        pass
+
+    @abstractmethod
+    async def loop(self):
+        pass
+
+    @abstractmethod
+    async def broadcast_chat_emoticon(self, uid, emoticon):
+        pass
+
+    @abstractmethod
+    async def broadcast_chat_message(self, uid, message):
+        pass
+
+    @abstractmethod
+    def user_return_to_table(self, uid):
+        pass
+
+    @abstractmethod
+    def user_ready(self, uid):
+        pass
+
+    @abstractmethod
+    def check_room_full(self) -> bool:
         pass
 
 class TressetteMatch(Match):
@@ -210,6 +354,8 @@ class TressetteMatch(Match):
         self.napoli_claimed_status = {}
         self.hand_in_round = -1
         self.enable_bet_win_score = True
+        self.game_ready = True
+        self.user_ready_status = {}
 
         
         self.point_to_win = point_mode * 3 # 11, 21
@@ -242,14 +388,12 @@ class TressetteMatch(Match):
                     else:
                         self.state = MatchState.WAITING
                         self.time_start = -1
+            elif self.state == MatchState.WAITING:
+                if self.game_ready and self.check_room_full():
+                    await self._prepare_start_game()
         except Exception as e:
             traceback.print_exc()
             raise e
-
-
-    def end_match(self):
-        self.state = MatchState.ENDED
-        self.end_time = datetime.now()
 
     async def user_join(self, user_id, is_bot=False):
         # check user in match
@@ -260,7 +404,7 @@ class TressetteMatch(Match):
         if not is_bot:
             user_data = await users_info_mgr.get_user_info(user_id)
         else:
-            user_data = await game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
+            user_data = game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
 
         # find empty slot
         slot_idx = -1   
@@ -271,8 +415,53 @@ class TressetteMatch(Match):
         if slot_idx == -1:
             print('Match is full')
             return
+        
+        self.user_ready_status[user_id] = True
         if is_bot:
-            match_player = MatchBotIntermediate(user_id, self)
+            bot_model = 0 # bot medium
+
+            if self.player_mode == PLAYER_SOLO_MODE:
+                # get info user to decide bot model
+                for player in self.players:
+                    if player.uid != -1 and not player.is_bot:
+                        user_info = await users_info_mgr.get_user_info(player.uid)
+                        win_rate = 0
+                        if user_info.game_count > 0:
+                            win_rate = user_info.win_count * 1.0 / user_info.game_count
+
+                        # BOT 0: Medium, BOT 2: Stupid, BOT 1: Hard
+                        if user_info.game_count == 0:
+                            bot_model = 2 # bot 2 is stupid
+                        elif user_info.game_count < 5:
+                            if win_rate > 0.5:
+                                bot_model = 0
+                            else:
+                                bot_model = 2
+                        else:
+                            if win_rate > 0.3:
+                                bot_model = random.choice([0, 3])
+                            else:
+                                bot_model = 2
+                        break
+            else:
+                bot_model = 0 # currently only one model for duo mode
+
+            if bot_model == 0:
+                print("bot model medium...")
+                match_player = MatchBotIntermediate(user_id, self)
+            elif bot_model == 2:
+                print("bot model stupid...")
+                match_player = MatchBot(user_id, self)
+            elif bot_model == 3:
+                print("bot model super...")
+                match_player = MatchBotSuper(user_id, self)
+            else:
+                print("bot model advance...")
+                match_player = MatchBotAdvance(user_id, self)
+            
+            # if settings.DEV_MODE:
+            #     match_player = MatchBotSuper(user_id, self)
+
         else:
             match_player = MatchPlayer(user_id, self)
 
@@ -296,6 +485,10 @@ class TressetteMatch(Match):
         pkg.team_id = team_id
         pkg.avatar = user_data.avatar
         pkg.gold = user_data.gold
+        pkg.is_vip = await users_info_mgr.check_user_vip(user_id)
+
+        if settings.DEV_MODE:
+            pkg.is_vip = True
 
         await self.broadcast_pkg(CMDs.NEW__USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
         
@@ -303,11 +496,11 @@ class TressetteMatch(Match):
             # send game info to user
             await self._send_game_info(user_id)
 
-        if self.check_room_full():
-            await self._prepare_start_game()
-            self._clear_coroutine_gen_bot()
-        else:
-            await self._check_and_gen_bot()
+        if self.state == MatchState.WAITING:
+            if self.check_room_full():
+                self._clear_coroutine_gen_bot()
+            else:
+                await self._check_and_gen_bot()
 
     async def _check_and_gen_bot(self):
         print("check and gen bott")
@@ -318,11 +511,8 @@ class TressetteMatch(Match):
         if self.state != MatchState.WAITING:
             return
         
-        if self.player_mode != PLAYER_SOLO_MODE:
-            return
-        
         if self.bet > 0:
-            max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot')
+            max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot') if self.player_mode == PLAYER_SOLO_MODE else tress_config.get('max_bet_to_gen_bot_duo')
             if self.bet > max_bet_to_gen_bot:
                 return
             
@@ -348,13 +538,24 @@ class TressetteMatch(Match):
                 break
         if not user_info:
             return 5
-        if user_info.game_count < 3: # New user will play withbot
-            return 2
-        return 10
+        
+        if settings.DEV_MODE:
+            return 1
+        
+        if self.player_mode != PLAYER_SOLO_MODE:
+            return random.randint(10, 50)
+        
+        if user_info.game_count < 1: # New user will play withbot
+            return 1
+        elif user_info.game_count > 10:
+            return random.randint(15, 30)
+        elif user_info.game_count > 20:
+            return random.randint(20, 50)
+        return random.randint(10, 15)
     
     async def _coroutine_gen_bot(self, time_delay_gen_bot):
         await asyncio.sleep(time_delay_gen_bot)
-        bot_uid = random.randint(10000000, 30000000)
+        bot_uid = game_vars.get_bots_mgr().get_free_bot_uid()
         await self.user_join(bot_uid, is_bot=True)
 
     def _clear_coroutine_gen_bot(self):
@@ -363,6 +564,22 @@ class TressetteMatch(Match):
             self.task_gen_bot = None
 
     async def _prepare_start_game(self):
+        # before really start game, check if all players are ready
+        # check if all players are ready
+        is_all_ready = True
+        for player in self.players:
+            if player.uid == -1 or player.is_bot:
+                continue
+            if not self.user_ready_status.get(player.uid, False):
+                print('Not all players are ready')
+                is_all_ready = False
+                # Kick user out of match
+                await game_vars.get_match_mgr().handle_user_leave_match(player.uid)  
+                continue
+        if not is_all_ready:
+            print('Not all players are ready')
+            return
+        
         self.state = MatchState.PREPARING_START
         self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
         # Send to all players that game is starting, wait for 3 seconds
@@ -425,6 +642,9 @@ class TressetteMatch(Match):
             game_info.user_points.append(player.points)
             game_info.team_ids.append(player.team_id)
             game_info.avatars.append(player.avatar)
+            
+            is_player_vip = await users_info_mgr.check_user_vip(player.uid)
+            game_info.is_vips.append(is_player_vip)
 
             if player.uid == uid:
                 game_info.my_cards.extend(player.cards)
@@ -461,6 +681,8 @@ class TressetteMatch(Match):
 
         print('Start game')
         self.state = MatchState.PLAYING
+        self.game_ready = False
+        self.user_ready_status.clear()
         self.start_time = datetime.now()
         self.current_turn = 0
         self.current_hand = -1
@@ -606,13 +828,15 @@ class TressetteMatch(Match):
         pkg.current_turn = self.current_turn
         pkg.hand_suit = self.hand_suit
 
-        await self.broadcast_pkg(CMDs.PLAY_CARD, pkg)
-
         # Check done hand
         if is_finish_hand:
             print('Finishhand, end hand')
-            await self.end_hand()
+
+            # add some information to package PlayCard (is end hand, who win, win point ...)
+            await self.end_hand(pkg)
         else:
+            await self.broadcast_pkg(CMDs.PLAY_CARD, pkg)
+
             # next uid
             next_uid = self.players[self.current_turn].uid
             await self.players[self.current_turn].on_turn()
@@ -662,7 +886,7 @@ class TressetteMatch(Match):
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
     
 
-    async def end_hand(self):
+    async def end_hand(self, play_card_pkg):
         win_card = self.get_win_card_in_hand()
         win_player = self.players[self.cards_compare.index(win_card)]
         self.win_player = win_player
@@ -691,6 +915,14 @@ class TressetteMatch(Match):
             win_player.points += 3
             win_player.score_last_trick += 3
 
+        play_card_pkg.is_end_hand = True
+        play_card_pkg.win_uid = win_player.uid
+        play_card_pkg.win_card = win_card
+        play_card_pkg.win_point = win_score
+        play_card_pkg.is_end_round = self.is_end_round
+        await self.broadcast_pkg(CMDs.PLAY_CARD, play_card_pkg)
+
+        # this end hand packet will not use in the future
         pkg = packet_pb2.EndHand()
         pkg.is_end_round = self.is_end_round
         pkg.win_uid = win_player.uid
@@ -721,6 +953,10 @@ class TressetteMatch(Match):
         else:
             # create new round
             await self._on_end_round()
+
+        for p in self.players:
+            if p.is_bot:
+                p.random_chat()
     
     async def _on_end_round(self):
         # wait for 2 seconds
@@ -770,6 +1006,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
+        # if settings.DEV_MODE:
+        #     return True
         
         if settings.DEV_MODE:
             return True
@@ -803,7 +1041,11 @@ class TressetteMatch(Match):
         else:
             self.current_turn = 0
 
-        self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+        if self.win_player and self.win_player.uid in self.users_auto_play:
+            # people that are auto play
+            self.time_auto_play = TIME_AUTO_PLAY_SEVERE + datetime.now().timestamp()
+        else:
+            self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
 
         print(f"New hand")
         pkg = packet_pb2.NewHand()
@@ -836,13 +1078,14 @@ class TressetteMatch(Match):
     def get_win_score_in_hand(self):
         total_score = 0
         for card in self.cards_compare:
-            total_score += CARD_VALUES[card]
+            total_score += TRESSETTE_CARD_VALUES[card]
         return total_score
 
         
 
     async def end_game(self):
         self.state = MatchState.ENDED
+
         if self.team_scores[0] > self.team_scores[1]:
             self.win_team = 0
         else:
@@ -873,6 +1116,10 @@ class TressetteMatch(Match):
                 player.gold_change += gold_win
         
             if player.uid == -1 or player.is_bot:
+                is_bot_win = '0'
+                if player.team_id == self.win_team:
+                    is_bot_win = '1'
+                write_log(-1, "end_game_bot", player.bot_model, [is_bot_win, self.unique_match_id, self.unique_game_id, self.bet])
                 continue
 
             user_info = await users_info_mgr.get_user_info(player.uid)
@@ -883,6 +1130,8 @@ class TressetteMatch(Match):
                 user_info.add_gold(gold_received)
                 user_info.win_count += 1
                 added_exp = added_exp * 2
+
+                await game_vars.get_ranking_mgr().on_user_win_game(player.uid)
 
             user_info.add_exp(added_exp)
             gold_debt = game_vars.get_debt_mgr().get_debt_ingame(player.uid)
@@ -924,22 +1173,36 @@ class TressetteMatch(Match):
         
         await asyncio.sleep(3)
 
-         # User can quit the room now
-        self.state = MatchState.WAITING 
-
+        self.state = MatchState.WAITING
         # for user register exit room, or auto play, or disconnect
-        await self.update_users_staying_endgame()
+        await self.update_users_staying_endgame() 
+
+        #reset game: score
+        for player in self.players:
+            player.points = 0
+            player.cards.clear()
 
         # next game
-        await asyncio.sleep(5)
-        if self.check_room_full():
-            await self._prepare_start_game()
+        await asyncio.sleep(9)
+        self.game_ready = True
 
     async def update_users_staying_endgame(self):
         # Remove all bots
         for i, player in enumerate(self.players):
             if player.is_bot:
-                await self.user_leave(player.uid)
+                should_remove_bot = True
+                if self.player_mode == PLAYER_DUO_MODE:
+                    # mode 2v2, remove randomly
+                    should_remove_bot = random.randint(0, 1) == 0
+                else:
+                    should_remove_bot = random.randint(0, 1) == 0
+                if player.gold < self.get_min_gold_play():
+                    should_remove_bot = True
+                if should_remove_bot:
+                    await self.user_leave(player.uid)
+                    # clean bot data
+                    game_vars.get_bots_mgr().destroy_bot(player.uid)
+            
                 
         # Kick users auto playing, or register exit room
         for uid in self.register_leave_uids:
@@ -1009,7 +1272,7 @@ class TressetteMatch(Match):
 
     async def cheat_add_bot(self):
         if settings.ENABLE_CHEAT:
-            bot_uid = random.randint(5000000, 30000000)
+            bot_uid = game_vars.get_bots_mgr().get_free_bot_uid()
             await self.user_join(bot_uid, is_bot=True)
 
     async def receive_game_action_napoli(self, uid, payload):
@@ -1062,18 +1325,9 @@ class TressetteMatch(Match):
     def user_return_to_table(self, uid):
         self.users_auto_play.pop(uid, None)
 
+    def user_ready(self, uid):
+        print("user " + str(uid) + " is ready to play")
+        self.user_ready_status[uid] = True
+        pass
 
-# Value mapping for Traditional Tresette (values multiplied by 3 to avoid floats)
-CARD_VALUES = {
-    0: 3, 1: 3, 2: 3, 3: 3,  # Aces (1 point * 3)
-    4: 1, 5: 1, 6: 1, 7: 1,  # 2s
-    8: 1, 9: 1, 10: 1, 11: 1,  # 3s (1 point * 3)
-    12: 0, 13: 0, 14: 0, 15: 0,  # 4s
-    16: 0, 17: 0, 18: 0, 19: 0,  # 5s
-    20: 0, 21: 0, 22: 0, 23: 0,  # 6s
-    24: 0, 25: 0, 26: 0, 27: 0,  # 7s
-    28: 1, 29: 1, 30: 1, 31: 1,  # Jacks (1/3 point * 3 = 1)
-    32: 1, 33: 1, 34: 1, 35: 1,  # Queens (1/3 point * 3 = 1)
-    36: 1, 37: 1, 38: 1, 39: 1   # Kings (1/3 point * 3 = 1)
-}
 

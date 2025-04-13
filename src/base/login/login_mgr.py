@@ -51,15 +51,21 @@ class LoginMgr:
         return user_model
 
     # Return permanent token (90days)
-    async def login_firebase(self, token):
-        try:
-            print("Verifying token Firebase")
-            decoded_token = auth.verify_id_token(token)
-            firebase_uid = decoded_token.get("user_id")
-            sign_in_provider = decoded_token.get("firebase").get("sign_in_provider")
-        except Exception as e:
-            print(e)
-            return None
+    async def login_firebase(self, token, guest_id=''):
+        if settings.DEV_MODE:
+            firebase_uid = token
+            decoded_token = {
+            }
+            sign_in_provider = "google.com"
+        else:
+            try:
+                print("Verifying token Firebase")
+                decoded_token = auth.verify_id_token(token)
+                firebase_uid = decoded_token.get("user_id")
+                sign_in_provider = decoded_token.get("firebase").get("sign_in_provider")
+            except Exception as e:
+                print(e)
+                return None
         
         print(f"Decoded token: {decoded_token}")
         async with PsqlOrm.get().session() as session:
@@ -69,7 +75,7 @@ class LoginMgr:
                 uid = firebase_auth.uid
 
                 # Update user info
-                user_info = await session.get(UserInfoSchema, uid)
+                user_info = await users_info_mgr.get_user_info(uid)
                 has_change = False
                 if decoded_token.get("name") and user_info.name != decoded_token.get("name"):
                     user_info.name = decoded_token.get("name")
@@ -78,33 +84,63 @@ class LoginMgr:
                     user_info.avatar_third_party = decoded_token.get("picture")
                     has_change = True
                 if has_change:
-                    await session.commit()
+                    await user_info.commit_to_database('avatar_third_party', 'name')
             else:
-                # Create a new user
-                basic_user = self.create_new_basic_user()
-
+                login_type = 0
                 if sign_in_provider == "facebook.com":
-                    basic_user.login_type = LOGIN_FACEBOOK
+                    login_type = LOGIN_FACEBOOK
                 elif sign_in_provider == "google.com":
-                    basic_user.login_type = LOGIN_GOOGLE
+                    login_type = LOGIN_GOOGLE
                 elif sign_in_provider == "apple.com":
-                    basic_user.login_type = LOGIN_APPLE
+                    login_type = LOGIN_APPLE
                 
-                basic_user.name = decoded_token.get("name")
-                
-                basic_user.avatar_third_party = decoded_token.get("picture")
-                if not basic_user.avatar_third_party:
-                    basic_user.avatar = str(random.choice(AVATAR_IDS))
-                else:
-                    basic_user.avatar = basic_user.avatar_third_party
+                user_name = decoded_token.get("name")
+                if not user_name:
+                    user_name = "tressette player"
+                avatar_url = decoded_token.get("picture")
+              
+                is_exist_acc = False
+                if guest_id != '':
+                    # try get user info by guest id
+                    guest = await session.get(GuestsSchema, guest_id)
+                    if guest:
+                        uid = guest.uid
+                        is_exist_acc = True
+                if is_exist_acc:
+                    # Update user info
+                    user_info = await users_info_mgr.get_user_info(uid)
+                    if user_info.login_type != LOGIN_GUEST: # allow link only guest account
+                        return
+                    user_info.login_type = login_type
+                    user_info.avatar_third_party = avatar_url
+                    if avatar_url:
+                        user_info.avatar = avatar_url
+                    
+                    # Add 100k gold to user as a reward for linking account
+                    user_info.add_gold(100000)
 
-                session.add(basic_user)
-                await session.commit()
-                await session.refresh(basic_user)
+                    user_info.name = user_name
+                    await user_info.commit_to_database('avatar_third_party', 'name', 'login_type', 'avatar', 'gold')
+                else:
+                    # Create a new user
+                    basic_user = self.create_new_basic_user()
+                    basic_user.name = user_name
+                
+                    basic_user.avatar_third_party = decoded_token.get("picture")
+                    if not basic_user.avatar_third_party:
+                        basic_user.avatar = str(random.choice(AVATAR_IDS))
+                    else:
+                        basic_user.avatar = basic_user.avatar_third_party
+                    basic_user.login_type = login_type
+
+                    session.add(basic_user)
+                    await session.commit()
+                    await session.refresh(basic_user)
+                    uid = basic_user.uid
 
                 firebase_auth = FirebaseAuthSchema()
                 firebase_auth.firebase_user_id = firebase_uid
-                firebase_auth.uid = basic_user.uid
+                firebase_auth.uid = uid
                 firebase_auth.name = decoded_token.get("name")
                 firebase_auth.sign_in_provider = sign_in_provider
                 firebase_auth.email = decoded_token.get("email")
@@ -112,7 +148,6 @@ class LoginMgr:
 
                 session.add(firebase_auth)
                 await session.commit()
-                uid = basic_user.uid
 
                 write_log(uid, "new_user", "firebase", [])
         

@@ -1,4 +1,5 @@
 
+import asyncio
 import logging
 import traceback
 from typing import Optional
@@ -6,6 +7,7 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.responses import HTMLResponse
 from src.base.network.connection_manager import connection_manager
 from src.base.payment.google_pay import verify_purchase
+from src.base.telegram import telegram_bot
 from src.config.settings import settings
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
@@ -21,12 +23,25 @@ logger = logging.getLogger("main")  # Name your logger
 
 async def lifespan(app: FastAPI):
     print("Application startup complete.")
+    if not settings.ENABLE_CHEAT:
+        await telegram_bot.send_message(f"Server started")
+
+    # init game vars
+    asyncio.create_task(game_vars.init_game_vars())
     yield
 if settings.ENABLE_SWAGGER:
     app = FastAPI(lifespan=lifespan)
 else:
     app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Allow requests from React app
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 html = """
 <!DOCTYPE html>

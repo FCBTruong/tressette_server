@@ -1,7 +1,7 @@
 
 
 import asyncio
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
 from src.game.users_info_mgr import users_info_mgr
@@ -47,6 +47,8 @@ class GameMgr:
                 await game_vars.get_match_mgr().receive_game_action_napoli(uid, payload)
             case CMDs.USER_RETURN_TO_TABLE:
                 await game_vars.get_match_mgr().receive_user_return_to_table(uid)
+            case CMDs.USER_MATCH_READY:
+                await game_vars.get_match_mgr().user_ready(uid)
      
     async def on_user_login(self, uid: int):
         # wait for 1 second, to let user handle login process
@@ -70,7 +72,7 @@ class GameMgr:
         last_support_date = datetime.fromtimestamp(timestamp).date()
 
         # Get the current date
-        current_date = date.today()
+        current_date = datetime.now().date()
 
         # Check if the last support date is today
         if last_support_date == current_date:
@@ -79,13 +81,13 @@ class GameMgr:
         return True
     
     async def _claim_support(self, uid: int):
-        GOLD_SUPPORT = 50000
+        GOLD_SUPPORT = 40000
         user_info = await users_info_mgr.get_user_info(uid)
 
         if not user_info:
             return
         
-        if user_info.gold >= await game_vars.get_match_mgr().get_gold_minimum_play():
+        if user_info.gold >= game_vars.get_match_mgr().get_gold_minimum_play():
             return
 
         if not self.check_can_receive_support(user_info.last_time_received_support):

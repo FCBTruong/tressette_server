@@ -3,6 +3,7 @@
 import asyncio
 from enum import Enum
 import logging
+import random
 
 from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
@@ -49,11 +50,9 @@ class MatchManager:
         """The main loop to manage matches."""
         try:
             while True:
-                tasks = []
                 for match in list(self.matches.values()):  # Use list() to avoid mutation issues.
-                    tasks.append(self._run_match(match))
+                    asyncio.create_task(self._run_match(match))  # Fire and forget
                 
-                await asyncio.gather(*tasks, return_exceptions=True)
                 await asyncio.sleep(0.5)
         except asyncio.CancelledError:
             logger.info("MatchManager loop has been stopped.")
@@ -98,6 +97,10 @@ class MatchManager:
         if player_mode != PLAYER_DUO_MODE and player_mode != PLAYER_SOLO_MODE:
             print(f"Invalid player mode {player_mode}")
             return
+        if player_mode == PLAYER_DUO_MODE:
+            # point need to be 21
+            point_mode = 21
+
         # check if user has enough gold to create table this bet
         user_info = await users_info_mgr.get_user_info(uid)
         if user_info.gold < self.get_gold_minimum_play():
@@ -153,6 +156,7 @@ class MatchManager:
         expect_match = None
         best_match = None
         best_diff = float('inf')
+        should_choose_duo = random.choice([True, False]) # 50 %
         
         for match_id, match in self.matches.items():
             if not match.is_public:
@@ -160,7 +164,10 @@ class MatchManager:
             if match.bet == 0:
                 # Bet = 0 is for review
                 continue
-            if match.state == MatchState.WAITING and not match.check_room_full() and match.player_mode != PLAYER_DUO_MODE:
+
+            if match.player_mode == PLAYER_DUO_MODE and not should_choose_duo:
+                continue
+            if match.state == MatchState.WAITING and not match.check_room_full():
                 # For current, only solo mode for quick play
                 min_gold = match.get_min_gold_play()
                 
@@ -319,18 +326,25 @@ class MatchManager:
             return
 
         # STEP JOIN A MATCH
-        match = await self.find_a_suitable_match_quickplay(user.gold)
+        if user.game_count == 0:
+            # for new user, should create new match instead
+            match = await self._create_match(1000, PLAYER_SOLO_MODE, False, 11)
+        else:
+            match = await self.find_a_suitable_match_quickplay(user.gold)
+            if not match:
+                # Expect bet
+                ccu = await game_vars.get_game_live_performance().get_ccu()
+                if ccu < 20:
+                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 3))
+                    expect_bet = min(expect_bet, 100000) # prevent spam bot
+                elif ccu < 100:
+                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 4))
+                else:
+                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
+                bet = self.find_largest_bet_below(expect_bet)
 
-        if not match:
-            # Expect bet
-            ccu = await game_vars.get_game_live_performance().get_ccu()
-            if ccu < 100:
-                expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 3))
-            else:
-                expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
-            bet = self.find_largest_bet_below(expect_bet)
-
-            match = await self._create_match(bet)
+                point_mode = random.choice([11, 21])
+                match = await self._create_match(bet, PLAYER_SOLO_MODE, False, point_mode)
         
         print(f"User {uid} join match {match.match_id}")
         await self.user_join_match(match, uid=uid)
@@ -338,7 +352,7 @@ class MatchManager:
         write_log(uid, "quick_play", "", [])
     
     
-    async def _handle_user_join_by_match_id(self, uid, match_id):
+    async def  _handle_user_join_by_match_id(self, uid, match_id):
         # check if user is in a match
         is_in_match = await self.is_user_in_match(uid)
         if is_in_match:
@@ -403,3 +417,8 @@ class MatchManager:
         match = await self.get_match_of_user(uid)
         if match:
             match.user_return_to_table(uid)
+
+    async def user_ready(self, uid):
+        match = await self.get_match_of_user(uid)
+        if match:
+            match.user_ready(uid)

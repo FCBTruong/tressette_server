@@ -1,0 +1,9 @@
+{
+    "missions": [
+        {
+            "id": 0,
+            "name": "Mission 1",
+            "gold": 10000
+        }
+    ]
+}

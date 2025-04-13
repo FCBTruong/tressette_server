@@ -58,4 +58,4 @@ async def test_pay_apple():
     print(response)
 
 def cheat_test_sandbox(uid):
-    UIDS_TEST_SANDBOX.append(uid)
+    pass

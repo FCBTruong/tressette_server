@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from typing import Union
 
@@ -12,9 +12,9 @@ LOGIN_TOKEN_EXPIRE_MINUTES = 60 * 24 * 90  # Token expiration time in minutes # 
 def create_session_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=SESSION_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now() + timedelta(minutes=SESSION_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -22,9 +22,9 @@ def create_session_token(data: dict, expires_delta: Union[timedelta, None] = Non
 def create_login_token(data: dict, expires_delta: Union[timedelta, None] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=LOGIN_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now() + timedelta(minutes=LOGIN_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

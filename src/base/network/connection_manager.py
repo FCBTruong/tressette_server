@@ -188,6 +188,7 @@ class ConnectionManager:
                 login_type = login_client_pkg.type
                 device_model = login_client_pkg.device_model
                 platform = login_client_pkg.platform
+                app_version_code = login_client_pkg.app_version_code
                 device_country = login_client_pkg.device_country
                 print(f"Login packet received: token={token}, login_type={login_type}, device_model={device_model}, platform={platform}")
                 login_response = packet_pb2.LoginResponse()
@@ -230,7 +231,8 @@ class ConnectionManager:
 
                 self.user_websockets[uid] = websocket
                 await self.send_packet(websocket, CMD_LOGIN, p)
-                await game_vars.get_game_client().user_login_success(uid=uid, device_model=device_model, platform=platform, device_country=device_country)
+                await game_vars.get_game_client().user_login_success(uid=uid, device_model=device_model, platform=platform, device_country=device_country,
+                                                                     app_version_code=app_version_code)
             else:
                 if not token:
                     logger.info("Unauthorized")
@@ -295,6 +297,7 @@ class ConnectionManager:
         token = login_firebase_pkg.login_token
 
         sub_type = login_firebase_pkg.sub_type
+        guest_id = login_firebase_pkg.guest_id
         if sub_type != 0:
             if sub_type == 1:  # Google
                 # Firebase Auth not working for iOS, Web, so need to login through server
@@ -313,7 +316,7 @@ class ConnectionManager:
                 token = apple_login_inf['firebase_token']
 
 
-        game_token = await game_vars.get_login_mgr().login_firebase(token)
+        game_token = await game_vars.get_login_mgr().login_firebase(token, guest_id)
         if not game_token:
             print("Unauthorized")
             return

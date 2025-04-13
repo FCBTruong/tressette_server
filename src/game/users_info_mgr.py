@@ -1,4 +1,5 @@
 
+from datetime import datetime
 import json
 import logging
 # from src.cache import redis_cache
@@ -70,7 +71,7 @@ class UsersInfoMgr:
                     "avatar_third_party": user_info.avatar_third_party,
                     "is_active": user_info.is_active,
                     "last_time_received_support": user_info.last_time_received_support,
-                    "received_startup": user_info.received_startup
+                    "received_startup": user_info.received_startup,
                 }
                 
                 user_inf = UserInfo(**user_info_data)
@@ -78,6 +79,10 @@ class UsersInfoMgr:
                 user_inf.game_count = user_info.game_count
                 user_inf.exp = user_info.exp
                 user_inf.login_type = user_info.login_type
+                user_inf.num_payments = user_info.num_payments
+                user_inf.time_show_ads = user_info.time_show_ads
+                user_inf.time_ads_reward = user_info.time_ads_reward
+                user_inf.num_claimed_ads = user_info.num_claimed_ads
                 
                 self.users[uid] = user_inf
                 return user_inf
@@ -87,7 +92,8 @@ class UsersInfoMgr:
         match cmd_id:
             case CMDs.CHANGE_AVATAR:
                 await self._handle_change_avatar(uid, payload)
-
+            case CMDs.CHANGE_USER_NAME:
+                await self._handle_change_user_name(uid, payload)
             case CMDs.CHEAT_GOLD_USER:
                 await self._handle_cheat_gold_user(uid, payload)
             case _:
@@ -126,5 +132,34 @@ class UsersInfoMgr:
         await user.commit_gold()
         await user.send_update_money()
         print(f"User {uid} cheat gold {gold}")
+
+    async def check_user_vip(self, uid: int) -> bool:
+        user = await self.get_user_info(uid)
+        if not user:
+            return False
+        current_time = int(datetime.now().timestamp())
+        if user.time_show_ads > current_time:
+            return True
+        return False
+    
+    async def _handle_change_user_name(self, uid: int, payload):
+        user = await self.get_user_info(uid)
+
+        # only user with name "tressette player" can change name
+        if user.name != "tressette player":
+            logger.error(f"User {uid} try to change name {user.name}")
+            return
+        pkg = packet_pb2.ChangeUserName()
+        pkg.ParseFromString(payload)
+        new_name = pkg.name
+        
+        # valid new name
+        if len(new_name) > 20 or len(new_name) < 1:
+            logger.error(f"User {uid} try to change to invalid name {new_name}")
+            return
+        # update and save to database
+        user.name = new_name
+        await user.commit_to_database('name')
+        
 
 users_info_mgr = UsersInfoMgr()

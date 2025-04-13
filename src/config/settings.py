@@ -43,7 +43,7 @@ class CommonSettings(BaseSettings):
     DEV_MODE: Optional[bool] = os.getenv("DEV_MODE") == "true"
     LOGS_URL: Optional[str] = os.getenv("LOGS_URL")
     TIME_SEND_LOGS: Optional[int] = os.getenv("TIME_SEND_LOGS", 300)
-    ENABLE_SWAGGER: Optional[bool] = True
+    ENABLE_SWAGGER: Optional[bool] = os.getenv("ENABLE_SWAGGER") == "true"
     SERVER_URL: Optional[str] = os.getenv("SERVER_URL", 'https://tressette-dev.clareentertainment.com')
 class Settings(
     EnvironmentSettings,
