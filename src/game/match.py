@@ -147,7 +147,7 @@ class MatchBot(MatchPlayer):
         return card_id
     
     def random_chat(self):
-        if random.random() < 0.25:  # 25% chance to send a chat
+        if random.random() < 0.1:  # 10% chance to send a chat
             async def delayed_chat():
                 await asyncio.sleep(random.uniform(0.5, 3))  # Random delay between 0.5s and 3s
                 await self.match_mgr.broadcast_chat_emoticon(self.uid, random.choice(CHAT_EMO_IDS))
@@ -254,6 +254,7 @@ class MatchBotSuper(MatchBot):
         bot_score = self.match_mgr.team_scores[self.team_id]
         player_score = self.match_mgr.team_scores[1 - self.team_id]
         leading_player = 'player' if current_card is not None else 'bot'
+        max_depth = 2
         if settings.DEV_MODE:
             print("leading_player", leading_player)
             print("bot_score", bot_score)
@@ -263,6 +264,7 @@ class MatchBotSuper(MatchBot):
             print("bot_future_cards", bot_future_cards)
             print("opp_future_cards", opp_future_cards)
             print("current_card", current_card)
+            print("max_depth", max_depth)
 
         card = find_optimal_card(
             leading_player,
@@ -274,6 +276,7 @@ class MatchBotSuper(MatchBot):
             get_stronger_card=get_stronger_card,
             point_to_win=self.match_mgr.point_to_win,
             leading_card=current_card,
+            max_depth=max_depth,
             )
         return card
   
