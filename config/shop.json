@@ -70,7 +70,7 @@
     ],
     "first_buy_offer": {
         "pack_id": "first_buy_offer",
-        "gold": 10000000,
+        "gold": 50000000,
         "price": 5,
         "currency": "EUR",
         "no_ads_days": 30
