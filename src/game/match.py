@@ -254,7 +254,7 @@ class MatchBotSuper(MatchBot):
         bot_score = self.match_mgr.team_scores[self.team_id]
         player_score = self.match_mgr.team_scores[1 - self.team_id]
         leading_player = 'player' if current_card is not None else 'bot'
-        max_depth = 2
+        max_depth = 3
         if settings.DEV_MODE:
             print("leading_player", leading_player)
             print("bot_score", bot_score)
@@ -906,8 +906,8 @@ class TressetteMatch(Match):
             self.is_end_round = True
         else:
             self.is_end_round = False
-            if settings.DEV_MODE:
-                self.is_end_round = True
+            # if settings.DEV_MODE:
+            #     self.is_end_round = True
         
         if self.is_end_round:
             # calculate last trick
@@ -1009,10 +1009,6 @@ class TressetteMatch(Match):
         # if settings.DEV_MODE:
         #     return True
         
-        if settings.DEV_MODE:
-            return True
-            if self.cur_round >= 2:
-                return True
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
         return False
