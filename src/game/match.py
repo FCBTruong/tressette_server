@@ -56,6 +56,12 @@ SCORE_WIN_GAME_TWENTY_ONE = 21 * SERVER_SCORE_ONE_POINT
 # 0 - 39
 TRESSETTE_CARDS = [i for i in range(40)]
 
+BOT_MODEL_STUPID = 0
+BOT_MODEL_MEDIUM = 1
+BOT_MODEL_ADVANCE = 2
+BOT_MODEL_SUPER = 3
+BOT_MODEL_SUPER_V2 = 4
+
 class LeaveMatchErrors(Enum):
     SUCCESS = 0
     NOT_IN_MATCH = 1
@@ -224,6 +230,7 @@ class MatchBotAdvance(MatchBot):
 
 class MatchBotSuper(MatchBot):
     bot_model = 'D'
+    max_depth = 2
    
     
     def get_card_to_play(self) -> int:
@@ -254,7 +261,6 @@ class MatchBotSuper(MatchBot):
         bot_score = self.match_mgr.team_scores[self.team_id]
         player_score = self.match_mgr.team_scores[1 - self.team_id]
         leading_player = 'player' if current_card is not None else 'bot'
-        max_depth = 2
         if settings.DEV_MODE:
             print("leading_player", leading_player)
             print("bot_score", bot_score)
@@ -264,7 +270,7 @@ class MatchBotSuper(MatchBot):
             print("bot_future_cards", bot_future_cards)
             print("opp_future_cards", opp_future_cards)
             print("current_card", current_card)
-            print("max_depth", max_depth)
+            print("max_depth", self.max_depth)
             print("point_to_win", self.match_mgr.point_to_win)
 
         card = find_optimal_card(
@@ -277,10 +283,13 @@ class MatchBotSuper(MatchBot):
             get_stronger_card=get_stronger_card,
             point_to_win=self.match_mgr.point_to_win,
             leading_card=current_card,
-            max_depth=max_depth,
+            max_depth=self.max_depth,
             )
         return card
   
+class MatchBotSuperV2(MatchBotSuper):
+    max_depth = 3
+    bot_model = 'E'
 
 class Match(ABC):
     players: list[MatchPlayer]
@@ -418,7 +427,7 @@ class TressetteMatch(Match):
         
         self.user_ready_status[user_id] = True
         if is_bot:
-            bot_model = 0 # bot medium
+            bot_model = BOT_MODEL_MEDIUM
 
             if self.player_mode == PLAYER_SOLO_MODE:
                 # get info user to decide bot model
@@ -431,36 +440,39 @@ class TressetteMatch(Match):
 
                         # BOT 0: Medium, BOT 2: Stupid, BOT 1: Hard
                         if user_info.game_count == 0:
-                            bot_model = 2 # bot 2 is stupid
+                            bot_model = BOT_MODEL_STUPID
                         elif user_info.game_count < 5:
                             if win_rate > 0.5:
-                                bot_model = 0
+                                bot_model = BOT_MODEL_MEDIUM
                             else:
-                                bot_model = 2
+                                bot_model = BOT_MODEL_STUPID
                         else:
                             if win_rate > 0.3:
-                                bot_model = random.choice([0, 3])
+                                bot_model = random.choice([BOT_MODEL_MEDIUM, BOT_MODEL_SUPER, BOT_MODEL_SUPER_V2])
                             else:
-                                bot_model = 2
+                                bot_model = BOT_MODEL_STUPID
                         break
             else:
-                bot_model = 0 # currently only one model for duo mode
+                bot_model = BOT_MODEL_MEDIUM
 
-            if bot_model == 0:
+            if bot_model == BOT_MODEL_MEDIUM:
                 print("bot model medium...")
                 match_player = MatchBotIntermediate(user_id, self)
-            elif bot_model == 2:
+            elif bot_model == BOT_MODEL_STUPID:
                 print("bot model stupid...")
                 match_player = MatchBot(user_id, self)
-            elif bot_model == 3:
+            elif bot_model == BOT_MODEL_SUPER:
                 print("bot model super...")
                 match_player = MatchBotSuper(user_id, self)
+            elif bot_model == BOT_MODEL_SUPER_V2:
+                print("bot model super v2...")
+                match_player = MatchBotSuperV2(user_id, self)
             else:
                 print("bot model advance...")
                 match_player = MatchBotAdvance(user_id, self)
             
-            # if settings.DEV_MODE:
-            #     match_player = MatchBotSuper(user_id, self)
+            if settings.DEV_MODE:
+                match_player = MatchBotSuperV2(user_id, self)
 
         else:
             match_player = MatchPlayer(user_id, self)
