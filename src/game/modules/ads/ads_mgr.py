@@ -1,6 +1,7 @@
 
 from datetime import datetime
 import random
+from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
@@ -49,6 +50,8 @@ class AdsMgr:
                 user_info.add_gold(gold_reward)
                 await user_info.commit_gold()
                 await user_info.send_update_money()
+
+                write_log(uid, "ads_reward", '', [])
 
                 await game_vars.get_game_client().send_packet(uid, CMDs.CLAIM_ADS_REWARD, pkg)
                 pass
