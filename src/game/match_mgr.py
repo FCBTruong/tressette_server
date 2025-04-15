@@ -334,10 +334,11 @@ class MatchManager:
                 # Expect bet
                 ccu = await game_vars.get_game_live_performance().get_ccu()
                 if ccu < 20:
-                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 3))
+                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
                     expect_bet = min(expect_bet, 200000) # prevent spam bot
                 elif ccu < 100:
-                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 4))
+                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
+                    expect_bet = min(expect_bet, 500000) # prevent spam bot
                 else:
                     expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
                 bet = self.find_largest_bet_below(expect_bet)

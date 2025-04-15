@@ -18,8 +18,8 @@ class AdsMgr:
                 timestamp_now = int(datetime.now().timestamp())
                 if user_info.time_ads_reward > timestamp_now:
                     return
-                # user will received another reward after 3 hours
-                user_info.time_ads_reward = timestamp_now + 3 * 60 * 60
+                # user will received another reward after 30 minutes
+                user_info.time_ads_reward = timestamp_now + 60 * 30
                 user_info.num_claimed_ads += 1
                 await user_info.commit_to_database('time_ads_reward', 'num_claimed_ads')
 
@@ -30,18 +30,10 @@ class AdsMgr:
                 if user_info.num_claimed_ads == 1:
                     # First time: 90k–100k
                     gold_reward = random.randint(90000, 100000)
-                elif user_info.num_claimed_ads < 5:
-                    # 30k–60k
-                    gold_reward = random.randint(30000, 50000)
                 else:
-                    # Weighted:
-                    roll = random.random()
-                    if roll < 0.80:
-                        gold_reward = random.randint(10000, 15000)  # 80%
-                    elif roll < 0.95:
-                        gold_reward = random.randint(15000, 30000)  # 15%
-                    else:
-                        gold_reward = random.randint(30000, 40000)  # 5%
+                    # 30k–60k
+                    gold_reward = random.randint(50000, 80000)
+               
                 gold_reward = round(gold_reward, -3)
                 pkg.gold = gold_reward
                 pkg.time_ads_reward = user_info.time_ads_reward

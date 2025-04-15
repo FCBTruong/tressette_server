@@ -447,7 +447,7 @@ class TressetteMatch(Match):
                             else:
                                 bot_model = BOT_MODEL_STUPID
                         else:
-                            if win_rate > 0.3:
+                            if win_rate > 0.4:
                                 bot_model = random.choice([BOT_MODEL_MEDIUM, BOT_MODEL_SUPER, BOT_MODEL_SUPER_V2])
                             else:
                                 bot_model = BOT_MODEL_STUPID
