@@ -919,6 +919,9 @@ class TressetteMatch(Match):
         else:
             self.is_end_round = False
         
+        if settings.DEV_MODE:
+            self.is_end_round = True
+        
         if self.is_end_round:
             # calculate last trick
             #BONUS 1 point for the last trick to the team that wins it

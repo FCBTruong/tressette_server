@@ -138,7 +138,6 @@ class SetteMezzoMatch(Match):
             await self._prepare_start_game()
     
       
-
     async def _check_and_gen_bot(self):
         return False
     
