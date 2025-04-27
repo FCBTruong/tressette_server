@@ -23,14 +23,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scopa_match")  # Name your logger
 
-
+class SetteMezzoPlayer(MatchPlayer):
+    # override auto play card
+    async def auto_play(self):
+        pass
 class SetteMezzoMatch(Match):
     def __init__(self, match_id):
         self.match_id = match_id
         self.start_time = datetime.now()
         self.end_time = None
         self.player_mode = 4
-        self.players: list[MatchPlayer] = []
+        self.players: list[SetteMezzoPlayer] = []
         self.cards = []
         self.win_player = None
         self.hand_suit = -1
@@ -52,10 +55,11 @@ class SetteMezzoMatch(Match):
         self.enable_bet_win_score = True
         self.banker_uid = -1
         self.banker_cards = []
+        self.playing_users = []
 
         # init slots
         for i in range(self.player_mode):
-            p = MatchPlayer(-1, self)
+            p = SetteMezzoPlayer(-1, self)
             self.players.append(p)
 
     def set_public(self, is_public):
@@ -64,7 +68,11 @@ class SetteMezzoMatch(Match):
     async def loop(self):
         try:
             if self.state == MatchState.PLAYING:
-                pass
+                if self.current_turn != -1 and self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
+                    player = self.playing_users[self.current_turn]
+                    if player:
+                        await player.auto_play()
+
             elif self.state == MatchState.PREPARING_START:
                 if self.time_start != -1 and datetime.now().timestamp() > self.time_start:
                     if self.check_has_real_players():
@@ -105,7 +113,7 @@ class SetteMezzoMatch(Match):
         if is_bot:
             match_player = SetteMezzoBot(user_id, self)
         else:
-            match_player = MatchPlayer(user_id, self)
+            match_player = SetteMezzoPlayer(user_id, self)
 
         match_player.name = user_data.name
         match_player.gold = user_data.gold
@@ -236,7 +244,7 @@ class SetteMezzoMatch(Match):
         # remove user from match
         for i, player in enumerate(self.players):
             if player.uid == uid:
-                self.players[i] = MatchPlayer(-1, self)
+                self.players[i] = SetteMezzoPlayer(-1, self)
                 break
 
         if not self.check_room_full() and self.state == MatchState.PREPARING_START:
@@ -248,13 +256,15 @@ class SetteMezzoMatch(Match):
     async def start_game(self):
         self.unique_game_id = str(uuid.uuid4())
         # write logs
+        self.playing_users = []
         for player in self.players:
             if player.uid != -1:
                 player.is_in_game = True
+                self.playing_users.append(player)
                 write_log(player.uid, "start_game", "sette_mezzo", [self.unique_match_id, self.unique_game_id, self.bet, \
                                                                                 self.player_mode])
 
-        print('Start game')
+        print('Start game Sette mezo')
         self.state = MatchState.PLAYING
         self.start_time = datetime.now()
         self.current_turn = 0
@@ -310,6 +320,9 @@ class SetteMezzoMatch(Match):
 
         # wait for 2 seconds
         await asyncio.sleep(2)
+
+        self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+        # send to user on turn
 
     async def user_play_card(self, uid, payload):
         print(f"Receive play card from user {uid}")
@@ -472,6 +485,11 @@ class SetteMezzoMatch(Match):
 
     def user_return_to_table(self, uid):
         self.users_auto_play.pop(uid, None)
+
+    def user_ready(self, uid):
+        print("user " + str(uid) + " is ready to play")
+        self.user_ready_status[uid] = True
+        pass
 
 
 class SetteMezzoBot(MatchBot):
