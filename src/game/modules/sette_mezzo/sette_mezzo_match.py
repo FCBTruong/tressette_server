@@ -325,11 +325,7 @@ class SetteMezzoMatch(Match):
         # send to user on turn
 
     async def user_play_card(self, uid, payload):
-        print(f"Receive play card from user {uid}")
-        pkg = packet_pb2.PlayCard()
-        pkg.ParseFromString(payload)
-        card_id = pkg.card_id
-        await self._play_card(uid, card_id, auto=False)
+        pass
     
     async def _send_card_play_response(self, uid, status: PlayCardErrors):
         pkg = packet_pb2.PlayCardResponse()
@@ -489,6 +485,46 @@ class SetteMezzoMatch(Match):
     def user_ready(self, uid):
         print("user " + str(uid) + " is ready to play")
         self.user_ready_status[uid] = True
+        pass
+
+    def check_user_in_turn(self, uid):
+        if self.current_turn == -1:
+            return False
+        # get index in playing users
+        idx = -1
+        for i, player in enumerate(self.playing_users):
+            if player.uid == uid:
+                idx = i
+                break
+        if idx == -1:
+            return False
+        
+        # check if user is in turn
+        if idx != self.current_turn:
+            return False
+        return True
+
+    async def user_hit(self, uid, payload):
+        if not self.check_user_in_turn(uid):
+            return
+        
+        # draw one more card
+        new_card = self.cards.pop(0)
+        # add to player cards
+        for player in self.players:
+            if player.uid == uid:
+                player.cards.append(new_card)
+                break
+
+        # send to all players
+        pkg = packet_pb2.SetteMezzoActionHit()
+        pkg.uid = uid
+        pkg.card_id = new_card
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_ACTION_HIT, pkg)
+
+    async def user_stand(self, uid, payload):
+        if not self.check_user_in_turn(uid):
+            return
         pass
 
 

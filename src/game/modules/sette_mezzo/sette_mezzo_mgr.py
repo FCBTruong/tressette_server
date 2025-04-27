@@ -11,6 +11,14 @@ class SetteMezzoMgr:
             case CMDs.SETTE_MEZZO_QUICK_PLAY:
                 await self._quick_play(uid, payload)
                 pass
+            case CMDs.SETTE_MEZZO_ACTION_HIT:
+                mat = await game_vars.get_match_mgr().get_match_of_user(uid)
+                if mat:
+                    await mat.user_hit(uid, payload)
+            case CMDs.SETTE_MEZZO_ACTION_STAND:
+                mat = await game_vars.get_match_mgr().get_match_of_user(uid)
+                if mat:
+                    await mat.user_stand(uid, payload)
 
     async def _quick_play(self, uid: int, payload):
         quick_play_pkg = packet_pb2.SetteMezzoQuickPlay()

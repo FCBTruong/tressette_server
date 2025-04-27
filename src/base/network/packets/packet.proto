@@ -484,3 +484,8 @@ message AdsReward {
 message ChangeUserName {
   string name = 1;
 }
+
+message SetteMezzoActionHit {
+  int32 uid = 1;
+  int32 card_id = 2;
+}
