@@ -855,10 +855,10 @@ class TressetteMatch(Match):
 
             if next_uid in self.users_auto_play:
                 # people that are auto play
-                self.time_auto_play = TIME_AUTO_PLAY_SEVERE + datetime.now().timestamp()
+                self.time_auto_play = TIME_AUTO_PLAY_SEVERE + int(datetime.now().timestamp())
             else:
                 # normal people
-                self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+                self.time_auto_play = TIME_AUTO_PLAY + int(datetime.now().timestamp())
 
     def check_done_hand(self):
         for card in self.cards_compare:
@@ -1068,7 +1068,7 @@ class TressetteMatch(Match):
         card = self.cards.pop(0)
         return card
 
-    def can_quit_game(self):
+    def can_quit_game(self, uid):
         return self.state == MatchState.WAITING or self.state == MatchState.PREPARING_START
     
     def get_win_card_in_hand(self):

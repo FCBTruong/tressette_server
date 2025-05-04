@@ -425,17 +425,23 @@ message SetteMezzoGameInfo {
   int32 banker_uid = 7;
   int32 current_turn = 8;
   int32 game_state = 9;
-  repeated int32 my_cards = 10;
-  int32 remain_cards = 11;
-  repeated int32 user_points = 12;
-  repeated int32 team_ids = 13;
-  int32 hand_suit = 14;
-  repeated string avatars = 15;
-  bool is_registered_leave = 16;
-  int32 bet = 17;
-  int64 pot_value = 18;
-  int32 current_round = 19;
-  int32 hand_in_round = 20;
+  repeated int32 user_points = 11;
+  repeated int32 team_ids = 12;
+  int32 hand_suit = 13;
+  repeated string avatars = 14;
+  bool is_registered_leave = 15;
+  int32 bet = 16;
+  int64 pot_value = 17;
+  int32 current_round = 18;
+  int32 hand_in_round = 19;
+  repeated bool is_in_games = 20;
+  int32 play_turn_time = 21;
+  repeated bytes player_infos = 22;
+  repeated int32 banker_cards = 23;
+}
+
+message SetteMezzoPlayerInfo {
+  repeated int32 card_ids = 1;
 }
 
 message SetteMezzoQuickPlay {
@@ -488,4 +494,23 @@ message ChangeUserName {
 message SetteMezzoActionHit {
   int32 uid = 1;
   int32 card_id = 2;
+}
+
+message SetteMezzoUpdateTurn {
+  int32 current_turn = 1;
+  int32 play_turn_time = 2;
+}
+
+message SetteMezzoActionStand {
+  int32 uid = 1;
+  int32 current_turn = 2;
+  int32 play_turn_time = 3;
+}
+
+message SetteMezzoEndGame {
+
+}
+
+message SetteMezzoShowBankerCard {
+  int32 card_id = 1;
 }

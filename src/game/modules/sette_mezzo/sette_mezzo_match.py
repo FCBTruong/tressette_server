@@ -7,7 +7,7 @@ import random
 import traceback
 import uuid
 from src.base.logs.logs_mgr import write_log
-from src.base.network import connection_manager
+from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
 from src.constants import REASON_KICK_NOT_ENOUGH_GOLD
@@ -23,8 +23,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger("scopa_match")  # Name your logger
 
+TIME_THINKING = 10
+BANKER_DEFAULT_UID = -100
+BANKER_DEFAULT_TURN = -100
 class SetteMezzoPlayer(MatchPlayer):
     # override auto play card
+    def __init__(self, uid, match):
+        super().__init__(uid, match)
+        self.is_done_turn = False
+        self.is_in_game = False
+    
     async def auto_play(self):
         pass
 class SetteMezzoMatch(Match):
@@ -55,7 +63,9 @@ class SetteMezzoMatch(Match):
         self.enable_bet_win_score = True
         self.banker_uid = -1
         self.banker_cards = []
-        self.playing_users = []
+        self.playing_users: list[SetteMezzoPlayer] = []
+        self.is_sette_mezzo = True
+        self.time_auto_play = -1
 
         # init slots
         for i in range(self.player_mode):
@@ -214,23 +224,33 @@ class SetteMezzoMatch(Match):
         game_info.player_mode = self.player_mode
         game_info.game_state = self.state.value
         game_info.current_turn = self.current_turn
-        game_info.remain_cards = len(self.cards)
         game_info.is_registered_leave = uid in self.register_leave_uids
         game_info.bet = self.bet
         game_info.pot_value = self.pot_value
         game_info.current_round = self.cur_round
         game_info.hand_in_round = self.hand_in_round
+        game_info.play_turn_time = int(self.time_auto_play)
+
+        if not self.check_all_done_turn():
+            game_info.banker_cards.extend([-1])
+        else:
+            game_info.banker_cards.extend(self.banker_cards)
 
         for player in self.players:
+            player_pkg = packet_pb2.SetteMezzoPlayerInfo()
             game_info.uids.append(player.uid)
             game_info.user_golds.append(player.gold)
             game_info.user_names.append(player.name)
             game_info.user_points.append(player.points)
             game_info.team_ids.append(player.team_id)
             game_info.avatars.append(player.avatar)
+            game_info.is_in_games.append(player.is_in_game)
+            p_cards = []
+            for card in player.cards:
+                p_cards.append(card)
 
-            if player.uid == uid:
-                game_info.my_cards.extend(player.cards)
+            player_pkg.card_ids.extend(p_cards)
+            game_info.player_infos.append(player_pkg.SerializeToString())
         
         await game_vars.get_game_client().send_packet(uid, CMDs.SETTE_MEZZO_GAME_INFO, game_info)
 
@@ -260,14 +280,19 @@ class SetteMezzoMatch(Match):
         for player in self.players:
             if player.uid != -1:
                 player.is_in_game = True
+                player.is_done_turn = False
+                player.cards = []
                 self.playing_users.append(player)
                 write_log(player.uid, "start_game", "sette_mezzo", [self.unique_match_id, self.unique_game_id, self.bet, \
                                                                                 self.player_mode])
+        if len(self.playing_users) == 0:
+            print('No player in game')
+            return
 
         print('Start game Sette mezo')
         self.state = MatchState.PLAYING
         self.start_time = datetime.now()
-        self.current_turn = 0
+        self.current_turn = -1
         self.time_auto_play = -1
         self.win_player = None
         self.auto_play_count_by_uid.clear()
@@ -303,7 +328,7 @@ class SetteMezzoMatch(Match):
         random.shuffle(self.cards)
         self.banker_cards = self.cards[:1]
         self.cards = self.cards[1:]
-        uids = [-1]
+        uids = [BANKER_DEFAULT_UID]
         cards.append(-1)
 
         for player in self.players:
@@ -320,9 +345,15 @@ class SetteMezzoMatch(Match):
 
         # wait for 2 seconds
         await asyncio.sleep(2)
-
-        self.time_auto_play = TIME_AUTO_PLAY + datetime.now().timestamp()
+        # random current turn from playing users
+        if len(self.playing_users) > 0:
+            self.current_turn = random.randint(0, len(self.playing_users) - 1)
+        else:
+            self.current_turn = -1
+        self.current_turn = 0
+        self.time_auto_play = TIME_THINKING + datetime.now().timestamp()
         # send to user on turn
+        await self.send_update_turn()
 
     async def user_play_card(self, uid, payload):
         pass
@@ -369,8 +400,13 @@ class SetteMezzoMatch(Match):
         card = self.cards.pop(0)
         return card
 
-    def can_quit_game(self):
-        return self.state == MatchState.WAITING or self.state == MatchState.PREPARING_START
+    def can_quit_game(self, uid):
+        # check if user is in game
+        for player in self.playing_users:
+            if player.uid == uid:
+                return False
+        print('User not in game')
+        return True
     
     def get_win_card_in_hand(self):
         return
@@ -381,6 +417,21 @@ class SetteMezzoMatch(Match):
         
     async def end_game(self):
         self.state = MatchState.ENDED
+
+        # banker score
+        banker_score = 0
+        for card in self.banker_cards:
+            rank = card // 4
+            if rank < 7:
+                point_add = rank + 1
+            else:
+                point_add = 0.5
+            banker_score += point_add
+        if banker_score > 7.5:
+            banker_score = 0
+        
+
+
         # send to users
         pkg = packet_pb2.SetteMezzoEndGame()
 
@@ -399,7 +450,7 @@ class SetteMezzoMatch(Match):
 
         # next game
         await asyncio.sleep(5)
-        if self.check_room_full():
+        if self.check_has_real_players():
             await self._prepare_start_game()
 
     async def update_users_staying_endgame(self):
@@ -503,18 +554,30 @@ class SetteMezzoMatch(Match):
         if idx != self.current_turn:
             return False
         return True
-
+    
+    def check_all_done_turn(self):
+        for player in self.playing_users:
+            if not player.is_done_turn:
+                return False
+        return True
+    
     async def user_hit(self, uid, payload):
         if not self.check_user_in_turn(uid):
             return
         
         # draw one more card
         new_card = self.cards.pop(0)
+        p = None
         # add to player cards
         for player in self.players:
             if player.uid == uid:
-                player.cards.append(new_card)
+                p = player
                 break
+        if p is None:
+            print('User not found')
+            return
+        
+        p.cards.append(new_card)
 
         # send to all players
         pkg = packet_pb2.SetteMezzoActionHit()
@@ -522,11 +585,121 @@ class SetteMezzoMatch(Match):
         pkg.card_id = new_card
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_ACTION_HIT, pkg)
 
+        # check if user has 7.5
+        score = 0
+        for card in p.cards:
+            rank = card // 4
+            if rank < 7:
+                point_add = rank + 1
+            else:
+                point_add = 0.5
+            score += point_add
+
+        if score > 7.5:
+            p.is_done_turn = True
+            await self.move_to_next_turn()
+        else:
+            self.time_auto_play = datetime.now().timestamp() + TIME_THINKING
+            await self.send_update_turn()
+
     async def user_stand(self, uid, payload):
         if not self.check_user_in_turn(uid):
             return
-        pass
+        
+        for player in self.players:
+            if player.uid == uid:
+                player.is_done_turn = True
+                break
+    
+        # send update turn to all players
+        pkg = packet_pb2.SetteMezzoActionStand()
+        pkg.uid = uid
+        pkg.current_turn = -1
+        pkg.play_turn_time = -1
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_ACTION_STAND, pkg)
+
+        await self.move_to_next_turn()
+
+    async def move_to_next_turn(self):
+        if self.current_turn < len(self.playing_users) - 1:
+            self.current_turn += 1
+        else:
+            self.current_turn = 0
+        
+        p = self.playing_users[self.current_turn]
+        if p.is_done_turn:
+            self.current_turn = BANKER_DEFAULT_TURN
+            
+        # send update turn to all players
+        pkg = packet_pb2.SetteMezzoUpdateTurn()
+        pkg.current_turn = self.current_turn
+        pkg.play_turn_time = int(self.time_auto_play)
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_UPDATE_TURN, pkg)
+
+        if self.current_turn == BANKER_DEFAULT_TURN:
+            # banker turn
+            await self.banker_play()
+
+    async def banker_hit(self):
+        # banker hit
+        new_card = self.cards.pop(0)
+        self.banker_cards.append(new_card)
+
+        # send to all players
+        pkg = packet_pb2.SetteMezzoActionHit()
+        pkg.uid = BANKER_DEFAULT_UID
+        pkg.card_id = new_card
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_ACTION_HIT, pkg)
+
+        # check if banker has 7.5
+        score = 0
+        for card in self.banker_cards:
+            rank = card // 4
+            if rank < 7:
+                point_add = rank + 1
+            else:
+                point_add = 0.5
+            score += point_add
+
+        if score > 7.5:
+            # banker is bursted, end game
+            await self.end_game()
+        else:
+            await self.banker_play()
+
+    async def banker_play(self):
+        if len(self.banker_cards) == 1:
+            # show banker card
+            pkg = packet_pb2.SetteMezzoShowBankerCard()
+            pkg.card_id = self.banker_cards[0]
+            await self.broadcast_pkg(CMDs.SETTE_MEZZO_SHOW_BANKER_CARD, pkg)
+            
+        await asyncio.sleep(2)
+        should_stand = False
+
+        if not should_stand:
+            await self.banker_hit()
+        else:
+            # banker stand
+            self.current_turn = -1
+            pkg = packet_pb2.SetteMezzoActionStand()
+            pkg.uid = BANKER_DEFAULT_UID
+            pkg.current_turn = -1
+            pkg.play_turn_time = -1
+            await self.broadcast_pkg(CMDs.SETTE_MEZZO_ACTION_STAND, pkg)
+
+            # end game
+            await self.end_game()
+
+ 
+    async def send_update_turn(self):
+        pkg = packet_pb2.SetteMezzoUpdateTurn()
+        pkg.current_turn = self.current_turn
+        pkg.play_turn_time = int(self.time_auto_play)
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_UPDATE_TURN, pkg)
 
 
 class SetteMezzoBot(MatchBot):
     pass
+
+

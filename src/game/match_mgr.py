@@ -200,7 +200,7 @@ class MatchManager:
         if not match:
             return
         
-        if match.can_quit_game():
+        if match.can_quit_game(uid):
             await self.handle_user_leave_match(uid)
             return
         
@@ -220,7 +220,7 @@ class MatchManager:
             return LeaveMatchErrors.NOT_IN_MATCH
         
         match = await self.get_match_of_user(uid)
-        if not match.can_quit_game():
+        if not match.can_quit_game(uid):
             return LeaveMatchErrors.MATCH_STARTED
         
         await match.user_leave(uid, reason)

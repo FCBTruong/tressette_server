@@ -406,7 +406,7 @@ class ScopaMatch(Match):
         card = self.cards.pop(0)
         return card
 
-    def can_quit_game(self):
+    def can_quit_game(self, uid):
         return self.state == MatchState.WAITING or self.state == MatchState.PREPARING_START
     
     def get_win_card_in_hand(self):

@@ -24,13 +24,24 @@ class SetteMezzoMgr:
         quick_play_pkg = packet_pb2.SetteMezzoQuickPlay()
         quick_play_pkg.ParseFromString(payload)
 
-        match = await game_vars.get_match_mgr().get_match_of_user(uid)
+        match_mgr = game_vars.get_match_mgr()
+        match = await match_mgr.get_match_of_user(uid)
         if match:
             print(f"User {uid} is in a match, reconnecting")
             await match.user_reconnect(uid)
             return
         
-        match = await game_vars.get_match_mgr().create_sette_mezzo_match()
+        # find a match
+        if not match:
+            for match_id, m in game_vars.get_match_mgr().matches.items():
+                if not m.is_sette_mezzo:
+                    continue
+                if m.check_room_full():
+                    continue
+                match = m
+                break
+        if not match:
+            match = await game_vars.get_match_mgr().create_sette_mezzo_match()
         await game_vars.get_match_mgr().user_join_match(match, uid)
         
 
