@@ -34,6 +34,7 @@ class SetteMezzoPlayer(MatchPlayer):
         self.is_in_game = False
     
     async def auto_play(self):
+        await self.match_mgr.user_stand(self.uid, None)
         pass
 class SetteMezzoMatch(Match):
     def __init__(self, match_id):
@@ -78,7 +79,8 @@ class SetteMezzoMatch(Match):
     async def loop(self):
         try:
             if self.state == MatchState.PLAYING:
-                if self.current_turn != -1 and self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
+                if self.current_turn != BANKER_DEFAULT_UID and self.current_turn != -1 and \
+                        self.time_auto_play != -1 and datetime.now().timestamp() > self.time_auto_play:
                     player = self.playing_users[self.current_turn]
                     if player:
                         await player.auto_play()
