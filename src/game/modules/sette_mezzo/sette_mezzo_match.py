@@ -199,7 +199,7 @@ class SetteMezzoMatch(Match):
         return False
     
     def get_min_gold_play(self):
-        return 0
+        return 1000
     
     def check_room_full(self) -> bool:
         for player in self.players:
@@ -268,12 +268,6 @@ class SetteMezzoMatch(Match):
             if player.uid == uid:
                 self.players[i] = SetteMezzoPlayer(-1, self)
                 break
-
-        if not self.check_room_full() and self.state == MatchState.PREPARING_START:
-            self.state = MatchState.WAITING
-            self.time_start = -1
-
-        await self._check_and_gen_bot()
 
     async def start_game(self):
         self.unique_game_id = str(uuid.uuid4())
@@ -404,6 +398,8 @@ class SetteMezzoMatch(Match):
 
     def can_quit_game(self, uid):
         # check if user is in game
+        if self.state == MatchState.WAITING or self.state == MatchState.ENDED:
+            return True
         for player in self.playing_users:
             if player.uid == uid:
                 return False
@@ -416,30 +412,67 @@ class SetteMezzoMatch(Match):
     def get_win_score_in_hand(self):
         return 0
 
-        
-    async def end_game(self):
-        self.state = MatchState.ENDED
-
-        # banker score
-        banker_score = 0
-        for card in self.banker_cards:
+    def get_score_cards(self, cards):
+        score = 0
+        for card in cards:
             rank = card // 4
             if rank < 7:
                 point_add = rank + 1
             else:
                 point_add = 0.5
-            banker_score += point_add
+            score += point_add
+        return score
+    
+    async def end_game(self):
+        self.state = MatchState.ENDED
+
+        # banker score
+        banker_score = self.get_score_cards(self.banker_cards)
         if banker_score > 7.5:
             banker_score = 0
         
+        results = []
+        for player in self.players:
+            if player.is_bot:
+                continue
+            if player.uid == -1:
+                continue
+            score = self.get_score_cards(player.cards)
+            is_win = False
+            
+            if score > 7.5:
+                score = 0
+            else:
+                if banker_score < score:
+                    is_win = True
+            
+            
+            results.append({
+                "uid": player.uid,
+                "score": score,
+                "is_win": is_win,
+            })
 
 
         # send to users
         pkg = packet_pb2.SetteMezzoEndGame()
 
+        uids = []
+        scores = []
+        is_wins = []
+
+        for result in results:
+            uids.append(result["uid"])
+            is_wins.append(result["is_win"])
+
+        pkg.uids.extend(uids)
+        pkg.is_wins.extend(is_wins)
+
         for player in self.players:
             player.is_in_game = False
         
+        # wait for 0.5 seconds
+        await asyncio.sleep(0.5)
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_END_GAME, pkg)
         
         await asyncio.sleep(2)
@@ -599,6 +632,7 @@ class SetteMezzoMatch(Match):
 
         if score > 7.5:
             p.is_done_turn = True
+            await asyncio.sleep(0.5)
             await self.move_to_next_turn()
         else:
             self.time_auto_play = datetime.now().timestamp() + TIME_THINKING
@@ -629,6 +663,7 @@ class SetteMezzoMatch(Match):
             self.current_turn = 0
         
         p = self.playing_users[self.current_turn]
+        self.time_auto_play = datetime.now().timestamp() + TIME_THINKING
         if p.is_done_turn:
             self.current_turn = BANKER_DEFAULT_TURN
             
@@ -640,6 +675,7 @@ class SetteMezzoMatch(Match):
 
         if self.current_turn == BANKER_DEFAULT_TURN:
             # banker turn
+            await asyncio.sleep(0.5)
             await self.banker_play()
 
     async def banker_hit(self):
@@ -676,8 +712,8 @@ class SetteMezzoMatch(Match):
             pkg.card_id = self.banker_cards[0]
             await self.broadcast_pkg(CMDs.SETTE_MEZZO_SHOW_BANKER_CARD, pkg)
             
-        await asyncio.sleep(2)
-        should_stand = False
+        await asyncio.sleep(1)
+        should_stand = random.choice([True, False])
 
         if not should_stand:
             await self.banker_hit()
