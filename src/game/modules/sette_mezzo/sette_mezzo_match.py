@@ -345,8 +345,8 @@ class SetteMezzoMatch(Match):
         if len(self.playing_users) > 0:
             self.current_turn = random.randint(0, len(self.playing_users) - 1)
         else:
-            self.current_turn = -1
-        self.current_turn = 0
+            self.current_turn = 0
+       
         self.time_auto_play = TIME_THINKING + datetime.now().timestamp()
         # send to user on turn
         await self.send_update_turn()
@@ -472,7 +472,7 @@ class SetteMezzoMatch(Match):
             player.is_in_game = False
         
         # wait for 0.5 seconds
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1)
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_END_GAME, pkg)
         
         await asyncio.sleep(2)
@@ -484,7 +484,7 @@ class SetteMezzoMatch(Match):
         await self.update_users_staying_endgame()
 
         # next game
-        await asyncio.sleep(5)
+        await asyncio.sleep(0)
         if self.check_has_real_players():
             await self._prepare_start_game()
 
@@ -580,6 +580,8 @@ class SetteMezzoMatch(Match):
         idx = -1
         for i, player in enumerate(self.playing_users):
             if player.uid == uid:
+                if player.is_done_turn:
+                    return False
                 idx = i
                 break
         if idx == -1:

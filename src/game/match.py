@@ -48,7 +48,7 @@ SERVER_SCORE_ONE_POINT = 3
 TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
 TIME_AUTO_PLAY_SEVERE = min(3, TIME_AUTO_PLAY)
 TAX_PERCENT = tress_config.get("tax_percent")
-TIME_START_TO_DEAL = 3.5 # seconds
+TIME_START_TO_DEAL = 0 # seconds
 TIME_DRAW_CARD = 4 # seconds
 TIME_MATCH_MAXIMUM = 60 * 60 # 1 hour -> after this match will be destroyed
 SCORE_WIN_GAME_ELEVEN = 11 * SERVER_SCORE_ONE_POINT
@@ -293,6 +293,7 @@ class MatchBotSuperV2(MatchBotSuper):
 
 class Match(ABC):
     players: list[MatchPlayer]
+    is_sette_mezzo: False
     @abstractmethod
     async def user_play_card(self, uid, payload):
         pass
@@ -594,12 +595,12 @@ class TressetteMatch(Match):
         
         self.state = MatchState.PREPARING_START
         self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
-        # Send to all players that game is starting, wait for 3 seconds
-        pkg = packet_pb2.PrepareStartGame()
-        pkg.time_start = int(self.time_start)
-        print('Game is starting, wait for 3 seconds')
+        # # Send to all players that game is starting, wait for 3 seconds
+        # pkg = packet_pb2.PrepareStartGame()
+        # pkg.time_start = int(self.time_start)
+        # print('Game is starting, wait for 3 seconds')
 
-        await self.broadcast_pkg(CMDs.PREPARE_START_GAME, pkg)
+        # await self.broadcast_pkg(CMDs.PREPARE_START_GAME, pkg)
 
 
     def check_can_join(self, uid: int):
