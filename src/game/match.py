@@ -295,6 +295,7 @@ class MatchBotSuperV2(MatchBotSuper):
 class Match(ABC):
     players: list[MatchPlayer]
     game_mode: int
+    match_id: int
     @abstractmethod
     async def user_play_card(self, uid, payload):
         pass
@@ -333,6 +334,10 @@ class Match(ABC):
 
     @abstractmethod
     def check_room_full(self) -> bool:
+        pass
+
+    @abstractmethod
+    def get_min_gold_play(self):
         pass
 
 class TressetteMatch(Match):

@@ -387,6 +387,7 @@ class MatchManager:
         if match.check_room_full():
             await self._send_response_join_table(uid, JoinMatchErrors.FULL_ROOM)
             return
+        
         user_info = await users_info_mgr.get_user_info(uid)
         if user_info.gold < match.get_min_gold_play():
             await self._send_response_join_table(uid, JoinMatchErrors.NOT_ENOUGH_GOLD)

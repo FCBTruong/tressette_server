@@ -451,6 +451,7 @@ class SetteMezzoMatch(Match):
                 "uid": player.uid,
                 "score": score,
                 "is_win": is_win,
+                "gold": random.randint(-100000, 100000) # TODO: calculate gold
             })
 
 
@@ -460,13 +461,16 @@ class SetteMezzoMatch(Match):
         uids = []
         scores = []
         is_wins = []
+        golds = []
 
         for result in results:
             uids.append(result["uid"])
             is_wins.append(result["is_win"])
+            golds.append(result["gold"])
 
         pkg.uids.extend(uids)
         pkg.is_wins.extend(is_wins)
+        pkg.golds.extend(golds)
 
         for player in self.players:
             player.is_in_game = False

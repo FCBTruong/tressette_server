@@ -514,6 +514,7 @@ message SetteMezzoEndGame {
   repeated int32 uids = 1;
   repeated int32 scores = 2;
   repeated bool is_wins = 3;
+  repeated int32 golds = 4;
 }
 
 message SetteMezzoShowBankerCard {
