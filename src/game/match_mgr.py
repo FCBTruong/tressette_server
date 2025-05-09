@@ -281,14 +281,14 @@ class MatchManager:
         pkg.avatars.extend(avatars)
         pkg.player_uids.extend(uids)
 
-        pkg = packet_pb2.TableList()
-        pkg.table_ids.extend([1, 2, 3, 4, 5,6,7])
-        pkg.bets.extend([100000, 2000000, 300000, 400000, 5000000, 400000, 5000000])
-        pkg.player_modes.extend([2,2,4,4,2,2,2])
-        pkg.num_players.extend([1,2,1,2,1,2,2])
-        pkg.game_modes.extend([1,0,0,1,1,1,1])
-        pkg.avatars.extend(["1", "2", "3", "4", "5", "6", "7", "8"])
-        pkg.player_uids.extend([1, 2, -1, -1, 5, 6, 7, 8])
+        # pkg = packet_pb2.TableList()
+        # pkg.table_ids.extend([1, 2, 3, 4, 5,6,7])
+        # pkg.bets.extend([100000, 2000000, 300000, 400000, 5000000, 400000, 5000000])
+        # pkg.player_modes.extend([2,2,4,4,2,2,2])
+        # pkg.num_players.extend([1,2,1,2,1,2,2])
+        # pkg.game_modes.extend([1,0,0,1,1,1,1])
+        # pkg.avatars.extend(["1", "2", "3", "4", "5", "6", "7", "8"])
+        # pkg.player_uids.extend([1, 2, -1, -1, 5, 6, 7, 8])
 
         await game_vars.get_game_client().send_packet(uid, CMDs.TABLE_LIST, pkg)
 

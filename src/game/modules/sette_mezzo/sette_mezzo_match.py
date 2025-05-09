@@ -185,12 +185,12 @@ class SetteMezzoMatch(Match):
 
     async def _prepare_start_game(self):
         self.state = MatchState.PREPARING_START
-        self.time_start = datetime.now().timestamp() + TIME_START_TO_DEAL
+        self.time_start = datetime.now().timestamp()
         # Send to all players that game is starting, wait for 3 seconds
-        pkg = packet_pb2.SetteMezzoPrepareStartGame()
-        print('Game is starting, wait for 3 seconds')
+        # pkg = packet_pb2.SetteMezzoPrepareStartGame()
+        # print('Game is starting, wait for 3 seconds')
 
-        await self.broadcast_pkg(CMDs.SETTE_MEZZO_PREPARE_START_GAME, pkg)
+        # await self.broadcast_pkg(CMDs.SETTE_MEZZO_PREPARE_START_GAME, pkg)
 
 
     def check_can_join(self, uid: int):
