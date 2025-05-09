@@ -210,6 +210,9 @@ message TableList {
   repeated int32 bets = 2;
   repeated int32 num_players = 3;
   repeated int32 player_modes = 4;
+  repeated int32 player_uids = 5;
+  repeated string avatars = 6;
+  repeated int32 game_modes = 7;
 }
 
 message ShopConfig {

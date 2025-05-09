@@ -41,7 +41,7 @@ class PlayCardErrors(Enum):
 PLAYER_SOLO_MODE = 2
 PLAYER_DUO_MODE = 4
 TRESSETTE_MODE = 0
-BRISCOLA_MODE = 1
+SETTE_MEZZO_MODE = 1
 
 SERVER_SCORE_ONE_POINT = 3
 
@@ -61,6 +61,7 @@ BOT_MODEL_MEDIUM = 1
 BOT_MODEL_ADVANCE = 2
 BOT_MODEL_SUPER = 3
 BOT_MODEL_SUPER_V2 = 4
+
 
 class LeaveMatchErrors(Enum):
     SUCCESS = 0
@@ -293,7 +294,7 @@ class MatchBotSuperV2(MatchBotSuper):
 
 class Match(ABC):
     players: list[MatchPlayer]
-    is_sette_mezzo: False
+    game_mode: int
     @abstractmethod
     async def user_play_card(self, uid, payload):
         pass

@@ -2,6 +2,7 @@
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
+from src.game.match import SETTE_MEZZO_MODE
 
 
 class SetteMezzoMgr:
@@ -34,7 +35,7 @@ class SetteMezzoMgr:
         # find a match
         if not match:
             for match_id, m in game_vars.get_match_mgr().matches.items():
-                if not m.is_sette_mezzo:
+                if m.game_mode != SETTE_MEZZO_MODE:
                     continue
                 if m.check_room_full():
                     continue

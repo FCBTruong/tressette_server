@@ -14,7 +14,7 @@ from src.constants import REASON_KICK_NOT_ENOUGH_GOLD
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
-from src.game.match import PLAYER_SOLO_MODE, TAX_PERCENT, TIME_AUTO_PLAY, TIME_START_TO_DEAL, TRESSETTE_CARDS, Match, MatchBot, MatchPlayer, MatchState, PlayCardErrors
+from src.game.match import PLAYER_SOLO_MODE, SETTE_MEZZO_MODE, TAX_PERCENT, TIME_AUTO_PLAY, TIME_START_TO_DEAL, TRESSETTE_CARDS, Match, MatchBot, MatchPlayer, MatchState, PlayCardErrors
 from src.game.modules import game_exp
 
 logging.basicConfig(
@@ -65,7 +65,7 @@ class SetteMezzoMatch(Match):
         self.banker_uid = -1
         self.banker_cards = []
         self.playing_users: list[SetteMezzoPlayer] = []
-        self.is_sette_mezzo = True
+        self.game_mode = SETTE_MEZZO_MODE
         self.time_auto_play = -1
 
         # init slots

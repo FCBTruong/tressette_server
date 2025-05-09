@@ -252,6 +252,10 @@ class MatchManager:
         bets = []
         player_modes = []
         num_players = []
+        game_modes = []
+        avatars = []
+        uids = []
+
         for match in matches:
             # skip private match
             if match.is_public is False:
@@ -260,6 +264,11 @@ class MatchManager:
             bets.append(match.bet)
             player_modes.append(match.player_mode)
             num_players.append(match.get_num_players())
+            game_modes.append(match.game_mode)
+
+            for player in match.players:
+                avatars.append(player.avatar)
+                uids.append(player.uid)
 
         
         print(f"Table list: {match_ids}")
@@ -268,12 +277,19 @@ class MatchManager:
         pkg.bets.extend(bets)
         pkg.player_modes.extend(player_modes)
         pkg.num_players.extend(num_players)
+        pkg.game_modes.extend(game_modes)
+        pkg.avatars.extend(avatars)
+        pkg.player_uids.extend(uids)
 
-        # pkg = packet_pb2.TableList()
-        # pkg.table_ids.extend([1, 2, 3, 4, 5,6,7])
-        # pkg.bets.extend([100000, 2000000, 300000, 400000, 5000000, 400000, 5000000])
-        # pkg.player_modes.extend([2,2,2,2,2,2,2])
-        # pkg.num_players.extend([1,2,1,2,1,2,2])
+        pkg = packet_pb2.TableList()
+        pkg.table_ids.extend([1, 2, 3, 4, 5,6,7])
+        pkg.bets.extend([100000, 2000000, 300000, 400000, 5000000, 400000, 5000000])
+        pkg.player_modes.extend([2,2,4,4,2,2,2])
+        pkg.num_players.extend([1,2,1,2,1,2,2])
+        pkg.game_modes.extend([1,0,0,1,1,1,1])
+        pkg.avatars.extend(["1", "2", "3", "4", "5", "6", "7", "8"])
+        pkg.player_uids.extend([1, 2, -1, -1, 5, 6, 7, 8])
+
         await game_vars.get_game_client().send_packet(uid, CMDs.TABLE_LIST, pkg)
 
     async def _prioritize_matches(self, matches: dict[int, Match], uid: int) -> list[Match]:
