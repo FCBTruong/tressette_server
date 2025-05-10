@@ -107,8 +107,11 @@ class SetteMezzoMatch(Match):
             if player.uid == user_id:
                 print('User already in match, can not jion')
                 return
-        
-        user_data = await users_info_mgr.get_user_info(user_id)
+        if not is_bot:
+            user_data = await users_info_mgr.get_user_info(user_id)
+        else:
+            user_data = game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
+
         if not user_data:
             print('User not found')
             return
@@ -186,7 +189,7 @@ class SetteMezzoMatch(Match):
 
     async def _prepare_start_game(self):
         self.state = MatchState.PREPARING_START
-        self.time_start = datetime.now().timestamp() + 1
+        self.time_start = datetime.now().timestamp() 
         # Send to all players that game is starting, wait for 3 seconds
         # pkg = packet_pb2.SetteMezzoPrepareStartGame()
         # print('Game is starting, wait for 3 seconds')
@@ -319,7 +322,7 @@ class SetteMezzoMatch(Match):
         pkg = packet_pb2.SetteMezzoBetting()
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_BETTING, pkg)
         # Sleep for 5 seconds for betting
-        await asyncio.sleep(10)
+        await asyncio.sleep(0.5)
         self.state = MatchState.PLAYING
 
         pkg = packet_pb2.SetteMezzoStartGame()
@@ -354,7 +357,7 @@ class SetteMezzoMatch(Match):
             self.current_turn = random.randint(0, len(self.playing_users) - 1)
         else:
             self.current_turn = 0
-       
+        await self.players[self.current_turn].on_turn()
         self.time_auto_play = TIME_THINKING + datetime.now().timestamp()
         # send to user on turn
         await self.send_update_turn()
@@ -502,9 +505,9 @@ class SetteMezzoMatch(Match):
 
     async def update_users_staying_endgame(self):
         # Remove all bots
-        for i, player in enumerate(self.players):
-            if player.is_bot:
-                await self.user_leave(player.uid)
+        # for i, player in enumerate(self.players):
+        #     if player.is_bot:
+        #         await self.user_leave(player.uid)
                 
         # Kick users auto playing, or register exit room
         for uid in self.register_leave_uids:
@@ -574,7 +577,8 @@ class SetteMezzoMatch(Match):
 
     async def cheat_add_bot(self):
         if settings.ENABLE_CHEAT:
-            bot_uid = random.randint(5000000, 30000000)
+            bot_uid = game_vars.get_bots_mgr().get_free_bot_uid()
+            print(f"Add bot {bot_uid}")
             await self.user_join(bot_uid, is_bot=True)
 
     def user_return_to_table(self, uid):
@@ -611,6 +615,9 @@ class SetteMezzoMatch(Match):
         return True
     
     async def user_hit(self, uid, payload):
+        if self.state != MatchState.PLAYING:
+            return
+        
         if not self.check_user_in_turn(uid):
             return
         
@@ -650,9 +657,13 @@ class SetteMezzoMatch(Match):
             await self.move_to_next_turn()
         else:
             self.time_auto_play = datetime.now().timestamp() + TIME_THINKING
+            await p.on_turn()
             await self.send_update_turn()
 
     async def user_stand(self, uid, payload):
+        if self.state != MatchState.PLAYING:
+            return
+        print(f"User {uid} stand")
         if not self.check_user_in_turn(uid):
             return
         
@@ -680,7 +691,8 @@ class SetteMezzoMatch(Match):
         self.time_auto_play = datetime.now().timestamp() + TIME_THINKING
         if p.is_done_turn:
             self.current_turn = BANKER_DEFAULT_TURN
-            
+        
+        await p.on_turn()
         # send update turn to all players
         pkg = packet_pb2.SetteMezzoUpdateTurn()
         pkg.current_turn = self.current_turn
@@ -763,6 +775,19 @@ class SetteMezzoMatch(Match):
 
 
 class SetteMezzoBot(MatchBot):
-    pass
+    async def on_turn(self):
+        print(f"Bot {self.uid} turn")
+        # create a task to play
+        asyncio.create_task(self.user_play())
+    
+    async def user_play(self):
+        await asyncio.sleep(1)
+        # stand
+        should_stand = random.choice([True, False])
+        if should_stand:
+            await self.match_mgr.user_stand(self.uid, None)
+        else:
+            await self.match_mgr.user_hit(self.uid, None)
+        pass
 
 

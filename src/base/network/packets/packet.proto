@@ -166,6 +166,7 @@ message GeneralInfo {
   repeated int32 exp_levels = 5;
   int32 fee_mode_no_bet = 6;
   bool enable_ads = 7;
+  int32 sette_mezzo_bet_scale = 8;
 }
 
 message EndGame {

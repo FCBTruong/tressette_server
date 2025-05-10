@@ -54,6 +54,7 @@ class GameClient:
         exp_levels = tress_config.get("exp_levels")
         general_pkg.tressette_bets.extend(tressette_bets)
         general_pkg.exp_levels.extend(exp_levels)
+        general_pkg.sette_mezzo_bet_scale = SETTE_MEZZO_BET_SCALE
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
         user_pkg = packet_pb2.UserInfo()
