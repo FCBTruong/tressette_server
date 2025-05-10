@@ -28,6 +28,7 @@ class MatchState(Enum):
     PLAYING = 2
     ENDING = 3
     ENDED = 4
+    BETTING = 5
 
 class PlayCardErrors(Enum):
     SUCCESS = 0

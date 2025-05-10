@@ -520,3 +520,12 @@ message SetteMezzoEndGame {
 message SetteMezzoShowBankerCard {
   int32 card_id = 1;
 }
+
+message SetteMezzoBetting {
+
+}
+
+message SetteMezzoUserBet {
+  int32 uid = 1;
+  int64 bet = 2;
+}

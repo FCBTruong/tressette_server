@@ -38,6 +38,7 @@ class SetteMezzoPlayer(MatchPlayer):
         pass
 class SetteMezzoMatch(Match):
     def __init__(self, match_id):
+        self.bet = 0
         self.match_id = match_id
         self.start_time = datetime.now()
         self.end_time = None
@@ -46,7 +47,6 @@ class SetteMezzoMatch(Match):
         self.cards = []
         self.win_player = None
         self.hand_suit = -1
-        self.bet = 0
         self.auto_play_count_by_uid = {} # consecutive auto play count
         self.users_auto_play = {} # uids that are auto play, server will not wait for them
         self.state = MatchState.WAITING
@@ -107,10 +107,11 @@ class SetteMezzoMatch(Match):
             if player.uid == user_id:
                 print('User already in match, can not jion')
                 return
-        if not is_bot:
-            user_data = await users_info_mgr.get_user_info(user_id)
-        else:
-            user_data = game_vars.get_bots_mgr().fake_data_for_bot(user_id, self.bet)
+        
+        user_data = await users_info_mgr.get_user_info(user_id)
+        if not user_data:
+            print('User not found')
+            return
 
         # find empty slot
         slot_idx = -1   
@@ -185,7 +186,7 @@ class SetteMezzoMatch(Match):
 
     async def _prepare_start_game(self):
         self.state = MatchState.PREPARING_START
-        self.time_start = datetime.now().timestamp()
+        self.time_start = datetime.now().timestamp() + 1
         # Send to all players that game is starting, wait for 3 seconds
         # pkg = packet_pb2.SetteMezzoPrepareStartGame()
         # print('Game is starting, wait for 3 seconds')
@@ -286,7 +287,7 @@ class SetteMezzoMatch(Match):
             return
 
         print('Start game Sette mezo')
-        self.state = MatchState.PLAYING
+        self.state = MatchState.BETTING
         self.start_time = datetime.now()
         self.current_turn = -1
         self.time_auto_play = -1
@@ -314,6 +315,13 @@ class SetteMezzoMatch(Match):
         for player in self.players:
             players_gold.append(player.gold)
 
+        # send to all user now bet before start game
+        pkg = packet_pb2.SetteMezzoBetting()
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_BETTING, pkg)
+        # Sleep for 5 seconds for betting
+        await asyncio.sleep(10)
+        self.state = MatchState.PLAYING
+
         pkg = packet_pb2.SetteMezzoStartGame()
         pkg.pot_value = self.pot_value
         pkg.players_gold.extend(players_gold)
@@ -340,7 +348,7 @@ class SetteMezzoMatch(Match):
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_START_GAME, pkg)
 
         # wait for 2 seconds
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
         # random current turn from playing users
         if len(self.playing_users) > 0:
             self.current_turn = random.randint(0, len(self.playing_users) - 1)
@@ -741,6 +749,17 @@ class SetteMezzoMatch(Match):
         pkg.current_turn = self.current_turn
         pkg.play_turn_time = int(self.time_auto_play)
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_UPDATE_TURN, pkg)
+
+    async def user_bet(self, uid, payload):
+        if self.state != MatchState.BETTING:
+            return
+       
+        pkg = packet_pb2.SetteMezzoUserBet()
+        pkg.ParseFromString(payload)
+        bet = pkg.bet
+
+        print(f"User {uid} bet {bet}")
+        await self.broadcast_pkg(CMDs.SETTE_MEZZO_USER_BET, pkg)
 
 
 class SetteMezzoBot(MatchBot):
