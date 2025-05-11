@@ -67,6 +67,7 @@ message UserInfo {
   int32 time_show_ads = 16;
   int32 login_type = 17;
   int32 time_ads_reward = 18;
+  bool add_for_user_support = 19;
 }
 
 message GameInfo {
@@ -167,6 +168,7 @@ message GeneralInfo {
   int32 fee_mode_no_bet = 6;
   bool enable_ads = 7;
   int32 sette_mezzo_bet_scale = 8;
+  int32 min_gold_play_sette_mezzo = 9;
 }
 
 message EndGame {
@@ -443,6 +445,7 @@ message SetteMezzoGameInfo {
   repeated bytes player_infos = 22;
   repeated int32 banker_cards = 23;
   repeated int64 player_bets = 24;
+  int32 time_end_bet = 25;
 }
 
 message SetteMezzoPlayerInfo {
@@ -516,7 +519,8 @@ message SetteMezzoEndGame {
   repeated int32 uids = 1;
   repeated int32 scores = 2;
   repeated bool is_wins = 3;
-  repeated int32 golds = 4;
+  repeated int64 golds_change = 4;
+  repeated int64 player_golds = 5;
 }
 
 message SetteMezzoShowBankerCard {
@@ -524,7 +528,7 @@ message SetteMezzoShowBankerCard {
 }
 
 message SetteMezzoBetting {
-
+  int32 time_end_bet = 1;
 }
 
 message SetteMezzoUserBet {

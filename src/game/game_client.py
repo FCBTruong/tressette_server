@@ -47,6 +47,7 @@ class GameClient:
         general_pkg.timestamp = timestamp_now
         general_pkg.bet_multiplier_min = tress_config.get("bet_multiplier_min")
         general_pkg.fee_mode_no_bet = tress_config.get("fee_mode_no_bet")
+        general_pkg.min_gold_play_sette_mezzo = MIN_GOLD_PLAY_SETTE_MEZZO
 
         general_pkg.enable_ads = user_info.time_show_ads < timestamp_now
     
@@ -90,6 +91,7 @@ class GameClient:
 
         user_pkg.time_show_ads = user_info.time_show_ads
         user_pkg.has_first_buy = user_info.num_payments == 0
+        user_pkg.add_for_user_support = True # this show popup ask for support
 
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
