@@ -442,6 +442,7 @@ message SetteMezzoGameInfo {
   int32 play_turn_time = 21;
   repeated bytes player_infos = 22;
   repeated int32 banker_cards = 23;
+  repeated int64 player_bets = 24;
 }
 
 message SetteMezzoPlayerInfo {

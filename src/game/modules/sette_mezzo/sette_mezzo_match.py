@@ -32,6 +32,7 @@ class SetteMezzoPlayer(MatchPlayer):
         super().__init__(uid, match)
         self.is_done_turn = False
         self.is_in_game = False
+        self.bet = 0
     
     async def auto_play(self):
         await self.match_mgr.user_stand(self.uid, None)
@@ -192,7 +193,7 @@ class SetteMezzoMatch(Match):
         self.time_start = datetime.now().timestamp() 
         # Send to all players that game is starting, wait for 3 seconds
         # pkg = packet_pb2.SetteMezzoPrepareStartGame()
-        # print('Game is starting, wait for 3 seconds')
+        # # print('Game is starting, wait for 3 seconds')
 
         # await self.broadcast_pkg(CMDs.SETTE_MEZZO_PREPARE_START_GAME, pkg)
 
@@ -251,6 +252,7 @@ class SetteMezzoMatch(Match):
             game_info.team_ids.append(player.team_id)
             game_info.avatars.append(player.avatar)
             game_info.is_in_games.append(player.is_in_game)
+            game_info.player_bets.append(player.bet)
             p_cards = []
             for card in player.cards:
                 p_cards.append(card)
@@ -278,12 +280,15 @@ class SetteMezzoMatch(Match):
         # write logs
         self.playing_users = []
         for player in self.players:
-            if player.uid != -1:
-                player.is_in_game = True
-                player.is_done_turn = False
-                player.cards = []
-                self.playing_users.append(player)
-                write_log(player.uid, "start_game", "sette_mezzo", [self.unique_match_id, self.unique_game_id, self.bet, \
+            if player.uid == -1:
+                continue
+            player.is_in_game = True
+            player.is_done_turn = False
+            player.cards = []
+            player.bet = 0
+            self.playing_users.append(player)
+            if not player.is_bot:
+                write_log(player.uid, "start_game", "sette_mezzo", [self.unique_match_id, self.unique_game_id, 0, \
                                                                                 self.player_mode])
         if len(self.playing_users) == 0:
             print('No player in game')
@@ -305,10 +310,9 @@ class SetteMezzoMatch(Match):
         self.banker_cards = []
 
         # Init player golds
-        for player in self.players:
-            if not player.is_in_game:
-                continue
+        for player in self.playing_users:
             if player.is_bot:
+                await player.on_bet_start()
                 continue
             p_info = await users_info_mgr.get_user_info(player.uid)
             player.gold = p_info.gold
@@ -322,7 +326,14 @@ class SetteMezzoMatch(Match):
         pkg = packet_pb2.SetteMezzoBetting()
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_BETTING, pkg)
         # Sleep for 5 seconds for betting
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(5.5)
+
+        # before start playing game, need to auto bet for user with bet = 0
+        for player in self.playing_users:
+            if player.bet == 0:
+                bet_expect = 10000
+                await self.user_bet(player.uid, bet_expect)
+
         self.state = MatchState.PLAYING
 
         pkg = packet_pb2.SetteMezzoStartGame()
@@ -457,12 +468,25 @@ class SetteMezzoMatch(Match):
                 if banker_score < score:
                     is_win = True
             
-            
+            gold_change = 0
+            user_info = await users_info_mgr.get_user_info(player.uid)
+
+            gold_debt = game_vars.get_debt_mgr().get_debt_ingame(player.uid)
+            # reset debt
+            game_vars.get_debt_mgr().remove_debt_ingame(player.uid)
+            if is_win:
+                gold_change = player.bet * 2
+                gold_really_add = int(player.bet * (1 -TAX_PERCENT))
+                user_info.add_gold(gold_really_add)
+            else:
+                gold_change = -gold_debt
+                user_info.add_gold(-gold_debt)
+
             results.append({
                 "uid": player.uid,
                 "score": score,
                 "is_win": is_win,
-                "gold": random.randint(-100000, 100000) # TODO: calculate gold
+                "gold": gold_change,
             })
 
 
@@ -761,14 +785,32 @@ class SetteMezzoMatch(Match):
         pkg.current_turn = self.current_turn
         pkg.play_turn_time = int(self.time_auto_play)
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_UPDATE_TURN, pkg)
+    
+    async def receive_user_bet(self, uid, payload):
+        pkg = packet_pb2.SetteMezzoUserBet()
+        pkg.ParseFromString(payload)
+        bet = pkg.bet
+        pkg.uid = uid
 
-    async def user_bet(self, uid, payload):
+        await self.user_bet(uid, bet)
+
+    async def user_bet(self, uid, bet):
         if self.state != MatchState.BETTING:
             return
        
         pkg = packet_pb2.SetteMezzoUserBet()
-        pkg.ParseFromString(payload)
-        bet = pkg.bet
+        pkg.bet = bet
+        pkg.uid = uid
+
+        
+        # add to player bet
+        for player in self.players:
+            if player.uid == uid:
+                player.bet += bet
+
+                if not player.is_bot:
+                    game_vars.get_debt_mgr().add_debt_ingame(player.uid, bet)
+                break
 
         print(f"User {uid} bet {bet}")
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_USER_BET, pkg)
@@ -789,5 +831,19 @@ class SetteMezzoBot(MatchBot):
         else:
             await self.match_mgr.user_hit(self.uid, None)
         pass
+
+    async def on_bet_start(self):
+        asyncio.create_task(self._on_bet())
+
+    async def _on_bet(self):
+        await asyncio.sleep(1)
+        # bet
+        bet = random.randint(10000, 1000000)
+        await self.match_mgr.user_bet(self.uid, bet)
+        # should continue to bet
+        if random.choice([True, False]):
+            await self._on_bet()
+        else:
+            return
 
 
