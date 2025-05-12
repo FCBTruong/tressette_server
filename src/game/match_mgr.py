@@ -9,7 +9,7 @@ from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
-from src.game.match import LeaveMatchErrors, Match, MatchState, PLAYER_SOLO_MODE, PLAYER_DUO_MODE, TressetteMatch
+from src.game.match import TRESSETTE_MODE, LeaveMatchErrors, Match, MatchState, PLAYER_SOLO_MODE, PLAYER_DUO_MODE, TressetteMatch
 from src.game.users_info_mgr import users_info_mgr
 from src.game.tressette_config import config as tress_config
 from src.game.modules.sette_mezzo.sette_mezzo_match import SetteMezzoMatch
@@ -159,8 +159,12 @@ class MatchManager:
         should_choose_duo = random.choice([True, False]) # 50 %
         
         for match_id, match in self.matches.items():
+            # find terssette only
+            if match.game_mode != TRESSETTE_MODE:
+                continue
             if not match.is_public:
                 continue
+    
             if match.bet == 0:
                 # Bet = 0 is for review
                 continue
@@ -380,7 +384,7 @@ class MatchManager:
             await self._send_response_join_table(uid, JoinMatchErrors.MATCH_NOT_FOUND)
             return
         
-        if match.state != MatchState.WAITING:
+        if match.game_mode == TRESSETTE_MODE and match.state != MatchState.WAITING:
             await self._send_response_join_table(uid, JoinMatchErrors.MATCH_STARTED)
             return
         

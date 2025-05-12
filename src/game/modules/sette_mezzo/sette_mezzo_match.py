@@ -26,7 +26,7 @@ logger = logging.getLogger("scopa_match")  # Name your logger
 TIME_THINKING = 10
 BANKER_DEFAULT_UID = -100
 BANKER_DEFAULT_TURN = -100
-TIME_BETTING = 4
+TIME_BETTING = 10
 class SetteMezzoPlayer(MatchPlayer):
     # override auto play card
     def __init__(self, uid, match):
@@ -653,6 +653,11 @@ class SetteMezzoMatch(Match):
         if self.state != MatchState.PLAYING:
             return
         
+         # check if user is in game
+        if not self.check_user_in_game(uid):
+            print(f"User {uid} not in game")
+            return
+        
         if not self.check_user_in_turn(uid):
             return
         
@@ -698,6 +703,12 @@ class SetteMezzoMatch(Match):
     async def user_stand(self, uid, payload):
         if self.state != MatchState.PLAYING:
             return
+        
+         # check if user is in game
+        if not self.check_user_in_game(uid):
+            print(f"User {uid} not in game")
+            return
+        
         print(f"User {uid} stand")
         if not self.check_user_in_turn(uid):
             return
@@ -751,14 +762,7 @@ class SetteMezzoMatch(Match):
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_ACTION_HIT, pkg)
 
         # check if banker has 7.5
-        score = 0
-        for card in self.banker_cards:
-            rank = card // 4
-            if rank < 7:
-                point_add = rank + 1
-            else:
-                point_add = 0.5
-            score += point_add
+        score = self.get_banker_score()
 
         if score > 7.5:
             # banker is bursted, end game
@@ -766,15 +770,26 @@ class SetteMezzoMatch(Match):
         else:
             await self.banker_play()
 
+    def get_banker_score(self):
+        score = self.get_score_cards(self.banker_cards)
+        return score
+    
     async def banker_play(self):
         if len(self.banker_cards) == 1:
             # show banker card
             pkg = packet_pb2.SetteMezzoShowBankerCard()
             pkg.card_id = self.banker_cards[0]
             await self.broadcast_pkg(CMDs.SETTE_MEZZO_SHOW_BANKER_CARD, pkg)
-            
+        
+        # banker score
         await asyncio.sleep(1)
-        should_stand = random.choice([True, False])
+        should_stand = False
+        banker_score = self.get_banker_score()
+
+        # when banker score < 5, must hit
+        if banker_score >= 5:
+            # check if banker win gold of users -> should stand
+            should_stand = random.choice([True, False])
 
         if not should_stand:
             await self.banker_hit()
@@ -804,9 +819,20 @@ class SetteMezzoMatch(Match):
         pkg.uid = uid
 
         await self.user_bet(uid, bet)
-
+    
+    def check_user_in_game(self, uid):
+        for player in self.playing_users:
+            if player.uid == uid:
+                return True
+        return False
+    
     async def user_bet(self, uid, bet):
         if self.state != MatchState.BETTING:
+            return
+        
+        # check if user is in game
+        if not self.check_user_in_game(uid):
+            print(f"User {uid} not in game")
             return
        
         #min bet
@@ -816,7 +842,7 @@ class SetteMezzoMatch(Match):
 
         
         # add to player bet
-        for player in self.players:
+        for player in self.playing_users:
             if player.uid == uid:
                 # check if user has enough gold
                 if player.gold < bet:

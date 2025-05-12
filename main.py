@@ -21,8 +21,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("main")  # Name your logger
 
+version = "0.0.1"
 async def lifespan(app: FastAPI):
-    print("Application startup complete.")
+    print("Application startup complete. " + version)
     if not settings.ENABLE_CHEAT:
         await telegram_bot.send_message(f"Server started")
 
