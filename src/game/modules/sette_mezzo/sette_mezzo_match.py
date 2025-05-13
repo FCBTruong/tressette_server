@@ -344,6 +344,7 @@ class SetteMezzoMatch(Match):
         self.state = MatchState.PLAYING
 
         # calculate maxgold banker win
+        self.max_gold_banker_win = 0
         for player in self.playing_users:
             self.max_gold_banker_win += player.bet
 
@@ -799,7 +800,7 @@ class SetteMezzoMatch(Match):
         score = self.get_score_cards(self.banker_cards)
         return score
     
-    def cal_win_gold_predict(self, banker_score):
+    def cal_win_gold_case(self, banker_score):
         win_gold = 0
         for p in self.playing_users:
             score = self.get_score_cards(p.cards)
@@ -830,14 +831,14 @@ class SetteMezzoMatch(Match):
         elif banker_score < 7.5:
             is_bursted_predict = self.is_bursted_banker_predict()
             # logic to decide banker should stand or hit
-            gold_win_predict = self.cal_win_gold_predict(banker_score)
+            gold_win_predict = self.cal_win_gold_case(banker_score)
             print(f"Banker score: {banker_score}, gold win predict: {gold_win_predict}, is bursted predict: {is_bursted_predict}")
 
             # case 1, gold win predict <= - max gold banker win, banker must hit
             if gold_win_predict <= -self.max_gold_banker_win:
                 should_stand = False
-            # case 2, gold win predict > - max gold banker win, banker should stand
-            elif gold_win_predict > -self.max_gold_banker_win:
+            # case 2, gold win predict > max gold banker win, banker should stand
+            elif gold_win_predict >= self.max_gold_banker_win:
                 should_stand = True
             elif gold_win_predict < 0:
                 # 70% hit (60% predict)
@@ -926,6 +927,9 @@ class SetteMezzoMatch(Match):
         for player in self.playing_users:
             if player.uid == uid:
                 # check if user has enough gold
+                if player.gold <= 0:
+                    return
+                
                 if player.gold < bet:
                     bet = player.gold
                 player.bet += bet

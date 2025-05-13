@@ -83,7 +83,7 @@ class GameClient:
         user_pkg.support_num = 1 if game_vars.get_game_mgr().check_can_receive_support(user_info.last_time_received_support) else 0
         user_pkg.startup_gold = startup_gold
         user_pkg.login_type = user_info.login_type
-        if user_info.game_count < 5:
+        if user_info.game_count < 1:
             user_pkg.time_ads_reward = -1
         else:
             user_pkg.time_ads_reward = user_info.time_ads_reward
