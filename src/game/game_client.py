@@ -91,7 +91,7 @@ class GameClient:
 
         user_pkg.time_show_ads = user_info.time_show_ads
         user_pkg.has_first_buy = user_info.num_payments == 0
-        user_pkg.add_for_user_support = True # this show popup ask for support
+        user_pkg.add_for_user_support = False # this show popup ask for support
 
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
