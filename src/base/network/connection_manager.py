@@ -85,6 +85,7 @@ class ConnectionManager:
                         await self.disconnect(websocket)
                         break
                 else:
+                    num_pings = 0  # Reset ping count if pong received
                     self.ping_responses[websocket] = 0  # Reset pong counter after receiving pong
             except WebSocketDisconnect:
                 print(f"WebSocket closed during ping: {websocket}")
