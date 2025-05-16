@@ -326,9 +326,13 @@ class SetteMezzoMatch(Match):
         for player in self.players:
             players_gold.append(player.gold)
 
+        playing_uids = []
+        for player in self.playing_users:
+            playing_uids.append(player.uid)
         # send to all user now bet before start game
         pkg = packet_pb2.SetteMezzoBetting()
         pkg.time_end_bet = self.time_end_bet
+        pkg.playing_uids.extend(playing_uids)
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_BETTING, pkg)
         # Sleep for 5 seconds for betting
         await asyncio.sleep(TIME_BETTING)

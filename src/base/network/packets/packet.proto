@@ -529,6 +529,7 @@ message SetteMezzoShowBankerCard {
 
 message SetteMezzoBetting {
   int32 time_end_bet = 1;
+  repeated int32 playing_uids = 2;
 }
 
 message SetteMezzoUserBet {
