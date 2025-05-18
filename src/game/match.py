@@ -50,7 +50,7 @@ TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
 TIME_AUTO_PLAY_SEVERE = min(3, TIME_AUTO_PLAY)
 TAX_PERCENT = tress_config.get("tax_percent")
 TIME_START_TO_DEAL = 3.5 # seconds
-TIME_DRAW_CARD = 4 # seconds
+TIME_DRAW_CARD = 3.5 # seconds
 TIME_MATCH_MAXIMUM = 60 * 60 # 1 hour -> after this match will be destroyed
 SCORE_WIN_GAME_ELEVEN = 11 * SERVER_SCORE_ONE_POINT
 SCORE_WIN_GAME_TWENTY_ONE = 21 * SERVER_SCORE_ONE_POINT
@@ -766,7 +766,7 @@ class TressetteMatch(Match):
         await self.deal_card()
 
         # wait for 2 seconds
-        await asyncio.sleep(2)
+        await asyncio.sleep(1.6)
         await self._handle_new_hand()
 
     async def user_play_card(self, uid, payload):
