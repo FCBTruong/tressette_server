@@ -806,12 +806,25 @@ class SetteMezzoMatch(Match):
     
     def cal_win_gold_case(self, banker_score):
         win_gold = 0
+        is_banker_bursted = banker_score > 7.5
         for p in self.playing_users:
             score = self.get_score_cards(p.cards)
-            if banker_score < score:
-                win_gold -= p.bet
+            is_banker_win = False
+            if is_banker_bursted:
+                if score > 7.5:
+                    is_banker_win = True
             else:
+                if score > 7.5:
+                    is_banker_win = True
+                elif banker_score >= score:
+                    is_banker_win = True
+
+
+            if is_banker_win:
                 win_gold += p.bet
+            else:
+                win_gold -= p.bet
+   
         return win_gold
     
     def is_bursted_banker_predict(self):
@@ -845,11 +858,11 @@ class SetteMezzoMatch(Match):
             elif gold_win_predict >= self.max_gold_banker_win:
                 should_stand = True
             elif gold_win_predict < 0:
-                # 70% hit (60% predict)
+                # 70% hit (40% predict)
                 a = random.randint(0, 100)
                 if a < 70:
                     b = random.randint(0, 100)
-                    if b < 60:
+                    if b < 40:
                         if is_bursted_predict:
                             should_stand = True
                         else:
@@ -863,11 +876,11 @@ class SetteMezzoMatch(Match):
                 if banker_score >= 6:
                     should_stand = True
                 else:
-                    # 50% hit (60% predict)
+                    # 50% hit (40% predict)
                     a = random.randint(0, 100)
                     if a < 50:
                         b = random.randint(0, 100)
-                        if b < 60:
+                        if b < 40:
                             if is_bursted_predict:
                                 should_stand = True
                             else:
