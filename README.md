@@ -9,9 +9,14 @@ The system runs on **AWS ECS**, uses **PostgreSQL** for storage, **Redis** for c
 I’ve also implemented async architecture using Python’s `async/await` to handle concurrent connections smoothly.
 
 Below is the architecture diagram for the project:
-
-![Tressette Architecture](path/to/your/image.png)
-
+### 1. Overview
+![Tressette Architecture](assets/overview_architecture.png)
+---
+### 2. Flow build
+![Deploy AWS](assets/flow-build.png)
+---
+### 3. Flow Login sequence
+![Sample Flow Login](assets/flow-login.drawio.png)
 ---
 
 ## 🚀 Setup Instructions
