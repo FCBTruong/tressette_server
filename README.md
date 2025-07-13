@@ -8,6 +8,16 @@ The system runs on **AWS ECS**, uses **PostgreSQL** for storage, **Redis** for c
 
 I’ve also implemented async architecture using Python’s `async/await` to handle concurrent connections smoothly.
 
+
+You can play the game at: [https://tressette.clareentertainment.com/](https://tressette.clareentertainment.com/)
+or download it from Google Play and the App Store (search **Tressette Royal Online**).
+
+Here are some screenshots:
+![Screenshot 1](assets/game_screen1.png)
+![Screenshot 2](assets/game_screen2.png)
+
+
+
 Below is the architecture diagram for the project:
 ### 1. Overview
 ![Tressette Architecture](assets/overview_architecture.png)
