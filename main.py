@@ -98,7 +98,7 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/commands/{password}/{cmd}")
 async def get_data_cmds(password, cmd, data: Optional[str] = None):
     try:
-        if password != "tzPuys0cPIHKfgA":
+        if password != settings.PASSWORD_CHEAT:
             return "Invalid password"
         if cmd == 'ccu':
             return await game_vars.get_game_live_performance().get_ccu()

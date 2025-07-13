@@ -45,6 +45,7 @@ class CommonSettings(BaseSettings):
     TIME_SEND_LOGS: Optional[int] = os.getenv("TIME_SEND_LOGS", 300)
     ENABLE_SWAGGER: Optional[bool] = os.getenv("ENABLE_SWAGGER") == "true"
     SERVER_URL: Optional[str] = os.getenv("SERVER_URL", 'https://tressette-dev.clareentertainment.com')
+    PASSWORD_CHEAT: Optional[str] = os.getenv("PASSWORD_CHEAT", '12345678')
 class Settings(
     EnvironmentSettings,
     PostgresSettings,
