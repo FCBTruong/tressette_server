@@ -1,9 +1,9 @@
 import aiohttp
 import logging
-
+from src.config.settings import settings
 
 # Hardcoded bot token and chat ID
-BOT_TOKEN = "7878397664:AAFzUuUB5htIhPOpAR-NKrHFYJGRB0r7X-w"
+BOT_TOKEN = settings.TELEGRAM_BOT_TOKEN
 CHAT_ID = "995915268"
 API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 

@@ -159,7 +159,7 @@ class LoginMgr:
     
     # IOS can not use firebase auth, so we need to use google auth -> login to firebase -> login to our server
     async def login_by_google_token(self, token):
-        API_KEY = "AIzaSyCZ7InUYNvLU_wVNEMciqWI9Aa0i-Nq5O8"  # Found in Firebase Console > Project settings
+        API_KEY = settings.FIREBASE_KEY  # Found in Firebase Console > Project settings
         url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={API_KEY}"
         
         payload = {
@@ -185,7 +185,7 @@ class LoginMgr:
                 return {"success": True, "firebase_token": firebase_token}
 
     async def login_by_apple_token(self, token):
-        API_KEY = "AIzaSyCZ7InUYNvLU_wVNEMciqWI9Aa0i-Nq5O8"  # Replace with your Firebase API key
+        API_KEY = settings.FIREBASE_KEY # Replace with your Firebase API key
         url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key={API_KEY}"
 
         payload = {

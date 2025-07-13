@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 from typing import Union
+from src.config.settings import settings
 
-SECRET_KEY = "jTd9UwjMsYEAuyN"  # Replace with a secure secret key
+SECRET_KEY = settings.JWT_SECRET_KEY  # Replace with a secure secret key
 ALGORITHM = "HS256"
 SESSION_TOKEN_EXPIRE_MINUTES = 60 * 24 * 1  # Token expiration time in minutes # 1 days
 LOGIN_TOKEN_EXPIRE_MINUTES = 60 * 24 * 90  # Token expiration time in minutes # 90 days

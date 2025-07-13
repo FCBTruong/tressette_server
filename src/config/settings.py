@@ -46,6 +46,11 @@ class CommonSettings(BaseSettings):
     ENABLE_SWAGGER: Optional[bool] = os.getenv("ENABLE_SWAGGER") == "true"
     SERVER_URL: Optional[str] = os.getenv("SERVER_URL", 'https://tressette-dev.clareentertainment.com')
     PASSWORD_CHEAT: Optional[str] = os.getenv("PASSWORD_CHEAT", '12345678')
+    FIREBASE_KEY: Optional[str] = os.getenv("FIREBASE_KEY")
+    JWT_SECRET_KEY: Optional[str] = os.getenv("JWT_SECRET_KEY")  # Replace with a secure secret key
+    TELEGRAM_BOT_TOKEN: Optional[str] = os.getenv("TELEGRAM_BOT_TOKEN")
+    PAYPAL_CLIENT_SECRET: Optional[str] = os.getenv("PAYPAL_CLIENT_SECRET")
+
 class Settings(
     EnvironmentSettings,
     PostgresSettings,
