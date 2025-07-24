@@ -571,10 +571,10 @@ class TressetteMatch(Match):
         if user_info.game_count < 1: # New user will play withbot
             return 1
         elif user_info.game_count > 10:
-            return random.randint(15, 30)
+            return random.randint(3, 15)
         elif user_info.game_count > 20:
-            return random.randint(20, 50)
-        return random.randint(10, 15)
+            return random.randint(3, 15)
+        return random.randint(3, 15)
     
     async def _coroutine_gen_bot(self, time_delay_gen_bot):
         await asyncio.sleep(time_delay_gen_bot)
