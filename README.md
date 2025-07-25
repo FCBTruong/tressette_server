@@ -36,6 +36,9 @@ Below is the architecture diagram for the project:
 #### 3. Play Card (In game)
 ![Play Card Flow](assets/flow-play-action.drawio.png)
 
+#### 4. Payment
+![Payment Flow](assets/flow-pay.drawio.png)
+
 ---
 
 ## 🚀 Setup Instructions
