@@ -25,8 +25,14 @@ Below is the architecture diagram for the project:
 ### 2. Flow build
 ![Deploy AWS](assets/flow-build.png)
 ---
-### 3. Flow Login sequence
+### 3. Flow sequence
+
+#### 1. Login
 ![Sample Flow Login](assets/flow-login.drawio.png)
+
+#### 2. Play Card (In game)
+![Play Card Flow](assets/flow-play-action.drawio.png)
+
 ---
 
 ## 🚀 Setup Instructions
