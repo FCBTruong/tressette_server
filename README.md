@@ -27,10 +27,13 @@ Below is the architecture diagram for the project:
 ---
 ### 3. Flow sequence
 
-#### 1. Login
+#### 1. Signup/login Firebase
+![Flow Signup Firebases](assets/flow-register-account.png)
+
+#### 2. Login
 ![Sample Flow Login](assets/flow-login.drawio.png)
 
-#### 2. Play Card (In game)
+#### 3. Play Card (In game)
 ![Play Card Flow](assets/flow-play-action.drawio.png)
 
 ---
