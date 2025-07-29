@@ -253,10 +253,11 @@ class MatchBotSuper(MatchBot):
             else:
                 bot_future_cards.append(c)
             i += 1
-        if len(self.match_mgr.cards_compare) > 0:
-            current_card = self.match_mgr.cards_compare[0]
-        else:
-            current_card = None
+        
+        current_card = -1
+        for c in self.match_mgr.cards_compare:
+            if c != -1:
+                current_card = c
 
         if current_card == -1:
             current_card = None
@@ -353,7 +354,7 @@ class TressetteMatch(Match):
         self.cards = []
         self.win_player = None
         self.hand_suit = -1
-        self.bet = bet
+        self.bet = 0 # REMOVE BETTING
         self.auto_play_count_by_uid = {} # consecutive auto play count
         self.users_auto_play = {} # uids that are auto play, server will not wait for them
         self.state = MatchState.WAITING
@@ -374,6 +375,7 @@ class TressetteMatch(Match):
         self.enable_bet_win_score = True
         self.game_ready = True
         self.user_ready_status = {}
+        self.viewers = set()  # UIDs of users who are viewing the match
 
         
         self.point_to_win = point_mode * 3 # 11, 21
@@ -382,6 +384,14 @@ class TressetteMatch(Match):
         for i in range(player_mode):
             p = MatchPlayer(-1, self)
             self.players.append(p)
+    
+    async def user_view_game(self, uid):
+        if uid in self.viewers:
+            logger.warning(f"User {uid} is already viewing the match {self.match_id}.")
+            return
+        
+        self.viewers.add(uid)
+        await self._send_game_info(uid)
 
     def set_public(self, is_public):
         self.is_public = is_public
@@ -449,19 +459,15 @@ class TressetteMatch(Match):
 
                         # BOT 0: Medium, BOT 2: Stupid, BOT 1: Hard
                         if user_info.game_count == 0:
-                            bot_model = BOT_MODEL_STUPID
+                            bot_model = BOT_MODEL_MEDIUM
                         elif user_info.game_count < 5:
                             if win_rate > 0.5:
-                                bot_model = BOT_MODEL_MEDIUM
-                            else:
-                                bot_model = BOT_MODEL_STUPID
+                                bot_model = BOT_MODEL_SUPER
                         else:
                             if win_rate > 0.6:
-                                bot_model = random.choice([BOT_MODEL_MEDIUM, BOT_MODEL_SUPER, BOT_MODEL_SUPER_V2])
+                                bot_model = random.choice([BOT_MODEL_SUPER, BOT_MODEL_SUPER_V2])
                             elif win_rate > 0.4:
                                 bot_model = BOT_MODEL_MEDIUM
-                            else:
-                                bot_model = BOT_MODEL_STUPID
                         break
             else:
                 bot_model = BOT_MODEL_MEDIUM
@@ -818,7 +824,7 @@ class TressetteMatch(Match):
             if card_suit != self.hand_suit:
                 for card in player.cards:
                     if card % 4 == self.hand_suit:
-                        logger.error(f"User {uid} must play card with suit {self.hand_suit}")
+                        logger.error(f"User {uid} must play card with suit {self.hand_suit}, card {card_id} is not valid")
                         await self._send_card_play_response(uid, PlayCardErrors.INVALID_SUIT)
                         return
 
@@ -907,6 +913,12 @@ class TressetteMatch(Match):
             pkg.cards.extend(player.cards)
             pkg.remain_cards = len(self.cards)
             await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
+
+        # broadcast to all viewers
+        pkg = packet_pb2.DealCard()
+        pkg.remain_cards = len(self.cards)
+        for viewer_uid in self.viewers:
+            await game_vars.get_game_client().send_packet(viewer_uid, CMDs.DEAL_CARD, pkg)
     
 
     async def end_hand(self, play_card_pkg):
@@ -1261,6 +1273,10 @@ class TressetteMatch(Match):
             if player.uid in ignore_uids:
                 continue
             await game_vars.get_game_client().send_packet(player.uid, cmd_id, pkg)
+        
+        # Send to viewers too
+        for viewer_uid in self.viewers:
+            await game_vars.get_game_client().send_packet(viewer_uid, cmd_id, pkg)
 
     async def broadcast_chat_message(self, uid, message):
         pkg = packet_pb2.InGameChatMessage()
@@ -1349,5 +1365,15 @@ class TressetteMatch(Match):
         print("user " + str(uid) + " is ready to play")
         self.user_ready_status[uid] = True
         pass
+
+    async def user_stop_view(self, uid):
+        if uid in self.viewers:
+            self.viewers.remove(uid)
+            game_vars.get_match_mgr().handle_user_stop_view(uid)
+            pkg = packet_pb2.UserStopView()
+            pkg.uid = uid
+            await self.broadcast_pkg(CMDs.USER_STOP_VIEW, pkg)
+        else:
+            logger.warning(f"User {uid} is not a viewer in match {self.match_id}")
 
 

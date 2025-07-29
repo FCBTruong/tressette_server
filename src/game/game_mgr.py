@@ -48,6 +48,8 @@ class GameMgr:
                 await game_vars.get_match_mgr().receive_user_return_to_table(uid)
             case CMDs.USER_MATCH_READY:
                 await game_vars.get_match_mgr().user_ready(uid)
+            case CMDs.VIEW_GAME:
+                await game_vars.get_match_mgr().view_game(uid, payload)
      
     async def on_user_login(self, uid: int):
         # wait for 1 second, to let user handle login process

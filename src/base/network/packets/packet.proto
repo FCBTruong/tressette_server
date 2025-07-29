@@ -536,3 +536,11 @@ message SetteMezzoUserBet {
   int32 uid = 1;
   int64 bet = 2;
 }
+
+message ViewGame {
+  int32 match_id = 1;
+}
+
+message UserStopView {
+  
+}

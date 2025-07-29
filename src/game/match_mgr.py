@@ -34,6 +34,7 @@ class MatchManager:
         self.start_match_id = 1000
         self.matches: dict[int, Match] = {}
         self.user_matchids: dict[int, int] = {}
+        self.user_views: dict[int, int] = {}  # user_id -> match_id
         self._task = None
 
     def start(self):
@@ -243,6 +244,18 @@ class MatchManager:
             match = await self.get_match_of_user(uid)
             if match.state == MatchState.WAITING:
                 await self.handle_user_leave_match(uid)
+        
+        # check if user is viewing a match
+        if uid in self.user_views:
+            match_id = self.user_views.pop(uid)
+            match = await self.get_match(match_id)
+            if match:
+                await match.user_stop_view(uid) # will call back handle_user_stop_view
+    
+    async def handle_user_stop_view(self, uid: int):
+        if uid in self.user_views:
+            self.user_views.pop(uid)
+            
 
     async def user_play_card(self, uid: int, payload):
         match = await self.get_match_of_user(uid)
@@ -443,3 +456,20 @@ class MatchManager:
         match = await self.get_match_of_user(uid)
         if match:
             match.user_ready(uid)
+
+    async def view_game(self, uid, payload):
+        view_pkg = packet_pb2.ViewGame()
+        view_pkg.ParseFromString(payload)
+        match_id = view_pkg.match_id
+        match = await self.get_match(match_id)
+
+        # cheat bot match
+        if not match:
+            match = await self._create_match(0, PLAYER_SOLO_MODE, False, 11)
+            await match.cheat_add_bot()
+            await match.cheat_add_bot()
+        if match:
+            self.user_views[uid] = match_id
+            await match.user_view_game(uid)
+        else:
+            logger.warning(f"Match {match_id} not found for user {uid} to view game.")
