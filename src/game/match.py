@@ -344,7 +344,7 @@ class Match(ABC):
         pass
 
     @abstractmethod
-    async def user_stop_view(self, uid):
+    async def user_stop_view(self, uid, should_send_back_to_user = True):
         pass
 
     @abstractmethod
@@ -410,7 +410,7 @@ class TressetteMatch(Match):
         pkg.name = info.name
         await self.broadcast_pkg(CMDs.NEW_USER_VIEW_GAME, pkg, ignore_uids=[uid])
         self.viewers.add(uid)
-        
+
         await self._send_game_info(uid)
 
     def set_public(self, is_public):
@@ -539,7 +539,7 @@ class TressetteMatch(Match):
         if settings.DEV_MODE:
             pkg.is_vip = True
 
-        await self.broadcast_pkg(CMDs.NEW__USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
+        await self.broadcast_pkg(CMDs.NEW_USER_JOIN_MATCH, pkg, ignore_uids=[user_id])
         
         if not is_bot:
             # send game info to user
@@ -588,8 +588,11 @@ class TressetteMatch(Match):
         if not user_info:
             return 5
         
-        if settings.DEV_MODE:
-            return 1
+        # if settings.DEV_MODE:
+        #     return 1
+        # if has viewers, gen bot after 20 seconds
+        if len(self.viewers) > 0:
+            return 20
         
         if self.player_mode != PLAYER_SOLO_MODE:
             return random.randint(10, 50)
@@ -700,6 +703,12 @@ class TressetteMatch(Match):
 
             if player.uid == uid:
                 game_info.my_cards.extend(player.cards)
+
+        for viewer_uid in self.viewers:
+            viewer_info = await users_info_mgr.get_user_info(viewer_uid)
+            game_info.viewer_uids.append(viewer_uid)
+            game_info.viewer_avatars.append(viewer_info.avatar)
+            game_info.viewer_names.append(viewer_info.name)
         
         await game_vars.get_game_client().send_packet(uid, CMDs.GAME_INFO, game_info)
 
@@ -1091,8 +1100,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        # if settings.DEV_MODE:
-        #     return True
+        if settings.DEV_MODE:
+            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -1313,6 +1322,13 @@ class TressetteMatch(Match):
             is_active = connection_manager.check_user_active_online(uid)
             if not is_active:
                 await game_vars.get_match_mgr().handle_user_leave_match(uid)
+
+
+        # check is not has any real players then destroy match
+        if not self.check_has_real_players():
+            print(f"Match {self.match_id} is empty, destroy match")
+            await game_vars.get_match_mgr().destroy_match(self.match_id)
+            return
     
     async def broadcast_pkg(self, cmd_id, pkg, ignore_uids=[]):
         for player in self.players:
@@ -1414,13 +1430,17 @@ class TressetteMatch(Match):
         self.user_ready_status[uid] = True
         pass
 
-    async def user_stop_view(self, uid):
+    async def user_stop_view(self, uid, should_send_back_to_user = True):
         print(f"User {uid} stop view match {self.match_id}")
         if uid in self.viewers:
             pkg = packet_pb2.UserStopView()
             pkg.uid = uid
-            await self.broadcast_pkg(CMDs.USER_STOP_VIEW, pkg)
-            self.viewers.remove(uid)
+            if should_send_back_to_user:
+                await self.broadcast_pkg(CMDs.USER_STOP_VIEW, pkg)
+                self.viewers.remove(uid)
+            else:
+                self.viewers.remove(uid)
+                await self.broadcast_pkg(CMDs.USER_STOP_VIEW, pkg)
             await game_vars.get_match_mgr().handle_user_stop_view(uid)
         else:
             logger.warning(f"User {uid} is not a viewer in match {self.match_id}")

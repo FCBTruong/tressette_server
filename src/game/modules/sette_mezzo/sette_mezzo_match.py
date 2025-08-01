@@ -919,7 +919,7 @@ class SetteMezzoMatch(Match):
 
         print(f"User {uid} bet {bet}")
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_USER_BET, pkg)
-    async def user_stop_view(self, uid):
+    async def user_stop_view(self, uid, should_send_back_to_user = True):
         pass
 
     async def user_view_game(self, uid):

@@ -207,6 +207,14 @@ class MatchManager:
 
     
     async def user_join_match(self, match: Match, uid: int):
+        # If is viewing a match, stop viewing first
+        if uid in self.user_views:
+            match_id = self.user_views.pop(uid)
+            is_same_match = match_id == match.match_id
+            existing_match = await self.get_match(match_id)
+            if existing_match:
+                await existing_match.user_stop_view(uid, not is_same_match)
+            
         self.user_matchids[uid] = match.match_id
         await match.user_join(uid)
 

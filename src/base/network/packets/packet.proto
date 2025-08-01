@@ -94,6 +94,9 @@ message GameInfo {
   int32 point_to_win = 21;
   bool enable_bet_win_score = 22;
   repeated bool is_vips = 23;
+  repeated int32 viewer_uids = 24;
+  repeated string viewer_avatars = 25;
+  repeated string viewer_names = 26;
 }
 
 message RegisterLeaveGame {
