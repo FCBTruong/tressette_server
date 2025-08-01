@@ -7,7 +7,7 @@ from src.game.tressette_config import config as tress_config
 
 
 class BotsMgr:
-    start_uid = 10000000
+    start_uid = 1010000
     bots = {}  # uid -> UserInfo
     def fake_data_for_bot(self, uid, bet) -> UserInfo:
         min_bet_multiplier = tress_config.get("bet_multiplier_min")

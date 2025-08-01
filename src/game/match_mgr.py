@@ -7,6 +7,7 @@ import random
 
 from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
+from src.config.settings import settings
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
 from src.game.match import TRESSETTE_MODE, LeaveMatchErrors, Match, MatchState, PLAYER_SOLO_MODE, PLAYER_DUO_MODE, TressetteMatch
@@ -41,6 +42,16 @@ class MatchManager:
         """Starts the match manager loop."""
         if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._loop())
+
+        # test
+        if settings.ENABLE_CHEAT:
+            logger.info("Cheat mode enabled, creating test matches.")
+            asyncio.create_task(self.test_create_match())
+    async def test_create_match(self):
+        for _ in range(5):
+            match = await self._create_match(0, PLAYER_SOLO_MODE, False, 11)
+            await match.cheat_add_bot()
+            await match.cheat_add_bot()
 
     def stop(self):
         """Stops the match manager loop."""
@@ -139,6 +150,12 @@ class MatchManager:
         if match_id:
             return self.matches.get(match_id)
         return None
+    
+    async def get_match_of_viewer(self, user_id) -> Match:
+        match_id = self.user_views.get(user_id)
+        if match_id:
+            return self.matches.get(match_id)
+        return None
 
     def destroy_match(self, match_id):
         print(f"End match {match_id}")
@@ -197,9 +214,14 @@ class MatchManager:
         leave_pkg = packet_pb2.RegisterLeaveGame()
         leave_pkg.ParseFromString(payload)
         status = leave_pkg.status
-        # print(f"User {uid} leave game with status {status}")
-        # leave_pkg.status = status.value
-        # await game_vars.get_game_client().send_packet(uid, CMDs.REGISTER_LEAVE_GAME, leave_pkg)
+        
+        if uid in self.user_views:
+            # User is viewing a match, handle stop view
+            match_id = self.user_views.pop(uid)
+            match = await self.get_match(match_id)
+            if match:
+                await match.user_stop_view(uid) # will call back handle_user_stop_view
+            return
 
         match = await self.get_match_of_user(uid)
         if not match:
@@ -247,14 +269,21 @@ class MatchManager:
         
         # check if user is viewing a match
         if uid in self.user_views:
-            match_id = self.user_views.pop(uid)
+            match_id = self.user_views.get(uid)
             match = await self.get_match(match_id)
             if match:
                 await match.user_stop_view(uid) # will call back handle_user_stop_view
     
+    # NOTE: This function should be called from the game match
     async def handle_user_stop_view(self, uid: int):
-        if uid in self.user_views:
-            self.user_views.pop(uid)
+        if uid not in self.user_views:
+            return
+         
+        match_id = self.user_views.pop(uid)
+        match = await self.get_match(match_id)
+        if not match.check_has_real_players():
+            print('Destroy match', match_id)
+            self.destroy_match(match_id)
             
 
     async def user_play_card(self, uid: int, payload):
@@ -263,7 +292,7 @@ class MatchManager:
             await match.user_play_card(uid, payload)
 
     async def receive_request_table_list(self, uid):
-        matches = await self._prioritize_matches(self.matches, uid)  # Get the 20 matches closest to the user's gold
+        matches = await self._prioritize_matches(self.matches, uid)  
         # priority table is waiting
         match_ids = []
         bets = []
@@ -272,10 +301,13 @@ class MatchManager:
         game_modes = []
         avatars = []
         uids = []
+        print(f"Table list: {len(matches)} matches found")
 
         for match in matches:
             # skip private match
             if match.is_public is False:
+                continue
+            if match.game_mode != TRESSETTE_MODE:
                 continue
             match_ids.append(match.match_id)
             bets.append(match.bet)
@@ -311,16 +343,10 @@ class MatchManager:
 
     async def _prioritize_matches(self, matches: dict[int, Match], uid: int) -> list[Match]:
         MAX_MATCHES = 20  # Limit of prioritized matches
-        user = await users_info_mgr.get_user_info(uid)
-        user_gold = user.gold
-
+   
         # Separate matches by state
         waiting_matches = [match for match in matches.values() if match.state == MatchState.WAITING]
         other_matches = [match for match in matches.values() if match.state != MatchState.WAITING]
-
-        # Sort matches by bet proximity to user's gold
-        waiting_matches.sort(key=lambda match: abs(match.bet * tress_config.get('bet_multiplier_min') - user_gold))
-        other_matches.sort(key=lambda match: abs(match.bet * tress_config.get('bet_multiplier_min') - user_gold))
 
         # Combine matches, prioritizing waiting matches
         prioritized_matches = waiting_matches + other_matches

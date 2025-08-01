@@ -343,6 +343,18 @@ class Match(ABC):
     def get_min_gold_play(self):
         pass
 
+    @abstractmethod
+    async def user_stop_view(self, uid):
+        pass
+
+    @abstractmethod
+    async def user_view_game(self, uid):
+        pass
+
+    @abstractmethod
+    def check_has_real_players(self) -> bool:
+        pass
+
 class TressetteMatch(Match):
     def __init__(self, match_id, bet, player_mode, point_mode):
         self.match_id = match_id
@@ -389,8 +401,16 @@ class TressetteMatch(Match):
         if uid in self.viewers:
             logger.warning(f"User {uid} is already viewing the match {self.match_id}.")
             return
-        
+    
+        # broadcast to all users
+        pkg = packet_pb2.NewUserView()
+        pkg.uid = uid
+        info = await users_info_mgr.get_user_info(uid)
+        pkg.avatar = info.avatar
+        pkg.name = info.name
+        await self.broadcast_pkg(CMDs.NEW_USER_VIEW_GAME, pkg, ignore_uids=[uid])
         self.viewers.add(uid)
+        
         await self._send_game_info(uid)
 
     def set_public(self, is_public):
@@ -643,6 +663,9 @@ class TressetteMatch(Match):
         for player in self.players:
             if player.uid != -1 and not player.is_bot:
                 return True
+        # check is has viewers
+        if len(self.viewers) > 0:
+            return True
         return False
     
     async def _send_game_info(self, uid):
@@ -1006,9 +1029,35 @@ class TressetteMatch(Match):
         self.hand_in_round = -1
 
         # When new round start, all redudant points need to be removed, example 3, 1/3 -> 3, 4 2/3 -> 4
-        for player in self.players:
-            redundant_points = player.points % 3
-            player.points -= redundant_points
+        if self.player_mode == PLAYER_SOLO_MODE:
+            for player in self.players:
+                redundant_points = player.points % 3
+                player.points -= redundant_points
+        else:
+            # for duo mode
+            # score team 0
+            score_team_0 = 0
+            for player in self.players:
+                if player.team_id == 0:
+                    score_team_0 += player.points
+            redundant_points_team0 = score_team_0 % 3
+            if redundant_points_team0 > 0:
+                for player in self.players:
+                    if player.team_id == 0:
+                        redundant_player = player.points % 3
+                        player.points -= redundant_player
+            # score team 1
+            score_team_1 = 0
+            for player in self.players:
+                if player.team_id == 1:
+                    score_team_1 += player.points
+            redundant_points_team1 = score_team_1 % 3
+            if redundant_points_team1 > 0:
+                for player in self.players:
+                    if player.team_id == 1:
+                        redundant_player = player.points % 3
+                        player.points -= redundant_player
+
 
         players_gold = []
         # players need to contribute to pot again
@@ -1215,7 +1264,7 @@ class TressetteMatch(Match):
             player.cards.clear()
 
         # next game
-        await asyncio.sleep(9)
+        await asyncio.sleep(3)
         self.game_ready = True
 
     async def update_users_staying_endgame(self):
@@ -1223,13 +1272,12 @@ class TressetteMatch(Match):
         for i, player in enumerate(self.players):
             if player.is_bot:
                 should_remove_bot = True
-                if self.player_mode == PLAYER_DUO_MODE:
-                    # mode 2v2, remove randomly
-                    should_remove_bot = random.randint(0, 1) == 0
-                else:
-                    should_remove_bot = random.randint(0, 1) == 0
-                if player.gold < self.get_min_gold_play():
-                    should_remove_bot = True
+                # if self.player_mode == PLAYER_DUO_MODE:
+                #     # mode 2v2, remove randomly
+                #     should_remove_bot = random.randint(0, 1) == 0
+                # else:
+                #     should_remove_bot = random.randint(0, 1) == 0
+            
                 if should_remove_bot:
                     await self.user_leave(player.uid)
                     # clean bot data
@@ -1367,12 +1415,13 @@ class TressetteMatch(Match):
         pass
 
     async def user_stop_view(self, uid):
+        print(f"User {uid} stop view match {self.match_id}")
         if uid in self.viewers:
-            self.viewers.remove(uid)
-            game_vars.get_match_mgr().handle_user_stop_view(uid)
             pkg = packet_pb2.UserStopView()
             pkg.uid = uid
             await self.broadcast_pkg(CMDs.USER_STOP_VIEW, pkg)
+            self.viewers.remove(uid)
+            await game_vars.get_match_mgr().handle_user_stop_view(uid)
         else:
             logger.warning(f"User {uid} is not a viewer in match {self.match_id}")
 

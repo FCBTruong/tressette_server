@@ -15,6 +15,10 @@ class InGameChatMgr:
             print(f"User {uid} sent message: {message}")    
             # get the room and broadcast the message
             match = await game_vars.get_match_mgr().get_match_of_user(uid)
+
+            if not match:
+                match = await game_vars.get_match_mgr().get_match_of_viewer(uid)
+                
             if not match:
                 print(f"User {uid} not in a match")
                 return
@@ -38,6 +42,10 @@ class InGameChatMgr:
             # get the room and broadcast the emoticon
             match = await game_vars.get_match_mgr().get_match_of_user(uid)
             if not match:
+                match = await game_vars.get_match_mgr().get_match_of_viewer(uid)
+            
+            if not match:
+                print(f"User {uid} not in a match")
                 return
 
             await match.broadcast_chat_emoticon(uid, emoticon)

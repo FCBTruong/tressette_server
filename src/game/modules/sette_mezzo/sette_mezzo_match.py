@@ -26,7 +26,7 @@ logger = logging.getLogger("scopa_match")  # Name your logger
 TIME_THINKING = 10
 BANKER_DEFAULT_UID = -100
 BANKER_DEFAULT_TURN = -100
-TIME_BETTING = 10
+TIME_BETTING = 0
 class SetteMezzoPlayer(MatchPlayer):
     # override auto play card
     def __init__(self, uid, match):
@@ -337,14 +337,6 @@ class SetteMezzoMatch(Match):
         # Sleep for 5 seconds for betting
         await asyncio.sleep(TIME_BETTING)
 
-        # before start playing game, need to auto bet for user with bet = 0
-        for player in self.playing_users:
-            if player.bet == 0:
-                bet_expect = int(player.gold / SETTE_MEZZO_BET_SCALE)
-                if bet_expect < 1000:
-                    bet_expect = 1000
-                await self.user_bet(player.uid, bet_expect)
-
         self.state = MatchState.PLAYING
 
         # calculate maxgold banker win
@@ -487,18 +479,12 @@ class SetteMezzoMatch(Match):
 
             added_exp = 5
             if is_win:
-                gold_change = player.bet * 2
-                gold_really_add = int(player.bet * (1 -TAX_PERCENT))
-                user_info.add_gold(gold_really_add)
-
                 added_exp = 20
                 # write log
-                write_log(player.uid, "end_game_sette_mezzo", "", [self.unique_match_id, self.unique_game_id, gold_really_add])
+                write_log(player.uid, "end_game_sette_mezzo", "", [self.unique_match_id, self.unique_game_id, 0])
             else:
-                gold_change = -player.bet
-                user_info.add_gold(gold_change)
                 # write log
-                write_log(player.uid, "end_game_sette_mezzo", "", [self.unique_match_id, self.unique_game_id, gold_change])
+                write_log(player.uid, "end_game_sette_mezzo", "", [self.unique_match_id, self.unique_game_id, 0])
 
             user_info.add_exp(added_exp)
             await user_info.commit_to_database('gold', 'exp')
@@ -847,48 +833,23 @@ class SetteMezzoMatch(Match):
             should_stand = False
         elif banker_score < 7.5:
             is_bursted_predict = self.is_bursted_banker_predict()
-            # logic to decide banker should stand or hit
-            gold_win_predict = self.cal_win_gold_case(banker_score)
-            print(f"Banker score: {banker_score}, gold win predict: {gold_win_predict}, is bursted predict: {is_bursted_predict}")
-
-            # case 1, gold win predict <= - max gold banker win, banker must hit
-            if gold_win_predict <= -self.max_gold_banker_win:
-                should_stand = False
-            # case 2, gold win predict > max gold banker win, banker should stand
-            elif gold_win_predict >= self.max_gold_banker_win:
+            
+            is_win_all = True
+            is_lose_all = True
+            for p in self.playing_users:
+                score = self.get_score_cards(p.cards)
+                if score <= 7.5 and score > banker_score:
+                    is_win_all = False
+                if score <= 7.5 and score < banker_score:
+                    is_lose_all = False
+            if is_win_all:
                 should_stand = True
-            elif gold_win_predict < 0:
-                # 70% hit (40% predict)
-                a = random.randint(0, 100)
-                if a < 70:
-                    b = random.randint(0, 100)
-                    if b < 40:
-                        if is_bursted_predict:
-                            should_stand = True
-                        else:
-                            should_stand = False
-                    else:
-                        should_stand = False
-                else:
-                    should_stand = True
-                pass
-            elif gold_win_predict > 0:
-                if banker_score >= 6:
-                    should_stand = True
-                else:
-                    # 50% hit (40% predict)
-                    a = random.randint(0, 100)
-                    if a < 50:
-                        b = random.randint(0, 100)
-                        if b < 40:
-                            if is_bursted_predict:
-                                should_stand = True
-                            else:
-                                should_stand = False
-                        else:
-                            should_stand = False
-                    else:
-                        should_stand = True
+            elif is_lose_all:
+                should_stand = False
+            else:
+                # random 50% chance to hit
+                should_stand = random.choice([True, False])
+            
 
         if not should_stand:
             await self.banker_hit()
@@ -958,8 +919,11 @@ class SetteMezzoMatch(Match):
 
         print(f"User {uid} bet {bet}")
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_USER_BET, pkg)
+    async def user_stop_view(self, uid):
+        pass
 
-
+    async def user_view_game(self, uid):
+        pass
 class SetteMezzoBot(MatchBot):
     async def on_turn(self):
         print(f"Bot {self.uid} turn")
@@ -989,5 +953,5 @@ class SetteMezzoBot(MatchBot):
             await self._on_bet()
         else:
             return
-
+        
 

@@ -542,5 +542,11 @@ message ViewGame {
 }
 
 message UserStopView {
-  
+  int32 uid = 1;
+}
+
+message NewUserView {
+  int32 uid = 1;
+  string avatar = 2;
+  string name = 3;
 }
