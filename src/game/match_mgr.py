@@ -171,9 +171,7 @@ class MatchManager:
         return user_id in self.user_matchids
     
     async def find_a_suitable_match_quickplay(self, gold) -> Match:
-        expect_match = None
         best_match = None
-        best_diff = float('inf')
         should_choose_duo = random.choice([True, False]) # 50 %
         
         for match_id, match in self.matches.items():
@@ -190,20 +188,10 @@ class MatchManager:
             if match.player_mode == PLAYER_DUO_MODE and not should_choose_duo:
                 continue
             if match.state == MatchState.WAITING and not match.check_room_full():
-                # For current, only solo mode for quick play
-                min_gold = match.get_min_gold_play()
-                
-                # Ensure user has enough gold to play
-                if gold >= min_gold:
-                    # Prioritize match with gold closest to 2 * min_gold_play
-                    diff = abs((3 * min_gold) - gold)
-                    
-                    if best_match is None or diff < best_diff:
-                        best_match = match
-                        best_diff = diff
+                best_match = match
+                break
                         
-        expect_match = best_match
-        return expect_match
+        return best_match
 
     
     async def user_join_match(self, match: Match, uid: int):
@@ -309,6 +297,7 @@ class MatchManager:
         game_modes = []
         avatars = []
         uids = []
+        avatar_frames = []
         print(f"Table list: {len(matches)} matches found")
 
         for match in matches:
@@ -326,6 +315,7 @@ class MatchManager:
             for player in match.players:
                 avatars.append(player.avatar)
                 uids.append(player.uid)
+                avatar_frames.append(player.avatar_frame)
 
         
         print(f"Table list: {match_ids}")
@@ -337,6 +327,7 @@ class MatchManager:
         pkg.game_modes.extend(game_modes)
         pkg.avatars.extend(avatars)
         pkg.player_uids.extend(uids)
+        pkg.avatar_frames.extend(avatar_frames)
 
         # pkg = packet_pb2.TableList()
         # pkg.table_ids.extend([1, 2, 3, 4, 5,6,7])
@@ -438,12 +429,7 @@ class MatchManager:
         if match.check_room_full():
             await self._send_response_join_table(uid, JoinMatchErrors.FULL_ROOM)
             return
-        
-        user_info = await users_info_mgr.get_user_info(uid)
-        if user_info.gold < match.get_min_gold_play():
-            await self._send_response_join_table(uid, JoinMatchErrors.NOT_ENOUGH_GOLD)
-            return
-        
+       
         await self.user_join_match(match, uid)
 
     async def _send_response_join_table(self, uid, status):

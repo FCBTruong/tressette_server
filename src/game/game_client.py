@@ -45,17 +45,12 @@ class GameClient:
         general_pkg = packet_pb2.GeneralInfo()
         general_pkg.time_thinking_in_turn = tress_config.get("time_thinking_in_turn")
         general_pkg.timestamp = timestamp_now
-        general_pkg.bet_multiplier_min = tress_config.get("bet_multiplier_min")
         general_pkg.fee_mode_no_bet = tress_config.get("fee_mode_no_bet")
-        general_pkg.min_gold_play_sette_mezzo = MIN_GOLD_PLAY_SETTE_MEZZO
 
         general_pkg.enable_ads = user_info.time_show_ads < timestamp_now
     
-        tressette_bets = tress_config.get("bets")
         exp_levels = tress_config.get("exp_levels")
-        general_pkg.tressette_bets.extend(tressette_bets)
         general_pkg.exp_levels.extend(exp_levels)
-        general_pkg.sette_mezzo_bet_scale = SETTE_MEZZO_BET_SCALE
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
         user_pkg = packet_pb2.UserInfo()
@@ -83,6 +78,7 @@ class GameClient:
         user_pkg.support_num = 1 if game_vars.get_game_mgr().check_can_receive_support(user_info.last_time_received_support) else 0
         user_pkg.startup_gold = startup_gold
         user_pkg.login_type = user_info.login_type
+        user_pkg.avatar_frame = user_info.avatar_frame
         if user_info.game_count < 1:
             user_pkg.time_ads_reward = -1
         else:
@@ -131,4 +127,10 @@ class GameClient:
         print("Accepted logout")
         await connection_manager.user_logout(uid)
         write_log(uid, "logout", "", [])
+
+        # Write last time user online
+        user_info = await users_info_mgr.get_user_info(uid)
+        if user_info:
+            user_info.last_time_online = int(datetime.now(timezone.utc).timestamp())
+            await user_info.commit_to_database('last_time_online')
    

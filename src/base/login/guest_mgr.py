@@ -17,14 +17,10 @@ class GuestMgr:
 
         async with PsqlOrm.get().session() as session:
             # Create a new user model
-            user_model = UserInfoSchema()
-            user_model.gold = 0
-            user_model.level = 1
+            user_model = game_vars.login_mgr.create_new_basic_user()
 
-            # random avatar 1 -> 8
-            avatar_id = random.choice(AVATAR_IDS)
-            user_model.avatar = str(avatar_id)
             user_model.login_type = LOGIN_GUEST
+            user_model.avatar_frame = AVATAR_FRAME_DEFAULT
 
             # Add the user model to the session
             session.add(user_model)

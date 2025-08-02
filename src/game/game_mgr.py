@@ -62,6 +62,11 @@ class GameMgr:
             return
     async def on_user_disconnect(self, uid: int):
         await game_vars.get_match_mgr().user_disconnect(uid)
+        # Write last time user online
+        user_info = await users_info_mgr.get_user_info(uid)
+        if user_info:
+            user_info.last_time_online = int(datetime.now(timezone.utc).timestamp())
+            await user_info.commit_to_database('last_time_online')
 
     def check_can_receive_support(self, timestamp: int) -> bool:
         # Convert the given timestamp to a date

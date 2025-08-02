@@ -90,6 +90,7 @@ class MatchPlayer:
         self.gold_change = 0
         self.is_in_game = False
         self.bet = 0
+        self.avatar_frame = AVATAR_FRAME_DEFAULT
 
     
     def reset_game(self):
@@ -408,6 +409,7 @@ class TressetteMatch(Match):
         info = await users_info_mgr.get_user_info(uid)
         pkg.avatar = info.avatar
         pkg.name = info.name
+        pkg.avatar_frame = info.avatar_frame
         await self.broadcast_pkg(CMDs.NEW_USER_VIEW_GAME, pkg, ignore_uids=[uid])
         self.viewers.add(uid)
 
@@ -517,6 +519,7 @@ class TressetteMatch(Match):
         match_player.name = user_data.name
         match_player.gold = user_data.gold
         match_player.avatar = user_data.avatar
+        match_player.avatar_frame = user_data.avatar_frame
         # calculate team id
         if self.player_mode == PLAYER_SOLO_MODE:
             match_player.team_id = slot_idx
@@ -535,6 +538,7 @@ class TressetteMatch(Match):
         pkg.avatar = user_data.avatar
         pkg.gold = user_data.gold
         pkg.is_vip = await users_info_mgr.check_user_vip(user_id)
+        pkg.avatar_frame = user_data.avatar_frame
 
         if settings.DEV_MODE:
             pkg.is_vip = True
@@ -697,6 +701,7 @@ class TressetteMatch(Match):
             game_info.user_points.append(player.points)
             game_info.team_ids.append(player.team_id)
             game_info.avatars.append(player.avatar)
+            game_info.avatar_frames.append(player.avatar_frame)
             
             is_player_vip = await users_info_mgr.check_user_vip(player.uid)
             game_info.is_vips.append(is_player_vip)
@@ -709,6 +714,7 @@ class TressetteMatch(Match):
             game_info.viewer_uids.append(viewer_uid)
             game_info.viewer_avatars.append(viewer_info.avatar)
             game_info.viewer_names.append(viewer_info.name)
+            game_info.viewer_avatar_frames.append(viewer_info.avatar_frame)
         
         await game_vars.get_game_client().send_packet(uid, CMDs.GAME_INFO, game_info)
 
@@ -1100,8 +1106,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        if settings.DEV_MODE:
-            return True
+        # if settings.DEV_MODE:
+        #     return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -1327,7 +1333,7 @@ class TressetteMatch(Match):
         # check is not has any real players then destroy match
         if not self.check_has_real_players():
             print(f"Match {self.match_id} is empty, destroy match")
-            await game_vars.get_match_mgr().destroy_match(self.match_id)
+            game_vars.get_match_mgr().destroy_match(self.match_id)
             return
     
     async def broadcast_pkg(self, cmd_id, pkg, ignore_uids=[]):

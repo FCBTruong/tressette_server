@@ -68,6 +68,7 @@ message UserInfo {
   int32 login_type = 17;
   int32 time_ads_reward = 18;
   bool add_for_user_support = 19;
+  int32 avatar_frame = 20;
 }
 
 message GameInfo {
@@ -97,6 +98,8 @@ message GameInfo {
   repeated int32 viewer_uids = 24;
   repeated string viewer_avatars = 25;
   repeated string viewer_names = 26;
+  repeated int32 avatar_frames = 27;
+  repeated int32 viewer_avatar_frames = 28;
 }
 
 message RegisterLeaveGame {
@@ -111,6 +114,7 @@ message NewUserJoinMatch {
   int32 team_id = 5;
   string avatar = 6;
   bool is_vip = 7;
+  int32 avatar_frame = 8;
 }
 
 message UserLeaveMatch {
@@ -165,13 +169,9 @@ message DrawCard {
 message GeneralInfo {
   int64 timestamp = 1;
   int32 time_thinking_in_turn = 2;
-  repeated int32 tressette_bets = 3;
-  int32 bet_multiplier_min = 4;
-  repeated int32 exp_levels = 5;
-  int32 fee_mode_no_bet = 6;
-  bool enable_ads = 7;
-  int32 sette_mezzo_bet_scale = 8;
-  int32 min_gold_play_sette_mezzo = 9;
+  repeated int32 exp_levels = 3;
+  int32 fee_mode_no_bet = 4;
+  bool enable_ads = 5;
 }
 
 message EndGame {
@@ -219,6 +219,7 @@ message TableList {
   repeated int32 player_uids = 5;
   repeated string avatars = 6;
   repeated int32 game_modes = 7;
+  repeated int32 avatar_frames = 8;
 }
 
 message ShopConfig {
@@ -262,6 +263,7 @@ message SearchFriendResponse {
   int32 level = 8;
   int64 exp = 9;
   bool is_verified = 10;
+  int32 avatar_frame = 11;
 }
 
 message CheatGoldUser {
@@ -276,6 +278,7 @@ message FriendList {
   repeated int64 golds = 5;
   repeated bool onlines = 6;
   repeated bool is_playings = 7;
+  repeated int32 avatar_frames = 8;
 }
 
 message FriendRequests {
@@ -315,6 +318,7 @@ message FriendRequestAccepted {
   string avatar = 3;
   int32 level = 4;
   int64 gold = 5;
+  int32 avatar_frame = 6;
 }
 
 message RecommendFriends {
@@ -323,6 +327,7 @@ message RecommendFriends {
   repeated string avatars = 3;
   repeated int32 levels = 4;
   repeated int64 golds = 5;
+  repeated int32 avatar_frames = 6;
 }
 
 message PaymentAppleConsume {
@@ -552,4 +557,5 @@ message NewUserView {
   int32 uid = 1;
   string avatar = 2;
   string name = 3;
+  int32 avatar_frame = 4;
 }

@@ -10,7 +10,7 @@ from src.base.logs.logs_mgr import write_log
 from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
-from src.constants import MIN_GOLD_PLAY_SETTE_MEZZO, REASON_KICK_NOT_ENOUGH_GOLD, SETTE_MEZZO_BET_SCALE
+from src.constants import REASON_KICK_NOT_ENOUGH_GOLD, SETTE_MEZZO_BET_SCALE
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
@@ -205,7 +205,7 @@ class SetteMezzoMatch(Match):
         return False
     
     def get_min_gold_play(self):
-        return MIN_GOLD_PLAY_SETTE_MEZZO
+        return 0
     
     def check_room_full(self) -> bool:
         for player in self.players:

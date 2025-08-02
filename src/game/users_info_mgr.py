@@ -62,6 +62,7 @@ class UsersInfoMgr:
                 user_inf.time_show_ads = user_info.time_show_ads
                 user_inf.time_ads_reward = user_info.time_ads_reward
                 user_inf.num_claimed_ads = user_info.num_claimed_ads
+                user_inf.avatar_frame = user_info.avatar_frame
                 
                 self.users[uid] = user_inf
                 return user_inf

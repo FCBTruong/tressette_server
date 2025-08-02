@@ -45,6 +45,7 @@ class LoginMgr:
         user_model = UserInfoSchema()
         user_model.gold = 0
         user_model.level = 1
+        user_model.avatar_frame = AVATAR_FRAME_DEFAULT
 
         avatar_id = random.choice(AVATAR_IDS)
         user_model.avatar = str(avatar_id)

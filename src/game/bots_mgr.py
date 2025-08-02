@@ -4,6 +4,7 @@ import random
 from src.constants import AVATAR_IDS, LOGIN_GOOGLE, LOGIN_GUEST
 from src.game.models import UserInfo
 from src.game.tressette_config import config as tress_config
+from src.constants import *
 
 
 class BotsMgr:
@@ -24,6 +25,7 @@ class BotsMgr:
         user.win_count = random.randint(0, user.game_count)
         user.exp = random.randint(0, 1000)
         user.login_type = random.choice([LOGIN_GUEST, LOGIN_GOOGLE])
+        user.avatar_frame = random.choice([AVATAR_FRAME_DEFAULT, AVATAR_FRAME_SEASON, AVATAR_FRAME_VICTORY, AVATAR_FRAME_VIP])
 
         self.bots[uid] = user
         return user

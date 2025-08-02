@@ -1,6 +1,5 @@
 
 from src.base.network.packets import packet_pb2
-from src.constants import MIN_GOLD_PLAY_SETTE_MEZZO
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
@@ -36,11 +35,6 @@ class SetteMezzoMgr:
         if match:
             print(f"User {uid} is in a match, reconnecting")
             await match.user_reconnect(uid)
-            return
-        
-        user = await users_info_mgr.get_user_info(uid)
-        if user.gold < MIN_GOLD_PLAY_SETTE_MEZZO:
-            print(f"User {uid} not enough gold")
             return
         
         # find a match

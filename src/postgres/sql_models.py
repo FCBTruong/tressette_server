@@ -26,6 +26,8 @@ class UserInfoSchema(Base):
     time_show_ads = Column(Integer, default=0)
     time_ads_reward = Column(Integer, default=0) # if timestamp > this, user can receive ads reward
     num_claimed_ads = Column(Integer, default=0) # number of ads claimed
+    avatar_frame = Column(Integer) 
+    last_time_online = Column(BigInteger, default=0)  # Timestamp of the last time the user was online
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
     paypal_orders = relationship("PayPalOrder", back_populates="user")
@@ -127,3 +129,15 @@ class RankingPlayersSchema(Base):
     created_at = Column(TIMESTAMP, default=func.now())
     updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
 
+
+class InventorySchema(Base):
+    __tablename__ = 'inventory'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'item_id', name='inventory_pk'),
+    )
+
+    user_id = Column(Integer, ForeignKey('user_info.uid'), primary_key=True)
+    item_id = Column(Integer, primary_key=True)
+    expire_time = Column(Integer)
+
+    user = relationship("UserInfoSchema", backref="inventory_items")

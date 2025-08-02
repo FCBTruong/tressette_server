@@ -1,5 +1,5 @@
 
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, select
 from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.game.game_vars import game_vars
@@ -78,6 +78,7 @@ class FriendMgr:
             accepted_pkg.avatar = user_info.avatar
             accepted_pkg.level = user_info.level
             accepted_pkg.gold = user_info.gold
+            accepted_pkg.avatar_frame = user_info.avatar_frame
             await game_vars.get_game_client().send_packet(friend_id, CMDs.NEW_FRIEND_ACCEPTED, accepted_pkg)
 
     async def on_receive_packet(self, uid: int, cmd_id: int, payload):
@@ -117,6 +118,7 @@ class FriendMgr:
         onlines = []
         uids = []
         playings = []
+        avatar_frames = []
         for friend_id in friend_ids:
             user_info = await users_info_mgr.get_user_info(friend_id)
             if user_info and user_info.is_active:
@@ -131,6 +133,7 @@ class FriendMgr:
                 levels.append(user_info.level)
                 golds.append(user_info.gold)
                 playings.append(is_playing)
+                avatar_frames.append(user_info.avatar_frame)
 
         pkg.uids.extend(uids)
         pkg.names.extend(names)
@@ -139,6 +142,7 @@ class FriendMgr:
         pkg.golds.extend(golds)
         pkg.onlines.extend(onlines)
         pkg.is_playings.extend(playings)
+        pkg.avatar_frames.extend(avatar_frames)
 
         await game_vars.get_game_client().send_packet(uid, CMDs.FRIEND_LIST, pkg)
                 
@@ -171,6 +175,7 @@ class FriendMgr:
             pkg_response.win_count = user_info.win_count
             pkg_response.game_count = user_info.game_count
             pkg_response.is_verified = user_info.login_type != LOGIN_GUEST
+            pkg_response.avatar_frame = user_info.avatar_frame
 
         pkg_response.error = err
         # send response
@@ -309,7 +314,7 @@ class FriendMgr:
                 result = await session.execute(
                     select(UserInfoSchema.uid)
                     .where(UserInfoSchema.is_active == True)
-                    .order_by(func.random())  # Order by a random value
+                    .order_by(desc(UserInfoSchema.last_time_online))  # prioritize users who are active recently
                     .limit(FRIEND_RECOMMENDED_SIZE)  # Limit to 10 results
                 )
             recommend_uids = result.scalars().all()  # Get all 10 random uids
@@ -327,6 +332,7 @@ class FriendMgr:
         avatars = []
         levels = []
         golds = []
+        avatar_frames = []
         for rec_uid in recommend_uids:
             user_info = await users_info_mgr.get_user_info(rec_uid)
             if user_info:
@@ -335,6 +341,7 @@ class FriendMgr:
                 avatars.append(user_info.avatar)
                 levels.append(user_info.level)
                 golds.append(user_info.gold)
+                avatar_frames.append(user_info.avatar_frame)
         
         pkg = packet_pb2.RecommendFriends()
         pkg.uids.extend(uids)   
@@ -342,6 +349,7 @@ class FriendMgr:
         pkg.avatars.extend(avatars)
         pkg.levels.extend(levels)
         pkg.golds.extend(golds)
+        pkg.avatar_frames.extend(avatar_frames)
 
         await game_vars.get_game_client().send_packet(uid, CMDs.RECOMMEND_FRIENDS, pkg)
 
