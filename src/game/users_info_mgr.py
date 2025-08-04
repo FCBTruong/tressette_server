@@ -63,6 +63,8 @@ class UsersInfoMgr:
                 user_inf.time_ads_reward = user_info.time_ads_reward
                 user_inf.num_claimed_ads = user_info.num_claimed_ads
                 user_inf.avatar_frame = user_info.avatar_frame
+                user_inf.last_time_online = user_info.last_time_online
+                user_inf.claimed_levels = user_info.claimed_levels
                 
                 self.users[uid] = user_inf
                 return user_inf
@@ -76,6 +78,8 @@ class UsersInfoMgr:
                 await self._handle_change_user_name(uid, payload)
             case CMDs.CHEAT_GOLD_USER:
                 await self._handle_cheat_gold_user(uid, payload)
+            case CMDs.CHEAT_EXP_USER:
+                await self._handle_cheat_exp_user(uid, payload)
             case _:
                 pass
 
@@ -113,6 +117,19 @@ class UsersInfoMgr:
         await user.send_update_money()
         print(f"User {uid} cheat gold {gold}")
 
+    async def _handle_cheat_exp_user(self, uid: int, payload):
+        if not settings.ENABLE_CHEAT:
+            return
+
+        pkg = packet_pb2.CheatExpUser()
+        pkg.ParseFromString(payload)
+        exp = pkg.exp
+        user = await self.get_user_info(uid)
+        user.add_exp(exp)
+        await user.commit_exp()
+        await user.send_update_exp()
+        print(f"User {uid} cheat exp {exp}")
+
     async def check_user_vip(self, uid: int) -> bool:
         user = await self.get_user_info(uid)
         if not user:
@@ -140,6 +157,6 @@ class UsersInfoMgr:
         # update and save to database
         user.name = new_name
         await user.commit_to_database('name')
-        
+
 
 users_info_mgr = UsersInfoMgr()

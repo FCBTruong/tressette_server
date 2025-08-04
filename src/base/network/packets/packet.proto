@@ -69,6 +69,7 @@ message UserInfo {
   int32 time_ads_reward = 18;
   bool add_for_user_support = 19;
   int32 avatar_frame = 20;
+  repeated int32 claimed_levels = 21;
 }
 
 message GameInfo {
@@ -166,13 +167,27 @@ message DrawCard {
   repeated int32 cards = 1;
 }
 
+
 message GeneralInfo {
   int64 timestamp = 1;
   int32 time_thinking_in_turn = 2;
   repeated int32 exp_levels = 3;
   int32 fee_mode_no_bet = 4;
   bool enable_ads = 5;
+  repeated LevelReward level_rewards = 6; 
 }
+
+message LevelReward {
+  int32 level = 1;
+  int32 gold = 2;
+  repeated ItemReward items = 3;
+}
+
+message ItemReward {
+  int32 item_id = 1;
+  int32 duration = 2; 
+}
+
 
 message EndGame {
   repeated int32 uids = 1;
@@ -480,8 +495,9 @@ message RankingInfo {
   repeated string avatars = 6;
   repeated string names = 7;
   repeated int32 scores = 8;
-  int32 my_rank = 9;
-  int32 my_score = 10;
+  repeated int32 avatar_frames = 9;
+  int32 my_rank = 10;
+  int32 my_score = 11;
 }
 
 message RankingResult {
@@ -558,4 +574,16 @@ message NewUserView {
   string avatar = 2;
   string name = 3;
   int32 avatar_frame = 4;
+}
+
+message CheatExpUser {
+  int32 exp = 1;
+}
+
+message UpdateExp {
+  int64 exp = 1;
+}
+
+message ClaimRewardLevel {
+  int32 level = 1;
 }

@@ -98,7 +98,6 @@ class MatchManager:
     async def received_create_table(self, uid, payload):
         create_table_pkg = packet_pb2.CreateTable()
         create_table_pkg.ParseFromString(payload)
-        bet = create_table_pkg.bet
         player_mode = create_table_pkg.player_mode
         point_mode = create_table_pkg.point_mode
         is_private = create_table_pkg.is_private
@@ -120,22 +119,10 @@ class MatchManager:
             return
         if await self.is_user_in_match(uid):
             return
-        
-        if create_table_pkg.bet_mode:
-            if user_info.gold < bet * tress_config.get('bet_multiplier_min'):
-                return
-        else: # in review
-            bet = 0
-            # get fee this user
-            fee = tress_config.get('fee_mode_no_bet')
-            if user_info.gold < fee:
-                return
-            user_info.add_gold(-fee)
-            await user_info.commit_gold()
-            await user_info.send_update_money()
+    
 
         
-        match = await self._create_match(bet, player_mode, is_private, point_mode)
+        match = await self._create_match(0, player_mode, is_private, point_mode)
         await self.user_join_match(match, uid)
 
     async def get_match(self, match_id):
@@ -170,7 +157,7 @@ class MatchManager:
     async def is_user_in_match(self, user_id):
         return user_id in self.user_matchids
     
-    async def find_a_suitable_match_quickplay(self, gold) -> Match:
+    async def find_a_suitable_match_quickplay(self) -> Match:
         best_match = None
         should_choose_duo = random.choice([True, False]) # 50 %
         
@@ -385,24 +372,12 @@ class MatchManager:
         # STEP JOIN A MATCH
         if user.game_count == 0:
             # for new user, should create new match instead
-            match = await self._create_match(1000, PLAYER_SOLO_MODE, False, 11)
+            match = await self._create_match(0, PLAYER_SOLO_MODE, False, 11)
         else:
             match = await self.find_a_suitable_match_quickplay(user.gold)
             if not match:
-                # Expect bet
-                ccu = await game_vars.get_game_live_performance().get_ccu()
-                if ccu < 20:
-                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
-                    expect_bet = min(expect_bet, 200000) # prevent spam bot
-                elif ccu < 100:
-                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
-                    expect_bet = min(expect_bet, 500000) # prevent spam bot
-                else:
-                    expect_bet = int(user.gold / (tress_config.get('bet_multiplier_min') * 2))
-                bet = self.find_largest_bet_below(expect_bet)
-
                 point_mode = random.choice([11, 21])
-                match = await self._create_match(bet, PLAYER_SOLO_MODE, False, point_mode)
+                match = await self._create_match(0, PLAYER_SOLO_MODE, False, point_mode)
         
         print(f"User {uid} join match {match.match_id}")
         await self.user_join_match(match, uid=uid)
@@ -465,7 +440,7 @@ class MatchManager:
             await match.receive_game_action_napoli(uid, payload)
 
     def get_gold_minimum_play(self):
-        return tress_config.get('bets')[0] * tress_config.get('bet_multiplier_min')
+        return 0
     
     async def receive_user_return_to_table(self, uid):
         match = await self.get_match_of_user(uid)
@@ -483,11 +458,6 @@ class MatchManager:
         match_id = view_pkg.match_id
         match = await self.get_match(match_id)
 
-        # cheat bot match
-        if not match:
-            match = await self._create_match(0, PLAYER_SOLO_MODE, False, 11)
-            await match.cheat_add_bot()
-            await match.cheat_add_bot()
         if match:
             self.user_views[uid] = match_id
             await match.user_view_game(uid)

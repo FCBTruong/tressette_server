@@ -1,5 +1,6 @@
 
-from sqlalchemy import DECIMAL, TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, Text, UniqueConstraint, func
+from sqlalchemy import DECIMAL, TIMESTAMP, Boolean, Column, DateTime, ForeignKey, Integer, BigInteger, String, ARRAY, UniqueConstraint, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 class Base(DeclarativeBase):
@@ -28,6 +29,7 @@ class UserInfoSchema(Base):
     num_claimed_ads = Column(Integer, default=0) # number of ads claimed
     avatar_frame = Column(Integer) 
     last_time_online = Column(BigInteger, default=0)  # Timestamp of the last time the user was online
+    claimed_levels = Column(ARRAY(Integer), default=list)
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
     paypal_orders = relationship("PayPalOrder", back_populates="user")

@@ -18,6 +18,7 @@ class GameVars:
         self.mission_mgr = None
         self.ranking_mgr = None
         self.ads_mgr = None
+        self.inventory_mgr = None
 
     def get_game_client(self):
         if self.game_client is None:
@@ -114,6 +115,12 @@ class GameVars:
     # this function is called when the server starts
     async def init_game_vars(self):
         await self.get_ranking_mgr().init_season()
+
+    def get_inventory_mgr(self):
+        if self.inventory_mgr is None:
+            from src.game.modules.inventory.inventory_mgr import InventoryMgr
+            self.inventory_mgr = InventoryMgr()
+        return self.inventory_mgr
         
     
 game_vars = GameVars()

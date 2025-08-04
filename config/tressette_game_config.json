@@ -1,13 +1,10 @@
 {
     "time_thinking_in_turn": 15,
-    "bet_multiplier_min": 5,
     "tax_percent": 0.1,
-    "max_bet_to_gen_bot": 200000,
-    "max_bet_to_gen_bot_duo": 5000,
     "ccu_to_gen_bot": 50,
     "level_min_transfer_money": 5,
-    "startup_gold_auth": 100000,
-    "startup_gold_guest_acc": 50000,
+    "startup_gold_auth": 100,
+    "startup_gold_guest_acc": 50,
     "fee_mode_no_bet": 10000,
     "bets": [
         1000,
@@ -50,5 +47,235 @@
         3000000,
         5000000,
         8000000
+    ],
+    "level_rewards": [
+        {
+            "level": 5,
+            "gold": 1000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 10,
+            "gold": 2000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 3
+                },
+                {
+                    "item_id": 2001,
+                    "duration": 3
+                }
+            ]
+        },
+        {
+            "level": 15,
+            "gold": 3000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 20,
+            "gold": 5000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 3
+                },
+                {
+                    "item_id": 2003,
+                    "duration": 3
+                }
+            ]
+        },
+        {
+            "level": 25,
+            "gold": 6000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                },
+                {
+                    "item_id": 2001,
+                    "duration": 3
+                }
+            ]
+        },
+        {
+            "level": 30,
+            "gold": 7000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 35,
+            "gold": 7000,
+            "items": [
+                {
+                    "item_id": 2004,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 40,
+            "gold": 7000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 45,
+            "gold": 8000,
+            "items": [
+                {
+                    "item_id": 2003,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 50,
+            "gold": 8000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                },
+                {
+                    "item_id": 2003,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 55,
+            "gold": 9000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 60,
+            "gold": 10000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                },
+                {
+                    "item_id": 2003,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 65,
+            "gold": 20000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 70,
+            "gold": 30000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                },
+                {
+                    "item_id": 2003,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 75,
+            "gold": 40000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 80,
+            "gold": 50000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 85,
+            "gold": 60000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 90,
+            "gold": 70000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 95,
+            "gold": 80000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                }
+            ]
+        },
+        {
+            "level": 100,
+            "gold": 100000,
+            "items": [
+                {
+                    "item_id": 1001,
+                    "duration": 7
+                },
+                {
+                    "item_id": 2004,
+                    "duration": 7
+                }
+            ]
+        }
     ]
 }

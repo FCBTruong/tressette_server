@@ -28,6 +28,7 @@ class UserInfo:
     num_claimed_ads: int
     avatar_frame: int = 0
     last_time_online: int = 0  # Timestamp of the last time the user was online
+    claimed_levels: list[int] = []
     def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool,
                  last_time_received_support: int, received_startup: bool = True):
         self.uid = uid
@@ -79,6 +80,20 @@ class UserInfo:
                 .values(gold=self.gold)
             )
             await session.commit()
+
+    async def commit_exp(self):
+        async with PsqlOrm.get().session() as session:
+            await session.execute(
+                sa_update(UserInfoSchema)
+                .where(UserInfoSchema.uid == self.uid)
+                .values(exp=self.exp)
+            )
+            await session.commit()
+
+    async def send_update_exp(self):
+        pkg_exp = packet_pb2.UpdateExp()
+        pkg_exp.exp = self.exp
+        await game_vars.get_game_client().send_packet(self.uid, CMDs.UPDATE_EXP, pkg_exp)
 
     async def commit_avatar(self):
         async with PsqlOrm.get().session() as session:

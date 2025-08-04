@@ -6,7 +6,7 @@ from src.base.network.packets import packet_pb2
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
-
+from src.game.tressette_config import config as tress_config
 class GameMgr:
     def on_join_match(self, uid: int, match_id: int):
         pass
@@ -50,6 +50,8 @@ class GameMgr:
                 await game_vars.get_match_mgr().user_ready(uid)
             case CMDs.VIEW_GAME:
                 await game_vars.get_match_mgr().view_game(uid, payload)
+            case CMDs.CLAIM_REWARD_LEVEL:
+                await self._claim_reward_level(uid, payload)
      
     async def on_user_login(self, uid: int):
         # wait for 1 second, to let user handle login process
@@ -125,3 +127,34 @@ class GameMgr:
         res_pkg.room_id = match.match_id
 
         await game_vars.get_game_client().send_packet(friend_uid, CMDs.INVITE_FRIEND_PLAY, res_pkg)
+
+    async def _claim_reward_level(self, uid: int, payload):
+        pkg = packet_pb2.ClaimRewardLevel()
+        pkg.ParseFromString(payload)
+        level = pkg.level
+
+        user_info = await users_info_mgr.get_user_info(uid)
+        if not user_info:
+            return
+        
+        if level in user_info.claimed_levels:
+            print(f"User {uid} already claimed reward for level {level}")
+            return
+        
+        # Check if the level is valid
+        for reward in tress_config.get("level_rewards"):  
+            if reward["level"] == level:
+                gold = reward["gold"]
+                user_info.add_gold(gold)
+
+                for item in reward.get("items", []):
+                    item_id = item["item_id"]
+                    duration = item["duration"] # days
+                    await game_vars.get_inventory_mgr().update_inventory(uid, item_id, duration_days=duration)
+                    
+                break
+        user_info.claimed_levels.append(level)
+        await user_info.commit_to_database('claimed_levels', 'gold')
+
+        # Send update to client
+        await game_vars.get_game_client().send_packet(uid, CMDs.CLAIM_REWARD_LEVEL, pkg)

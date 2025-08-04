@@ -242,6 +242,7 @@ class RankingMgr:
         names = []
         scores = []
         avatars = []
+        avatar_frames = []
    
         for i in range(min(len(self.players), 10)):
             player = self.players[i]
@@ -250,11 +251,13 @@ class RankingMgr:
             scores.append(player.score)
             avatars.append(u_info.avatar)
             uids.append(player.uid)
+            avatar_frames.append(u_info.avatar_frame)
 
         rank_pkg.uids.extend(uids)
         rank_pkg.names.extend(names)
         rank_pkg.scores.extend(scores)
         rank_pkg.avatars.extend(avatars)
+        rank_pkg.avatar_frames.extend(avatar_frames)
 
         await game_vars.get_game_client().send_packet(uid, CMDs.RANKING_INFO, rank_pkg)
 

@@ -11,11 +11,7 @@ class BotsMgr:
     start_uid = 1010000
     bots = {}  # uid -> UserInfo
     def fake_data_for_bot(self, uid, bet) -> UserInfo:
-        min_bet_multiplier = tress_config.get("bet_multiplier_min")
-        if bet > 0:
-            gold = random.randrange((5 * min_bet_multiplier) * bet, (10 * min_bet_multiplier) * bet)
-        else:
-            gold = random.randrange(500, 1000)
+        gold = random.randrange(500, 20000)
         avatar_id = random.choice(AVATAR_IDS)
         name = generate_italian_name()
         user = UserInfo(uid, name, gold, 1, str(avatar_id), "", True, 0)
@@ -23,9 +19,9 @@ class BotsMgr:
 
         user.game_count = random.randint(0, 100)
         user.win_count = random.randint(0, user.game_count)
-        user.exp = random.randint(0, 1000)
+        user.exp = random.randint(500, 5000)
         user.login_type = random.choice([LOGIN_GUEST, LOGIN_GOOGLE])
-        user.avatar_frame = random.choice([AVATAR_FRAME_DEFAULT, AVATAR_FRAME_SEASON, AVATAR_FRAME_VICTORY, AVATAR_FRAME_VIP])
+        user.avatar_frame = random.choice([AVATAR_FRAME_DEFAULT, AVATAR_FRAME_SEASON, AVATAR_FRAME_VIP])
 
         self.bots[uid] = user
         return user

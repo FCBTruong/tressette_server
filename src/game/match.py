@@ -563,15 +563,10 @@ class TressetteMatch(Match):
         
         if self.state != MatchState.WAITING:
             return
-        
-        if self.bet > 0:
-            max_bet_to_gen_bot = tress_config.get('max_bet_to_gen_bot') if self.player_mode == PLAYER_SOLO_MODE else tress_config.get('max_bet_to_gen_bot_duo')
-            if self.bet > max_bet_to_gen_bot:
-                return
             
-            ccu = await game_vars.get_game_live_performance().get_ccu()
-            if ccu > tress_config.get('ccu_to_gen_bot'):
-                return # not gen bot if ccu > 100
+        ccu = await game_vars.get_game_live_performance().get_ccu()
+        if ccu > tress_config.get('ccu_to_gen_bot'):
+            return # not gen bot if ccu > 100
             
         print("check and3 g2en bott")
         if self.task_gen_bot is not None:
@@ -652,7 +647,7 @@ class TressetteMatch(Match):
         return False
     
     def get_min_gold_play(self):
-        return self.bet * tress_config.get('bet_multiplier_min')
+        return 0
     
     def check_room_full(self) -> bool:
         for player in self.players:
@@ -782,17 +777,6 @@ class TressetteMatch(Match):
             player.score_last_trick = 0
             player.cards.clear()
             player.gold_change = 0
-
-            # get pot user need to contribute
-            pot_user_need_to_contribute = self.bet
-
-            # add to debt, to remove later
-            if not player.is_bot:
-                game_vars.get_debt_mgr().add_debt_ingame(player.uid, pot_user_need_to_contribute)
-            player.gold -= pot_user_need_to_contribute
-
-            self.pot_value += pot_user_need_to_contribute
-            player.gold_change -= pot_user_need_to_contribute
 
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
@@ -1077,15 +1061,6 @@ class TressetteMatch(Match):
         players_gold = []
         # players need to contribute to pot again
         for player in self.players:
-            # get pot user need to contribute
-            pot_user_need_to_contribute = self.bet
-            self.pot_value += pot_user_need_to_contribute
-            player.gold_change -= pot_user_need_to_contribute
-
-            player.gold -= pot_user_need_to_contribute
-            if not player.is_bot:
-                game_vars.get_debt_mgr().add_debt_ingame(player.uid, pot_user_need_to_contribute)
-
             players_gold.append(player.gold)
 
         # Send new round
@@ -1190,15 +1165,6 @@ class TressetteMatch(Match):
         diff_score = abs(self.team_scores[0] - self.team_scores[1]) // 3
         total_team_lose_pay = 0
 
-        if self.enable_bet_win_score:
-            for player in self.players:
-                if player.team_id != self.win_team:
-                    glose = min(player.gold, self.bet * diff_score)
-                    total_team_lose_pay += glose
-                    player.gold -= glose
-                    player.gold_change -= glose
-                    game_vars.get_debt_mgr().add_debt_ingame(player.uid, glose)
-
         gold_win_score_one_player = int(total_team_lose_pay // (self.player_mode / 2))
 
         pot_received_one_player = int(self.pot_value // (self.player_mode / 2))
@@ -1207,7 +1173,7 @@ class TressetteMatch(Match):
         for player in self.players:
             if player.team_id == self.win_team:
                 gold_win = pot_received_one_player + gold_win_score_one_player
-                gold_received = int(gold_win - gold_win * TAX_PERCENT)
+                gold_received = 100 # 100 crypstal
                 player.gold += gold_received
                 player.gold_change += gold_win
         
@@ -1220,7 +1186,7 @@ class TressetteMatch(Match):
 
             user_info = await users_info_mgr.get_user_info(player.uid)
             user_info.game_count += 1
-            added_exp = int(game_exp.calculate_exp_gain(self.bet))
+            added_exp = 50
 
             if player.team_id == self.win_team:
                 user_info.add_gold(gold_received)
@@ -1230,10 +1196,6 @@ class TressetteMatch(Match):
                 await game_vars.get_ranking_mgr().on_user_win_game(player.uid)
 
             user_info.add_exp(added_exp)
-            gold_debt = game_vars.get_debt_mgr().get_debt_ingame(player.uid)
-            user_info.add_gold(-gold_debt)
-            # reset debt
-            game_vars.get_debt_mgr().remove_debt_ingame(player.uid)
 
             await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
             await user_info.send_update_money()

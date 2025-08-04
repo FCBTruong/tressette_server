@@ -51,6 +51,17 @@ class GameClient:
     
         exp_levels = tress_config.get("exp_levels")
         general_pkg.exp_levels.extend(exp_levels)
+
+        for reward in tress_config.get("level_rewards"):  
+            level_reward = general_pkg.level_rewards.add()
+            level_reward.level = reward["level"]
+            level_reward.gold = reward["gold"]
+
+            for item in reward.get("items", []):
+                reward_item = level_reward.items.add()
+                reward_item.item_id = item["item_id"]
+                reward_item.duration = item["duration"]
+
         await self.send_packet(uid, CMDs.GENERAL_INFO, general_pkg)
 
         user_pkg = packet_pb2.UserInfo()
@@ -79,6 +90,7 @@ class GameClient:
         user_pkg.startup_gold = startup_gold
         user_pkg.login_type = user_info.login_type
         user_pkg.avatar_frame = user_info.avatar_frame
+        user_pkg.claimed_levels.extend(user_info.claimed_levels)
         if user_info.game_count < 1:
             user_pkg.time_ads_reward = -1
         else:

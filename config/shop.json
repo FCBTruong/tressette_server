@@ -2,35 +2,35 @@
     "packs": [
         {
             "pack_id": "pack_01",
-            "gold": 1000000,
+            "gold": 100000,
             "price": 1,
             "currency": "€",
             "no_ads_days": 1
         },
         {
             "pack_id": "pack_02",
-            "gold": 3000000,
+            "gold": 300000,
             "price": 3,
             "currency": "€",
             "no_ads_days": 3
         },
         {
             "pack_id": "pack_03",
-            "gold": 8000000,
+            "gold": 800000,
             "price": 8,
             "currency": "€",
             "no_ads_days": 8
         },
         {
             "pack_id": "pack_04",
-            "gold": 15000000,
+            "gold": 1500000,
             "price": 15 ,
             "currency": "€",
             "no_ads_days": 15
         },
         {
             "pack_id": "pack_05",
-            "gold": 20000000,
+            "gold": 2000000,
             "price": 20,
             "currency": "€",
             "no_ads_days": 20
@@ -39,38 +39,38 @@
     "web_packs": [
         {
             "pack_id": "web_pack_01",
-            "gold": 1000000,
+            "gold": 100000,
             "price": 0.99,
             "currency": "EUR"
         },
         {
             "pack_id": "web_pack_02",
-            "gold": 8000000,
+            "gold": 800000,
             "price": 4.99,
             "currency": "EUR"
         },
         {
             "pack_id": "web_pack_03",
-            "gold": 20000000,
+            "gold": 2000000,
             "price": 9.99,
             "currency": "EUR"
         },
         {
             "pack_id": "web_pack_04",
-            "gold": 30000000,
+            "gold": 3000000,
             "price": 14.99,
             "currency": "EUR"
         },
         {
             "pack_id": "web_pack_05",
-            "gold": 60000000,
+            "gold": 6000000,
             "price": 29.99,
             "currency": "EUR"
         }   
     ],
     "first_buy_offer": {
         "pack_id": "first_buy_offer",
-        "gold": 50000000,
+        "gold": 1000000,
         "price": 5,
         "currency": "EUR",
         "no_ads_days": 30

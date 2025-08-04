@@ -117,8 +117,8 @@ class LoginMgr:
                     if avatar_url:
                         user_info.avatar = avatar_url
                     
-                    # Add 100k gold to user as a reward for linking account
-                    user_info.add_gold(100000)
+                    # Add 1000 crypstal to user as a reward for linking account
+                    user_info.add_gold(1000)
 
                     user_info.name = user_name
                     await user_info.commit_to_database('avatar_third_party', 'name', 'login_type', 'avatar', 'gold')
