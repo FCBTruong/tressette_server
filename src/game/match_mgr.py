@@ -365,16 +365,13 @@ class MatchManager:
             return
     
         user = await users_info_mgr.get_user_info(uid)
-        if user.gold < self.get_gold_minimum_play():
-            print(f"User {uid} not enough gold")
-            return
-
+    
         # STEP JOIN A MATCH
         if user.game_count == 0:
             # for new user, should create new match instead
             match = await self._create_match(0, PLAYER_SOLO_MODE, False, 11)
         else:
-            match = await self.find_a_suitable_match_quickplay(user.gold)
+            match = await self.find_a_suitable_match_quickplay()
             if not match:
                 point_mode = random.choice([11, 21])
                 match = await self._create_match(0, PLAYER_SOLO_MODE, False, point_mode)

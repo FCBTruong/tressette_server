@@ -14,6 +14,7 @@ from src.postgres.orm import PsqlOrm
 import bisect
 from src.game.game_vars import game_vars
 from src.config.settings import settings
+from src.constants import *
 
 class RankingSeasonInfo:
     time_start: datetime
@@ -43,6 +44,18 @@ class RankingMgr:
             reward.uid = player.uid
             reward.rank = i + 1
             reward.gold_reward = rewards[i]
+
+            # add reward item now
+            if i == 0:
+                # RANK 1, add special item
+                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 7)
+            elif i == 1:
+                # RANK 2, add special item
+                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 5)
+            elif i == 2:
+                # RANK 3, add special item
+                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 3)
+                
             async with PsqlOrm.get().session() as session:
                 session.add(reward)
                 await session.commit()

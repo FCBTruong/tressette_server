@@ -97,4 +97,5 @@ class CMDs:
 
     # OTHER
     CLAIM_REWARD_LEVEL = 13000
+    USER_INVENTORY = 13001
   
