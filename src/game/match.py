@@ -87,7 +87,6 @@ class MatchPlayer:
         self.team_id = -1
         self.is_bot = False
         self.match_mgr = match_mgr
-        self.gold_change = 0
         self.is_in_game = False
         self.bet = 0
         self.avatar_frame = AVATAR_FRAME_DEFAULT
@@ -385,7 +384,6 @@ class TressetteMatch(Match):
         self.is_public = True
         self.napoli_claimed_status = {}
         self.hand_in_round = -1
-        self.enable_bet_win_score = True
         self.game_ready = True
         self.user_ready_status = {}
         self.viewers = set()  # UIDs of users who are viewing the match
@@ -682,12 +680,10 @@ class TressetteMatch(Match):
         game_info.remain_cards = len(self.cards)
         game_info.hand_suit = self.hand_suit # current suit of hand
         game_info.is_registered_leave = uid in self.register_leave_uids
-        game_info.bet = self.bet
         game_info.pot_value = self.pot_value
         game_info.current_round = self.cur_round
         game_info.hand_in_round = self.hand_in_round
         game_info.point_to_win = self.point_to_win
-        game_info.enable_bet_win_score = self.enable_bet_win_score
 
         for player in self.players:
             game_info.uids.append(player.uid)
@@ -776,7 +772,6 @@ class TressetteMatch(Match):
             player.points = 0
             player.score_last_trick = 0
             player.cards.clear()
-            player.gold_change = 0
 
         for i in range(len(self.players)):
             self.cards_compare.append(-1)
@@ -1071,7 +1066,7 @@ class TressetteMatch(Match):
 
         await self.broadcast_pkg(CMDs.NEW_ROUND, pkg)
 
-        await asyncio.sleep(3 if self.bet > 0 else 1)
+        await asyncio.sleep(1)
         await self.deal_card()
         await asyncio.sleep(2)
         await self._handle_new_hand()
@@ -1162,20 +1157,16 @@ class TressetteMatch(Match):
         else:
             self.win_team = 1
 
-        diff_score = abs(self.team_scores[0] - self.team_scores[1]) // 3
-        total_team_lose_pay = 0
-
-        gold_win_score_one_player = int(total_team_lose_pay // (self.player_mode / 2))
-
-        pot_received_one_player = int(self.pot_value // (self.player_mode / 2))
 
         # add gold
         for player in self.players:
+            gold_received = 0
             if player.team_id == self.win_team:
-                gold_win = pot_received_one_player + gold_win_score_one_player
                 gold_received = 100 # 100 crypstal
-                player.gold += gold_received
-                player.gold_change += gold_win
+            else:
+                gold_received = 50
+            player.gold += gold_received
+    
         
             if player.uid == -1 or player.is_bot:
                 is_bot_win = '0'
@@ -1199,20 +1190,18 @@ class TressetteMatch(Match):
 
             await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
             await user_info.send_update_money()
-            write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet, player.gold_change])
+            write_log(player.uid, "end_game", "", [self.unique_match_id, self.unique_game_id, self.bet, 0])
 
         uids = []
         score_totals = []
         score_last_tricks = []
         score_cards = []
-        gold_changes = []
         players_gold = []
         for player in self.players:
             uids.append(player.uid)
             score_cards.append(player.points - player.score_last_trick)
             score_last_tricks.append(player.score_last_trick)
             score_totals.append(player.points)
-            gold_changes.append(player.gold_change)
             players_gold.append(player.gold)
 
         
@@ -1223,9 +1212,7 @@ class TressetteMatch(Match):
         pkg.score_cards.extend(score_cards)
         pkg.score_last_tricks.extend(score_last_tricks)
         pkg.score_totals.extend(score_totals)
-        pkg.gold_changes.extend(gold_changes)
         pkg.players_gold.extend(players_gold)
-        pkg.gold_win_score = gold_win_score_one_player
 
         await self.broadcast_pkg(CMDs.END_GAME, pkg)
         

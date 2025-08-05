@@ -89,18 +89,16 @@ message GameInfo {
   int32 hand_suit = 14;
   repeated string avatars = 15;
   bool is_registered_leave = 16;
-  int32 bet = 17;
-  int64 pot_value = 18;
-  int32 current_round = 19;
-  int32 hand_in_round = 20;
-  int32 point_to_win = 21;
-  bool enable_bet_win_score = 22;
-  repeated bool is_vips = 23;
-  repeated int32 viewer_uids = 24;
-  repeated string viewer_avatars = 25;
-  repeated string viewer_names = 26;
-  repeated int32 avatar_frames = 27;
-  repeated int32 viewer_avatar_frames = 28;
+  int64 pot_value = 17;
+  int32 current_round = 18;
+  int32 hand_in_round = 19;
+  int32 point_to_win = 20;
+  repeated bool is_vips = 21;
+  repeated int32 viewer_uids = 22;
+  repeated string viewer_avatars = 23;
+  repeated string viewer_names = 24;
+  repeated int32 avatar_frames = 25;
+  repeated int32 viewer_avatar_frames = 26;
 }
 
 message RegisterLeaveGame {
@@ -191,13 +189,11 @@ message ItemReward {
 
 message EndGame {
   repeated int32 uids = 1;
-  int32 win_team_id = 5;
+  int32 win_team_id = 6;
   repeated int32 score_cards = 2;
   repeated int32 score_last_tricks = 3;
   repeated int32 score_totals = 4;
-  repeated int64 gold_changes = 6;
-  repeated int64 players_gold = 7;
-  int64 gold_win_score = 8;
+  repeated int64 players_gold = 5;
 }
 
 message PrepareStartGame {
@@ -228,13 +224,12 @@ message UpdateMoney {
 
 message TableList {
   repeated int32 table_ids = 1;
-  repeated int32 bets = 2;
-  repeated int32 num_players = 3;
-  repeated int32 player_modes = 4;
-  repeated int32 player_uids = 5;
-  repeated string avatars = 6;
-  repeated int32 game_modes = 7;
-  repeated int32 avatar_frames = 8;
+  repeated int32 num_players = 2;
+  repeated int32 player_modes = 3;
+  repeated int32 player_uids = 4;
+  repeated string avatars = 5;
+  repeated int32 game_modes = 6;
+  repeated int32 avatar_frames = 7;
 }
 
 message ShopConfig {
@@ -480,10 +475,8 @@ message SetteMezzoQuickPlay {
 
 
 message SetteMezzoStartGame {
-  int32 pot_value = 1;
-  repeated int64 players_gold = 2;
-  repeated int32 uids = 3;
-  repeated int32 cards = 4;
+  repeated int32 uids = 1;
+  repeated int32 cards = 2;
 }
 
 message RankingInfo {
@@ -549,11 +542,6 @@ message SetteMezzoEndGame {
 
 message SetteMezzoShowBankerCard {
   int32 card_id = 1;
-}
-
-message SetteMezzoBetting {
-  int32 time_end_bet = 1;
-  repeated int32 playing_uids = 2;
 }
 
 message SetteMezzoUserBet {

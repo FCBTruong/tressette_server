@@ -312,42 +312,10 @@ class SetteMezzoMatch(Match):
         self.hand_in_round = -1
         self.banker_cards = []
         self.time_end_bet = int(datetime.now().timestamp() + TIME_BETTING)
-
-        # Init player golds
-        for player in self.playing_users:
-            if player.is_bot:
-                await player.on_bet_start()
-                continue
-            p_info = await users_info_mgr.get_user_info(player.uid)
-            player.gold = p_info.gold
-
-    
-        players_gold = []
-        for player in self.players:
-            players_gold.append(player.gold)
-
-        playing_uids = []
-        for player in self.playing_users:
-            playing_uids.append(player.uid)
-        # send to all user now bet before start game
-        pkg = packet_pb2.SetteMezzoBetting()
-        pkg.time_end_bet = self.time_end_bet
-        pkg.playing_uids.extend(playing_uids)
-        await self.broadcast_pkg(CMDs.SETTE_MEZZO_BETTING, pkg)
-        # Sleep for 5 seconds for betting
-        await asyncio.sleep(TIME_BETTING)
-
+       
         self.state = MatchState.PLAYING
 
-        # calculate maxgold banker win
-        self.max_gold_banker_win = 0
-        for player in self.playing_users:
-            self.max_gold_banker_win += player.bet
-
         pkg = packet_pb2.SetteMezzoStartGame()
-        pkg.pot_value = self.pot_value
-        pkg.players_gold.extend(players_gold)
-
         self.cards = TRESSETTE_CARDS.copy()
         uids = []
         cards = []
@@ -790,29 +758,6 @@ class SetteMezzoMatch(Match):
         score = self.get_score_cards(self.banker_cards)
         return score
     
-    def cal_win_gold_case(self, banker_score):
-        win_gold = 0
-        is_banker_bursted = banker_score > 7.5
-        for p in self.playing_users:
-            score = self.get_score_cards(p.cards)
-            is_banker_win = False
-            if is_banker_bursted:
-                if score > 7.5:
-                    is_banker_win = True
-            else:
-                if score > 7.5:
-                    is_banker_win = True
-                elif banker_score >= score:
-                    is_banker_win = True
-
-
-            if is_banker_win:
-                win_gold += p.bet
-            else:
-                win_gold -= p.bet
-   
-        return win_gold
-    
     def is_bursted_banker_predict(self):
         pre_cards = self.banker_cards.copy()
         next_card = self.cards[0]
@@ -873,12 +818,7 @@ class SetteMezzoMatch(Match):
         await self.broadcast_pkg(CMDs.SETTE_MEZZO_UPDATE_TURN, pkg)
     
     async def receive_user_bet(self, uid, payload):
-        pkg = packet_pb2.SetteMezzoUserBet()
-        pkg.ParseFromString(payload)
-        bet = pkg.bet
-        pkg.uid = uid
-
-        await self.user_bet(uid, bet)
+        return
     
     def check_user_in_game(self, uid):
         for player in self.playing_users:
@@ -887,38 +827,8 @@ class SetteMezzoMatch(Match):
         return False
     
     async def user_bet(self, uid, bet):
-        if self.state != MatchState.BETTING:
-            return
-        
-        # check if user is in game
-        if not self.check_user_in_game(uid):
-            print(f"User {uid} not in game")
-            return
-       
-        #min bet
-        if bet < 1000:
-            print(f"User {uid} bet too low")
-            return
-
-        
-        # add to player bet
-        for player in self.playing_users:
-            if player.uid == uid:
-                # check if user has enough gold
-                if player.gold <= 0:
-                    return
-                
-                if player.gold < bet:
-                    bet = player.gold
-                player.bet += bet
-                player.gold -= bet
-                break
-        pkg = packet_pb2.SetteMezzoUserBet()
-        pkg.bet = bet
-        pkg.uid = uid
-
-        print(f"User {uid} bet {bet}")
-        await self.broadcast_pkg(CMDs.SETTE_MEZZO_USER_BET, pkg)
+        return
+    
     async def user_stop_view(self, uid, should_send_back_to_user = True):
         pass
 
@@ -940,18 +850,6 @@ class SetteMezzoBot(MatchBot):
             await self.match_mgr.user_hit(self.uid, None)
         pass
 
-    async def on_bet_start(self):
-        asyncio.create_task(self._on_bet())
-
-    async def _on_bet(self):
-        await asyncio.sleep(1)
-        # bet
-        bet = random.randint(10000, 1000000)
-        await self.match_mgr.user_bet(self.uid, bet)
-        # should continue to bet
-        if random.choice([True, False]):
-            await self._on_bet()
-        else:
-            return
+    
         
 

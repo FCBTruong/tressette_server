@@ -294,7 +294,6 @@ class MatchManager:
             if match.game_mode != TRESSETTE_MODE:
                 continue
             match_ids.append(match.match_id)
-            bets.append(match.bet)
             player_modes.append(match.player_mode)
             num_players.append(match.get_num_players())
             game_modes.append(match.game_mode)
@@ -308,7 +307,6 @@ class MatchManager:
         print(f"Table list: {match_ids}")
         pkg = packet_pb2.TableList()
         pkg.table_ids.extend(match_ids)
-        pkg.bets.extend(bets)
         pkg.player_modes.extend(player_modes)
         pkg.num_players.extend(num_players)
         pkg.game_modes.extend(game_modes)
