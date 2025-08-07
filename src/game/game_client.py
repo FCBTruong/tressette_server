@@ -37,6 +37,7 @@ class GameClient:
                 await game_vars.get_customer_service_mgr().on_receive_packet(uid, cmd_id, payload)
                 await game_vars.get_ranking_mgr().on_receive_packet(uid, cmd_id, payload)
                 await game_vars.get_ads_mgr().on_receive_packet(uid, cmd_id, payload)
+                await game_vars.get_inventory_mgr().on_receive_packet(uid, cmd_id, payload)
 
     async def user_login_success(self, uid, device_model, platform, device_country, app_version_code):
         user_info = await users_info_mgr.get_user_info(uid)

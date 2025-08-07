@@ -514,7 +514,7 @@ class SetteMezzoMatch(Match):
         #         await self.user_leave(player.uid)
                 
         # Kick users auto playing, or register exit room
-        for uid in self.register_leave_uids:
+        for uid in list(self.register_leave_uids):
             await game_vars.get_match_mgr().handle_user_leave_match(uid)    
 
         # kick user auto playing consecutively more than 3 times
@@ -544,12 +544,16 @@ class SetteMezzoMatch(Match):
                 await game_vars.get_match_mgr().handle_user_leave_match(uid)
     
     async def broadcast_pkg(self, cmd_id, pkg, ignore_uids=[]):
+        tasks = []
+
         for player in self.players:
             if player.is_bot or player.uid == -1:
                 continue
             if player.uid in ignore_uids:
                 continue
-            await game_vars.get_game_client().send_packet(player.uid, cmd_id, pkg)
+            tasks.append(game_vars.get_game_client().send_packet(player.uid, cmd_id, pkg))
+        
+        await asyncio.gather(*tasks, return_exceptions=True)
 
     async def broadcast_chat_message(self, uid, message):
         pkg = packet_pb2.InGameChatMessage()

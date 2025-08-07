@@ -922,6 +922,7 @@ class TressetteMatch(Match):
         self.cards = self.cards[10 * len(self.players):]
 
         # send to users
+        player_tasks = []
         for player in self.players:
             # do not send to bots
             if player.is_bot:
@@ -929,13 +930,17 @@ class TressetteMatch(Match):
             pkg = packet_pb2.DealCard()
             pkg.cards.extend(player.cards)
             pkg.remain_cards = len(self.cards)
-            await game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
-
+            player_tasks.append(
+                game_vars.get_game_client().send_packet(player.uid, CMDs.DEAL_CARD, pkg)
+            )
         # broadcast to all viewers
         pkg = packet_pb2.DealCard()
         pkg.remain_cards = len(self.cards)
-        for viewer_uid in self.viewers:
-            await game_vars.get_game_client().send_packet(viewer_uid, CMDs.DEAL_CARD, pkg)
+        viewer_tasks = [
+            game_vars.get_game_client().send_packet(uid, CMDs.DEAL_CARD, pkg)
+            for uid in list(self.viewers)
+        ]
+        await asyncio.gather(*player_tasks, *viewer_tasks)
     
 
     async def end_hand(self, play_card_pkg):
@@ -1249,7 +1254,7 @@ class TressetteMatch(Match):
             
                 
         # Kick users auto playing, or register exit room
-        for uid in self.register_leave_uids:
+        for uid in list(self.register_leave_uids):
             await game_vars.get_match_mgr().handle_user_leave_match(uid)    
 
         # kick user auto playing consecutively more than 3 times
@@ -1286,16 +1291,25 @@ class TressetteMatch(Match):
             return
     
     async def broadcast_pkg(self, cmd_id, pkg, ignore_uids=[]):
+        # Snapshot viewers to avoid RuntimeError if set is modified during loop
+        viewer_uids = list(self.viewers)
+
+        # Prepare tasks for all valid players and viewers
+        tasks = []
+
         for player in self.players:
             if player.is_bot or player.uid == -1:
                 continue
             if player.uid in ignore_uids:
                 continue
-            await game_vars.get_game_client().send_packet(player.uid, cmd_id, pkg)
-        
-        # Send to viewers too
-        for viewer_uid in self.viewers:
-            await game_vars.get_game_client().send_packet(viewer_uid, cmd_id, pkg)
+            tasks.append(game_vars.get_game_client().send_packet(player.uid, cmd_id, pkg))
+
+        for viewer_uid in viewer_uids:
+            tasks.append(game_vars.get_game_client().send_packet(viewer_uid, cmd_id, pkg))
+
+        # Send all packets concurrently
+        await asyncio.gather(*tasks, return_exceptions=True)
+
 
     async def broadcast_chat_message(self, uid, message):
         pkg = packet_pb2.InGameChatMessage()
