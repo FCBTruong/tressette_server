@@ -5,6 +5,7 @@ import logging
 # from src.cache import redis_cache
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
+from src.game.game_vars import game_vars
 from src.game.models import UserInfo
 from src.postgres.sql_models import UserInfoSchema
 from src.postgres.orm import PsqlOrm
@@ -35,40 +36,54 @@ class UsersInfoMgr:
 
     async def get_user_info(self, uid: int) -> UserInfo:
         # cache_key = 'user' + str(uid)
-        cached_user_info = self.users.get(uid)
-        if cached_user_info:
-            return cached_user_info
-        async with PsqlOrm.get().session() as session:
-            user_info = await session.get(UserInfoSchema, uid)
-            if user_info:
-                user_info_data = {
-                    "uid": user_info.uid,
-                    "name": user_info.name,
-                    "gold": user_info.gold,
-                    "level": user_info.level,
-                    "avatar": user_info.avatar,
-                    "avatar_third_party": user_info.avatar_third_party,
-                    "is_active": user_info.is_active,
-                    "last_time_received_support": user_info.last_time_received_support,
-                    "received_startup": user_info.received_startup,
-                }
-                
-                user_inf = UserInfo(**user_info_data)
-                user_inf.win_count = user_info.win_count
-                user_inf.game_count = user_info.game_count
-                user_inf.exp = user_info.exp
-                user_inf.login_type = user_info.login_type
-                user_inf.num_payments = user_info.num_payments
-                user_inf.time_show_ads = user_info.time_show_ads
-                user_inf.time_ads_reward = user_info.time_ads_reward
-                user_inf.num_claimed_ads = user_info.num_claimed_ads
-                user_inf.avatar_frame = user_info.avatar_frame
-                user_inf.last_time_online = user_info.last_time_online
-                user_inf.claimed_levels = user_info.claimed_levels
-                
-                self.users[uid] = user_inf
-                return user_inf
-        return None
+        user_info = self.users.get(uid)
+        
+        if not user_info:
+            async with PsqlOrm.get().session() as session:
+                user_info = await session.get(UserInfoSchema, uid)
+                if user_info:
+                    user_info_data = {
+                        "uid": user_info.uid,
+                        "name": user_info.name,
+                        "gold": user_info.gold,
+                        "level": user_info.level,
+                        "avatar": user_info.avatar,
+                        "avatar_third_party": user_info.avatar_third_party,
+                        "is_active": user_info.is_active,
+                        "last_time_received_support": user_info.last_time_received_support,
+                        "received_startup": user_info.received_startup,
+                    }
+                    
+                    user_inf = UserInfo(**user_info_data)
+                    user_inf.win_count = user_info.win_count
+                    user_inf.game_count = user_info.game_count
+                    user_inf.exp = user_info.exp
+                    user_inf.login_type = user_info.login_type
+                    user_inf.num_payments = user_info.num_payments
+                    user_inf.time_show_ads = user_info.time_show_ads
+                    user_inf.time_ads_reward = user_info.time_ads_reward
+                    user_inf.num_claimed_ads = user_info.num_claimed_ads
+                    user_inf.avatar_frame = user_info.avatar_frame
+                    user_inf.last_time_online = user_info.last_time_online
+                    user_inf.claimed_levels = user_info.claimed_levels
+                    
+                    self.users[uid] = user_inf
+                    user_info = user_inf
+
+        if not user_info:
+            logger.error(f"User {uid} not found in database")
+            return None
+        
+        # check avatar frame expire
+        if user_info.avatar_frame and user_info.avatar_frame != AVATAR_FRAME_DEFAULT:
+            current_time = int(datetime.now().timestamp())
+            invent_info = await game_vars.get_inventory_mgr().get_inventory(uid)
+            item = next((i for i in invent_info if i.item_id == user_info.avatar_frame), None)
+            if item and item.expire_time != PERMANENT_ITEM_EXPIRE_TIME and item.expire_time < current_time:
+                # item expired, reset to default
+                user_info.avatar_frame = AVATAR_FRAME_DEFAULT
+                await user_info.commit_to_database('avatar_frame')
+        return user_info
 
     async def on_receive_packet(self, uid, cmd_id, payload):
         match cmd_id:

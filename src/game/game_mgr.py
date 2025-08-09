@@ -84,7 +84,8 @@ class GameMgr:
         return True
     
     async def _claim_support(self, uid: int):
-        GOLD_SUPPORT = 40000
+        return
+        GOLD_SUPPORT = 0
         user_info = await users_info_mgr.get_user_info(uid)
 
         if not user_info:
@@ -150,7 +151,7 @@ class GameMgr:
                 for item in reward.get("items", []):
                     item_id = item["item_id"]
                     duration = item["duration"] # days
-                    await game_vars.get_inventory_mgr().update_inventory(uid, item_id, duration_days=duration)
+                    await game_vars.get_inventory_mgr().update_inventory(uid, item_id, duration_sec=duration * 86400)  # convert days to seconds
                     
                 break
         user_info.claimed_levels.append(level)

@@ -48,13 +48,13 @@ class RankingMgr:
             # add reward item now
             if i == 0:
                 # RANK 1, add special item
-                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 7)
+                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 7 * 86400)  # 7 days
             elif i == 1:
                 # RANK 2, add special item
-                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 5)
+                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 5 * 86400)  # 5 days
             elif i == 2:
                 # RANK 3, add special item
-                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 3)
+                await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 3 * 86400)  # 3 days
                 
             async with PsqlOrm.get().session() as session:
                 session.add(reward)

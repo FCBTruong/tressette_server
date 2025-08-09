@@ -107,6 +107,7 @@ class GameClient:
 
         # SEND SHOP CONFIG
         await payment_mgr.send_shop_config(uid, platform)
+        await game_vars.get_inventory_mgr().send_inventory_shop_config(uid)
         await game_vars.get_inventory_mgr().send_user_inventory(uid)
 
         # Send friend list

@@ -1,12 +1,15 @@
+import json
 from sqlalchemy import select, update
 from datetime import datetime, timedelta
 from src.base.network.packets import packet_pb2
+from src.config.settings import settings
 from src.constants import *
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
 from src.postgres.orm import PsqlOrm
 from src.postgres.sql_models import InventorySchema
+from src.game.tressette_config import inventory_shop_config as shop_config
 
 
 class InventoryMgr:
@@ -19,12 +22,15 @@ class InventoryMgr:
         match cmd_id:
             case CMDs.USE_ITEM:
                 await self.handle_use_item(uid, payload)
+            case CMDs.CHEAT_ITEM:
+                await self.handle_cheat_item(uid, payload)
+            case CMDs.BUY_ITEM:
+                await self.handle_buy_item(uid, payload)
         return
     
 
-    async def update_inventory(self, uid: int, item_id: int, duration_days: int):
+    async def update_inventory(self, uid: int, item_id: int, duration_sec: int):
         now_ts = int(datetime.now().timestamp())
-        duration_sec = duration_days * 86400
 
         inventory_list = await self.get_inventory(uid)
         item = next((i for i in inventory_list if i.item_id == item_id), None)
@@ -77,7 +83,20 @@ class InventoryMgr:
             inv_item.expire_time = item.expire_time
         
         await game_vars.get_game_client().send_packet(uid, CMDs.USER_INVENTORY, pkg)
-
+    
+    async def send_inventory_shop_config(self, uid: int):
+        pkg = packet_pb2.InventoryShopConfig()
+        
+        for item_id, shop in shop_config.items():
+            shop_item = pkg.items.add()
+            shop_item.item_id = int(item_id)
+            for pack in shop['shop']:
+                pack_item = shop_item.packs.add()
+                pack_item.id = pack['id']
+                pack_item.price = pack['price']
+                pack_item.duration = pack['duration']
+        await game_vars.get_game_client().send_packet(uid, CMDs.INVENTORY_SHOP_CONFIG, pkg)
+            
     async def handle_use_item(self, uid: int, payload):
         inventory_list = await self.get_inventory(uid)
         if not inventory_list:
@@ -101,11 +120,68 @@ class InventoryMgr:
             return
         
         user_info = await users_info_mgr.get_user_info(uid)
+
+        if user_info.avatar_frame == item_id:
+            print(f"User {uid} tried to use an item they already have equipped: {item_id}")
+            return
+
         user_info.avatar_frame = item_id
         await user_info.commit_to_database('avatar_frame')
 
+        # send back to user
+        await game_vars.get_game_client().send_packet(
+            uid, CMDs.USE_ITEM, use_item_pkg
+        )
+    
+    async def handle_cheat_item(self, uid: int, payload):
+        if not settings.ENABLE_CHEAT:
+            return
         
+        cheat_item_pkg = packet_pb2.CheatItem()
+        cheat_item_pkg.ParseFromString(payload)
+        item_id = cheat_item_pkg.item_id
+        duration = cheat_item_pkg.duration # seconds
+        
+        await self.update_inventory(uid, item_id, duration)
+        await self.send_user_inventory(uid)
+        
+    async def handle_buy_item(self, uid: int, payload):
+        buy_item_pkg = packet_pb2.BuyItem()
+        buy_item_pkg.ParseFromString(payload)
+        item_id = buy_item_pkg.item_id
+        pack_id = buy_item_pkg.pack_id
 
+        if str(item_id) not in shop_config:
+            print(f"User {uid} tried to buy an invalid item: {item_id}")
+            return
+        shop = shop_config[str(item_id)]['shop']
+        # find pack
+        pack = None
+        for s in shop:
+            if s['id'] == pack_id:
+                pack = s
+                break
+        if pack is None:
+            print(f"User {uid} tried to buy an item with invalid pack: {pack_id}")
+            return
+        price = pack['price']
+        duration = pack['duration'] # days
+        
+        # Check if user has enough gold
+        user_info = await users_info_mgr.get_user_info(uid)
+        if user_info.gold < price:
+            print(f"User {uid} tried to buy item {item_id} with insufficient gold")
+            return
+        # Deduct gold
+        user_info.add_gold(-price)
+        await user_info.commit_to_database('gold')
+        await user_info.send_update_money()
+        # Update inventory
+        await self.update_inventory(uid, item_id, duration_sec= duration * 86400)  # convert days to seconds
+        await self.send_user_inventory(uid)
+        await game_vars.get_game_client().send_packet(
+            uid, CMDs.BUY_ITEM, buy_item_pkg
+        )
 
         
 

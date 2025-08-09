@@ -289,6 +289,7 @@ message FriendList {
   repeated bool onlines = 6;
   repeated bool is_playings = 7;
   repeated int32 avatar_frames = 8;
+  repeated int32 last_online_times = 9;
 }
 
 message FriendRequests {
@@ -587,4 +588,30 @@ message InvetoryItem {
 
 message UseItem {
   int32 item_id = 1;
+}
+
+message CheatItem {
+  int32 item_id = 1;
+  int32 duration = 2;
+}
+
+message BuyItem {
+  int32 item_id = 1;
+  int32 pack_id = 2;
+}
+
+
+message InventoryShopConfig {
+  repeated InventoryShopItem items = 1;
+}
+
+message InventoryShopItem {
+  int32 item_id = 1;
+  repeated InvetoryShopPack packs = 2;
+}
+
+message InvetoryShopPack {
+  int32 id = 1;
+  int32 price = 2;
+  int32 duration = 3;
 }

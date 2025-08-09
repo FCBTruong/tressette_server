@@ -1,0 +1,130 @@
+{
+    "1001": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 1000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 3000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 8000
+            }
+        ]
+    },
+    "1002": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 5000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 15000
+            }
+        ]
+    },
+    "2001": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 2000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 6000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 16000
+            }
+        ]
+    },
+    "2002": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 10000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 30000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 80000
+            }
+        ]
+    },
+    "4001": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 3000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 9000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 24000
+            }
+        ]
+    },
+    "4002": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 15000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 45000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 120000
+            }
+        ]
+    },
+    "4003": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 5000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 15000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 40000
+            }
+        ]
+    }
+}

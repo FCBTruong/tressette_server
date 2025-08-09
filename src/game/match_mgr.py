@@ -48,6 +48,7 @@ class MatchManager:
             logger.info("Cheat mode enabled, creating test matches.")
             asyncio.create_task(self.test_create_match())
     async def test_create_match(self):
+        return
         for _ in range(5):
             match = await self._create_match(0, PLAYER_SOLO_MODE, False, 11)
             await match.cheat_add_bot()
