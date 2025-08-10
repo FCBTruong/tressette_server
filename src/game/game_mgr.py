@@ -143,6 +143,7 @@ class GameMgr:
             return
         
         # Check if the level is valid
+        items = []
         for reward in tress_config.get("level_rewards"):  
             if reward["level"] == level:
                 gold = reward["gold"]
@@ -151,11 +152,24 @@ class GameMgr:
                 for item in reward.get("items", []):
                     item_id = item["item_id"]
                     duration = item["duration"] # days
+                    items.append((item_id, duration))
                     await game_vars.get_inventory_mgr().update_inventory(uid, item_id, duration_sec=duration * 86400)  # convert days to seconds
                     
                 break
         user_info.claimed_levels.append(level)
         await user_info.commit_to_database('claimed_levels', 'gold')
+        
+        pkg_response = packet_pb2.ClaimRewardLevelResponse()
+        pkg_response.level = level
+        pkg_response.gold = gold
 
+        for item_id, duration in items:
+            reward_item = pkg_response.items.add()
+            reward_item.item_id = item_id
+            reward_item.duration = duration  # keep in days
         # Send update to client
-        await game_vars.get_game_client().send_packet(uid, CMDs.CLAIM_REWARD_LEVEL, pkg)
+        await game_vars.get_game_client().send_packet(uid, CMDs.CLAIM_REWARD_LEVEL, pkg_response)
+
+        if items:
+            # Send inventory update
+            await game_vars.get_inventory_mgr().send_user_inventory(uid)

@@ -90,6 +90,7 @@ class MatchPlayer:
         self.is_in_game = False
         self.bet = 0
         self.avatar_frame = AVATAR_FRAME_DEFAULT
+        self.rewards = None
 
     
     def reset_game(self):
@@ -1081,8 +1082,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        # if settings.DEV_MODE:
-        #     return True
+        if settings.DEV_MODE:
+            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -1165,14 +1166,8 @@ class TressetteMatch(Match):
 
         # add gold
         for player in self.players:
-            gold_received = 0
-            if player.team_id == self.win_team:
-                gold_received = 100 # 100 crypstal
-            else:
-                gold_received = 50
-            player.gold += gold_received
-    
-        
+            player.rewards = []
+            gold_received = 50
             if player.uid == -1 or player.is_bot:
                 is_bot_win = '0'
                 if player.team_id == self.win_team:
@@ -1185,13 +1180,33 @@ class TressetteMatch(Match):
             added_exp = 50
 
             if player.team_id == self.win_team:
-                user_info.add_gold(gold_received)
                 user_info.win_count += 1
                 added_exp = added_exp * 2
+                gold_received = gold_received * 2
 
                 await game_vars.get_ranking_mgr().on_user_win_game(player.uid)
-
+            
+            player.gold += gold_received
             user_info.add_exp(added_exp)
+            user_info.add_gold(gold_received)
+            if gold_received > 0:
+                player.rewards.append(
+                    {
+                        "item_id": CRYSTAL_ITEM_ID,
+                        "value": gold_received
+                    })
+            if added_exp > 0:
+                player.rewards.append({
+                        "item_id": EXP_ITEM_ID,
+                        "value": added_exp
+                    }
+                )
+            player.rewards.append({
+                        "item_id": CARDBACK_CAT_ID,
+                        "value": 1,
+                        "duration": 7
+                    }
+                )
 
             await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
             await user_info.send_update_money()
@@ -1218,8 +1233,28 @@ class TressetteMatch(Match):
         pkg.score_last_tricks.extend(score_last_tricks)
         pkg.score_totals.extend(score_totals)
         pkg.players_gold.extend(players_gold)
+        # NOTE: don't put rewards on the base pkg
 
-        await self.broadcast_pkg(CMDs.END_GAME, pkg)
+        custom_pkgs = {}
+        for player in self.players:
+            if player.is_bot or player.uid == -1:
+                continue
+
+            # clone base pkg correctly
+            custom_pkg = packet_pb2.EndGame()
+            custom_pkg.CopyFrom(pkg)  # or: custom_pkg.MergeFrom(pkg)
+
+            # add per-player rewards
+            for reward in getattr(player, "rewards", []):
+                r = custom_pkg.rewards.add()
+                r.item_id = reward["item_id"]
+                r.value = reward["value"]
+                r.duration = reward.get("duration", 0)
+
+            custom_pkgs[player.uid] = custom_pkg
+
+        await self.broadcast_pkg(CMDs.END_GAME, pkg, ignore_uids=[], custom_pkgs=custom_pkgs)
+
         
         await asyncio.sleep(3)
 
@@ -1290,22 +1325,27 @@ class TressetteMatch(Match):
             game_vars.get_match_mgr().destroy_match(self.match_id)
             return
     
-    async def broadcast_pkg(self, cmd_id, pkg, ignore_uids=[]):
+    async def broadcast_pkg(self, cmd_id, pkg, ignore_uids=[], custom_pkgs=None):
         # Snapshot viewers to avoid RuntimeError if set is modified during loop
         viewer_uids = list(self.viewers)
 
         # Prepare tasks for all valid players and viewers
         tasks = []
 
+        def get_packet(uid):
+            if custom_pkgs and uid in custom_pkgs:
+                return custom_pkgs[uid]
+            return pkg
+
         for player in self.players:
             if player.is_bot or player.uid == -1:
                 continue
             if player.uid in ignore_uids:
                 continue
-            tasks.append(game_vars.get_game_client().send_packet(player.uid, cmd_id, pkg))
+            tasks.append(game_vars.get_game_client().send_packet(player.uid, cmd_id, get_packet(player.uid)))
 
         for viewer_uid in viewer_uids:
-            tasks.append(game_vars.get_game_client().send_packet(viewer_uid, cmd_id, pkg))
+            tasks.append(game_vars.get_game_client().send_packet(viewer_uid, cmd_id, get_packet(viewer_uid)))
 
         # Send all packets concurrently
         await asyncio.gather(*tasks, return_exceptions=True)

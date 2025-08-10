@@ -194,6 +194,7 @@ message EndGame {
   repeated int32 score_last_tricks = 3;
   repeated int32 score_totals = 4;
   repeated int64 players_gold = 5;
+  repeated RewardInventoryItem rewards = 7;
 }
 
 message PrepareStartGame {
@@ -614,4 +615,16 @@ message InvetoryShopPack {
   int32 id = 1;
   int32 price = 2;
   int32 duration = 3;
+}
+
+message ClaimRewardLevelResponse {
+  int32 level = 1;
+  int32 gold = 2;
+  repeated RewardInventoryItem items = 3;
+}
+
+message RewardInventoryItem {
+  int32 item_id = 1;
+  int32 duration = 2;
+  int32 value = 3;
 }

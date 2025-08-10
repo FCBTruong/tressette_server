@@ -155,12 +155,9 @@ class UsersInfoMgr:
         return False
     
     async def _handle_change_user_name(self, uid: int, payload):
+        return
         user = await self.get_user_info(uid)
 
-        # only user with name "tressette player" can change name
-        if user.name != "tressette player":
-            logger.error(f"User {uid} try to change name {user.name}")
-            return
         pkg = packet_pb2.ChangeUserName()
         pkg.ParseFromString(payload)
         new_name = pkg.name
