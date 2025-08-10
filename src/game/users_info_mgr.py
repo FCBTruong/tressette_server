@@ -11,6 +11,7 @@ from src.postgres.sql_models import UserInfoSchema
 from src.postgres.orm import PsqlOrm
 from src.game.cmds import CMDs
 from src.constants import *
+from src.game.tressette_config import get_price_change_name
 
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
@@ -66,6 +67,7 @@ class UsersInfoMgr:
                     user_inf.avatar_frame = user_info.avatar_frame
                     user_inf.last_time_online = user_info.last_time_online
                     user_inf.claimed_levels = user_info.claimed_levels
+                    user_inf.num_change_name = user_info.num_change_name
                     
                     self.users[uid] = user_inf
                     user_info = user_inf
@@ -154,21 +156,37 @@ class UsersInfoMgr:
             return True
         return False
     
-    async def _handle_change_user_name(self, uid: int, payload):
-        return
+    async def _handle_change_user_name(self, uid: int, payload: bytes):
         user = await self.get_user_info(uid)
+        price = get_price_change_name(user.num_change_name)
 
-        pkg = packet_pb2.ChangeUserName()
-        pkg.ParseFromString(payload)
-        new_name = pkg.name
-        
-        # valid new name
-        if len(new_name) > 20 or len(new_name) < 1:
-            logger.error(f"User {uid} try to change to invalid name {new_name}")
+        # parse payload first
+        req = packet_pb2.ChangeUserName()
+        req.ParseFromString(payload)
+        new_name = req.name.strip()
+
+        # validate new name
+        if not (1 <= len(new_name) <= 25):
+            logger.error(f"User {uid} tried to change to invalid name: '{new_name}'")
             return
-        # update and save to database
+
+        # check inventory for rename cards
+        inv = await game_vars.get_inventory_mgr().get_inventory(uid)
+        item = next((i for i in inv if i.item_id == RENAME_CARD_ITEM_ID), None)
+        if item is None or getattr(item, "value", 0) < price:
+            logger.error(f"User {uid} lacks rename cards (need {price}, have {0 if item is None else item.value})")
+            return
+
+        # deduct price (stackable) then apply change
+        await game_vars.get_inventory_mgr().update_inventory(
+            uid=uid, item_id=RENAME_CARD_ITEM_ID, duration_sec=0, value=-price
+        )
+
         user.name = new_name
-        await user.commit_to_database('name')
+        user.num_change_name += 1
+        await user.commit_to_database("name", "num_change_name")
+        await game_vars.get_inventory_mgr().send_user_inventory(uid)
+
 
 
 users_info_mgr = UsersInfoMgr()

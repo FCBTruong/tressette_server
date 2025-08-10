@@ -30,6 +30,7 @@ class UserInfoSchema(Base):
     avatar_frame = Column(Integer) 
     last_time_online = Column(BigInteger, default=0)  # Timestamp of the last time the user was online
     claimed_levels = Column(ARRAY(Integer), default=list)
+    num_change_name = Column(Integer, default=0)  # Number of times the user has changed their name
     guests = relationship("GuestsSchema", back_populates="user_info", uselist=False)  # If only one guest per user
     firebase_auth = relationship("FirebaseAuthSchema", back_populates="user_info", uselist=False)  # If only one firebase auth per user
     paypal_orders = relationship("PayPalOrder", back_populates="user")
@@ -141,5 +142,6 @@ class InventorySchema(Base):
     user_id = Column(Integer, ForeignKey('user_info.uid'), primary_key=True)
     item_id = Column(Integer, primary_key=True)
     expire_time = Column(Integer)
+    value = Column(Integer, default=0)  # Default value for the item, can be quantity or other value
 
     user = relationship("UserInfoSchema", backref="inventory_items")

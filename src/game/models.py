@@ -29,6 +29,7 @@ class UserInfo:
     avatar_frame: int = 0
     last_time_online: int = 0  # Timestamp of the last time the user was online
     claimed_levels: list[int] = []
+    num_change_name: int = 0  # Number of times the user has changed their name
     def __init__(self, uid: int, name: str, gold: int, level: int, avatar: str, avatar_third_party: str, is_active: bool,
                  last_time_received_support: int, received_startup: bool = True):
         self.uid = uid

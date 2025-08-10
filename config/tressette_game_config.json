@@ -3,9 +3,10 @@
     "tax_percent": 0.1,
     "ccu_to_gen_bot": 50,
     "level_min_transfer_money": 5,
-    "startup_gold_auth": 100,
-    "startup_gold_guest_acc": 50,
+    "startup_gold_auth": 2000,
+    "startup_gold_guest_acc": 1000,
     "fee_mode_no_bet": 10000,
+    "gold_link_account": 1000,
     "bets": [
         1000,
         3000,

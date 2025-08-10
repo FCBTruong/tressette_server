@@ -70,6 +70,7 @@ message UserInfo {
   bool add_for_user_support = 19;
   int32 avatar_frame = 20;
   repeated int32 claimed_levels = 21;
+  int32 price_change_name = 22;
 }
 
 message GameInfo {
@@ -585,6 +586,7 @@ message UserInventory {
 message InvetoryItem {
   int32 item_id = 1;
   int32 expire_time = 2;
+  int32 value = 3;
 }
 
 message UseItem {

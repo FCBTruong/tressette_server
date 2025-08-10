@@ -47,7 +47,7 @@ class LoginMgr:
         user_model.level = 1
         user_model.avatar_frame = AVATAR_FRAME_DEFAULT
 
-        avatar_id = random.choice(AVATAR_IDS)
+        avatar_id = random.choice(AVATAR_FREE_IDS)
         user_model.avatar = str(avatar_id)
         return user_model
 
@@ -118,7 +118,8 @@ class LoginMgr:
                         user_info.avatar = avatar_url
                     
                     # Add 1000 crypstal to user as a reward for linking account
-                    user_info.add_gold(1000)
+                    gold_link_account = tress_config.get("gold_link_account")
+                    user_info.add_gold(gold_link_account)
 
                     user_info.name = user_name
                     await user_info.commit_to_database('avatar_third_party', 'name', 'login_type', 'avatar', 'gold')

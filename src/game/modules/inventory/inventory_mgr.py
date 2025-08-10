@@ -29,37 +29,47 @@ class InventoryMgr:
         return
     
 
-    async def update_inventory(self, uid: int, item_id: int, duration_sec: int):
+    async def update_inventory(self, uid: int, item_id: int, duration_sec: int, value: int = 0):
         now_ts = int(datetime.now().timestamp())
+        item_type = item_id // 1000  # your scheme
+
+        # fast guardrails
+        if item_type != ITEM_TYPE_STACKABLE and duration_sec <= 0:
+            return
 
         inventory_list = await self.get_inventory(uid)
         item = next((i for i in inventory_list if i.item_id == item_id), None)
 
         async with PsqlOrm.get().session() as session:
             if item is None:
+                # create new
                 item = InventorySchema(
                     user_id=uid,
                     item_id=item_id,
-                    expire_time=now_ts + duration_sec
+                    expire_time=(now_ts + duration_sec) if item_type != ITEM_TYPE_STACKABLE else -1,
+                    value=value if item_type == ITEM_TYPE_STACKABLE else 0,
                 )
                 session.add(item)
                 inventory_list.append(item)
             else:
-                if item.expire_time == -1: # permanent item
-                    return
-                if item.expire_time < now_ts:
-                    item.expire_time = now_ts
-                item.expire_time += duration_sec
-                await session.execute(
-                    update(InventorySchema).where(
-                        InventorySchema.user_id == uid,
-                        InventorySchema.item_id == item_id
-                    ).values(expire_time=item.expire_time)
-                )
+                if item_type == ITEM_TYPE_STACKABLE:
+                    item.value += value
+                else:
+                    # timed item
+                    if item.expire_time == -1:
+                        # permanent
+                        await session.commit()
+                        self.cache_inventory[uid] = inventory_list
+                        return
+                    # if expired, restart from now
+                    if item.expire_time < now_ts:
+                        item.expire_time = now_ts
+                    item.expire_time += duration_sec
 
             await session.commit()
 
         self.cache_inventory[uid] = inventory_list
+
 
     async def get_inventory(self, uid: int) -> list[InventorySchema]:
         if uid in self.cache_inventory:
@@ -81,6 +91,7 @@ class InventoryMgr:
             inv_item = pkg.items.add()
             inv_item.item_id = item.item_id
             inv_item.expire_time = item.expire_time
+            inv_item.value = item.value
         
         await game_vars.get_game_client().send_packet(uid, CMDs.USER_INVENTORY, pkg)
     

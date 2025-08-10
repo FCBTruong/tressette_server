@@ -4,12 +4,15 @@ from src.base.logs.logs_mgr import write_log
 from src.base.network.connection_manager import connection_manager
 from src.base.network.packets import packet_pb2
 from src.base.payment import payment_mgr
+from src.config.settings import settings
 from src.constants import *
 from src.game.game_vars import game_vars
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.tressette_config import config as tress_config
+from src.game.tressette_config import get_price_change_name
 from src.base.network.connection_manager import connection_manager
+
 logging.basicConfig(
     level=logging.INFO,  # Set logging level
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",  # Log format
@@ -74,6 +77,11 @@ class GameClient:
             gold_startup = tress_config.get("startup_gold_guest_acc")
             if user_info.login_type in [LOGIN_FACEBOOK, LOGIN_GOOGLE, LOGIN_APPLE]:
                 gold_startup = tress_config.get("startup_gold_auth")
+
+                # give user 1 rename card
+                await game_vars.get_inventory_mgr().update_inventory(uid, RENAME_CARD_ITEM_ID, duration_sec=0, value=1)
+            if settings.ENABLE_CHEAT:
+                await game_vars.get_inventory_mgr().update_inventory(uid, RENAME_CARD_ITEM_ID, duration_sec=0, value=1)
             user_info.add_gold(gold_startup)
             startup_gold = gold_startup
             await user_info.commit_to_database('received_startup', 'gold')
@@ -101,6 +109,9 @@ class GameClient:
         user_pkg.time_show_ads = user_info.time_show_ads
         user_pkg.has_first_buy = user_info.num_payments == 0
         user_pkg.add_for_user_support = False # this show popup ask for support
+
+
+        user_pkg.price_change_name = get_price_change_name(user_info.num_change_name)
 
 
         await self.send_packet(uid, CMDs.USER_INFO, user_pkg)
