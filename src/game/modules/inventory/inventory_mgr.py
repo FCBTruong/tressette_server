@@ -159,8 +159,12 @@ class InventoryMgr:
         cheat_item_pkg.ParseFromString(payload)
         item_id = cheat_item_pkg.item_id
         duration = cheat_item_pkg.duration # seconds
+        type_id = item_id // 1000  # your scheme
+        value = 0
+        if type_id == ITEM_TYPE_STACKABLE:
+            value = duration  # for stackable items, use duration as value
         
-        await self.update_inventory(uid, item_id, duration)
+        await self.update_inventory(uid, item_id, duration, value)
         await self.send_user_inventory(uid)
         
     async def handle_buy_item(self, uid: int, payload):

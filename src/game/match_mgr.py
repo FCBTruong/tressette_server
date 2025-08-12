@@ -48,9 +48,9 @@ class MatchManager:
             logger.info("Cheat mode enabled, creating test matches.")
             asyncio.create_task(self.test_create_match())
     async def test_create_match(self):
-        return
+        # return
         for _ in range(5):
-            match = await self._create_match(0, PLAYER_SOLO_MODE, False, 11)
+            match = await self._create_match(0, PLAYER_SOLO_MODE, _ % 2 == 0, 11)
             await match.cheat_add_bot()
             await match.cheat_add_bot()
 
@@ -279,25 +279,23 @@ class MatchManager:
         matches = await self._prioritize_matches(self.matches, uid)  
         # priority table is waiting
         match_ids = []
-        bets = []
         player_modes = []
         num_players = []
         game_modes = []
         avatars = []
         uids = []
         avatar_frames = []
+        is_privates = []
         print(f"Table list: {len(matches)} matches found")
 
         for match in matches:
-            # skip private match
-            if match.is_public is False:
-                continue
             if match.game_mode != TRESSETTE_MODE:
                 continue
             match_ids.append(match.match_id)
             player_modes.append(match.player_mode)
             num_players.append(match.get_num_players())
             game_modes.append(match.game_mode)
+            is_privates.append(match.is_public is False)
 
             for player in match.players:
                 avatars.append(player.avatar)
@@ -314,6 +312,7 @@ class MatchManager:
         pkg.avatars.extend(avatars)
         pkg.player_uids.extend(uids)
         pkg.avatar_frames.extend(avatar_frames)
+        pkg.is_private.extend(is_privates)
 
         # pkg = packet_pb2.TableList()
         # pkg.table_ids.extend([1, 2, 3, 4, 5,6,7])

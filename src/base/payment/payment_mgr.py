@@ -5,6 +5,7 @@ import json
 from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.base.payment import apple_pay, google_pay
+from src.config.settings import settings
 from src.game.users_info_mgr import users_info_mgr
 from src.game.game_vars import game_vars
 from src.game.cmds import CMDs
@@ -19,10 +20,6 @@ with open('config/shop.json', 'r') as file:
     config = json.load(file)
 
 rewards_offer = [
-        {
-            "item_id": CRYSTAL_ITEM_ID,
-            "value": 1000000            
-        },
         {
             "item_id": AVATAR_FRAME_VIP,
             "value": 1,
@@ -55,6 +52,10 @@ async def on_receive_packet(uid, cmd_id, payload):
             await _handle_apple_consume(uid, payload)
         case CMDs.PAYMENT_PAYPAL_REQUEST_ORDER:
             await _handle_paypal_request_order(uid, payload)
+        case CMDs.PAYMENT_TEST:
+            if not settings.DEV_MODE:
+                return
+            await _purchase_success(uid, FIRST_BUY_OFFER_PACK_ID, "test")
         case _:
             pass
 
@@ -180,7 +181,7 @@ async def _purchase_success(uid, pack_id, method):
     if pack_id == FIRST_BUY_OFFER_PACK_ID:
         # give first buy offer rewards
         for reward in rewards_offer:
-            pkg.rewards.add(
+            pkg.items.add(
                 item_id=reward["item_id"],
                 value=reward["value"],
                 duration=reward.get("duration", 0)  # days

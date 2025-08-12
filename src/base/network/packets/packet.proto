@@ -233,6 +233,7 @@ message TableList {
   repeated string avatars = 5;
   repeated int32 game_modes = 6;
   repeated int32 avatar_frames = 7;
+  repeated bool is_private = 8;
 }
 
 message ShopConfig {
