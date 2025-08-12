@@ -28,14 +28,15 @@ class InventoryMgr:
                 await self.handle_buy_item(uid, payload)
         return
     
-
+    # duration = -1 means permanent
     async def update_inventory(self, uid: int, item_id: int, duration_sec: int, value: int = 0):
         now_ts = int(datetime.now().timestamp())
         item_type = item_id // 1000  # your scheme
 
-        # fast guardrails
-        if item_type != ITEM_TYPE_STACKABLE and duration_sec <= 0:
+        # allow permanent (-1); reject non-positive durations except -1
+        if item_type != ITEM_TYPE_STACKABLE and duration_sec <= 0 and duration_sec != -1:
             return
+        
 
         inventory_list = await self.get_inventory(uid)
         item = next((i for i in inventory_list if i.item_id == item_id), None)
@@ -43,10 +44,14 @@ class InventoryMgr:
         async with PsqlOrm.get().session() as session:
             if item is None:
                 # create new
+                expire_time = (
+                    -1 if (duration_sec == -1 or item_type == ITEM_TYPE_STACKABLE)
+                    else now_ts + duration_sec
+                )
                 item = InventorySchema(
                     user_id=uid,
                     item_id=item_id,
-                    expire_time=(now_ts + duration_sec) if item_type != ITEM_TYPE_STACKABLE else -1,
+                    expire_time = expire_time,
                     value=value if item_type == ITEM_TYPE_STACKABLE else 0,
                 )
                 session.add(item)
@@ -55,16 +60,18 @@ class InventoryMgr:
                 if item_type == ITEM_TYPE_STACKABLE:
                     item.value += value
                 else:
-                    # timed item
-                    if item.expire_time == -1:
-                        # permanent
-                        await session.commit()
-                        self.cache_inventory[uid] = inventory_list
-                        return
-                    # if expired, restart from now
-                    if item.expire_time < now_ts:
-                        item.expire_time = now_ts
-                    item.expire_time += duration_sec
+                    if duration_sec == -1:
+                        # make (or keep) permanent
+                        item.expire_time = -1
+                    else:
+                        # extend time
+                        if item.expire_time == -1:
+                            # already permanent -> no change
+                            pass
+                        else:
+                            if item.expire_time < now_ts:
+                                item.expire_time = now_ts
+                            item.expire_time += duration_sec
 
             await session.commit()
 

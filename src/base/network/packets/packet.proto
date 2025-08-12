@@ -218,6 +218,7 @@ message PaymentGoogleConsume {
 message PaymentSuccess {
   int64 gold = 1;
   string pack_id = 2;
+  repeated RewardInventoryItem items = 3;
 }
 
 message UpdateMoney {
@@ -245,6 +246,7 @@ message ShopConfig {
   int32 price_offer_first = 8;
   string currency_offer_first = 9;
   string pack_id_offer_first = 10;
+  repeated RewardInventoryItem items_offer_first_buy = 11;
 }
 
 message GuestAccount {

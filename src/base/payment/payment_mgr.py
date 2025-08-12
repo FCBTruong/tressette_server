@@ -11,11 +11,39 @@ from src.game.cmds import CMDs
 from src.postgres.sql_models import UserInfoSchema, AppleTransactions
 from src.postgres.orm import PsqlOrm
 from src.base.payment import paypal_pay
+from src.constants import *
 
 # load json config
 # Load the JSON configuration file
 with open('config/shop.json', 'r') as file:
     config = json.load(file)
+
+rewards_offer = [
+        {
+            "item_id": CRYSTAL_ITEM_ID,
+            "value": 1000000            
+        },
+        {
+            "item_id": AVATAR_FRAME_VIP,
+            "value": 1,
+            "duration": PERMANENT_ITEM_EXPIRE_TIME  # Permanent item
+        },
+        {
+            "item_id": CARDBACK_PIZZA_ID,
+            "value": 1,
+            "duration": PERMANENT_ITEM_EXPIRE_TIME  # Permanent item
+        },
+        {
+            "item_id": CARPET_VIP_ID,
+            "value": 1,
+            "duration": PERMANENT_ITEM_EXPIRE_TIME  # Permanent item
+        },
+        {
+            "item_id": CARDBACK_TAROT_ID,
+            "value": 1,
+            "duration": 30  # Permanent item
+        }
+    ]
 
 async def on_receive_packet(uid, cmd_id, payload):
     match cmd_id:
@@ -149,7 +177,25 @@ async def _purchase_success(uid, pack_id, method):
         # save to database
         await user_info.commit_to_database('gold', 'num_payments')
     
+    if pack_id == FIRST_BUY_OFFER_PACK_ID:
+        # give first buy offer rewards
+        for reward in rewards_offer:
+            pkg.rewards.add(
+                item_id=reward["item_id"],
+                value=reward["value"],
+                duration=reward.get("duration", 0)  # days
+            )
+            item_id = reward["item_id"]
+            value = reward["value"]
+            duration = reward.get("duration", 0) # days
+            if duration > 0:
+                duration_sec = duration * 86400
+            else:
+                duration_sec = PERMANENT_ITEM_EXPIRE_TIME
+            await game_vars.get_inventory_mgr().update_inventory(uid, item_id, value, duration_sec)
+    
     await user_info.send_update_money()
+    await game_vars.get_inventory_mgr().send_user_inventory(uid)
 
     # send to user
     await game_vars.get_game_client().send_packet(uid, CMDs.PAYMENT_SUCCESS, pkg)
@@ -208,6 +254,15 @@ async def send_shop_config(uid, platform):
     pkg.currency_offer_first = first_buy_offer.get("currency")
     pkg.pack_id_offer_first = FIRST_BUY_OFFER_PACK_ID
     pkg.no_ads_day_offer_first = first_buy_offer.get("no_ads_days")
+
+    
+    for reward in rewards_offer:
+        item = pkg.items_offer_first_buy.add()
+        item.item_id = reward["item_id"]
+        item.value = reward["value"]
+        if "duration" in reward:
+            item.duration = reward["duration"]
+
 
     await game_vars.get_game_client().send_packet(uid, CMDs.SHOP_CONFIG, pkg)
     print(f"Send shop config to user {uid}", CMDs.SHOP_CONFIG)
