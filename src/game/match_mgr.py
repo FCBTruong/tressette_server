@@ -115,13 +115,19 @@ class MatchManager:
 
         # check if user has enough gold to create table this bet
         user_info = await users_info_mgr.get_user_info(uid)
-        if user_info.gold < self.get_gold_minimum_play():
-            print(f"User {uid} not enough gold")
-            return
+        
         if await self.is_user_in_match(uid):
             return
-    
-
+        
+        fee = tress_config.get("fee_mode_no_bet")
+        if user_info.gold < fee:
+            print(f"User {uid} tried to create a match with insufficient gold")
+            return
+        
+        # sub fee
+        user_info.gold -= fee
+        await user_info.commit_to_database('gold')
+        await user_info.send_update_money()
         
         match = await self._create_match(0, player_mode, is_private, point_mode)
         await self.user_join_match(match, uid)
