@@ -33,7 +33,14 @@
             "gold": 2000000,
             "price": 20,
             "currency": "€",
-            "no_ads_days": 20
+            "no_ads_days": 20,
+            "items": [
+                {
+                    "item_id": 3002,
+                    "value": 5,
+                    "duration": 0
+                }
+            ]
         }   
     ],
     "web_packs": [

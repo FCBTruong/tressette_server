@@ -36,9 +36,14 @@ rewards_offer = [
             "duration": PERMANENT_ITEM_EXPIRE_TIME  # Permanent item
         },
         {
-            "item_id": CARDBACK_TAROT_ID,
+            "item_id": RENAME_CARD_ITEM_ID,
             "value": 1,
-            "duration": 30  # Permanent item
+            "duration": 0
+        },
+        {
+            "item_id": PACK_AVATAR_ANIMAL,
+            "value": 1,
+            "duration": PERMANENT_ITEM_EXPIRE_TIME
         }
     ]
 
@@ -189,11 +194,8 @@ async def _purchase_success(uid, pack_id, method):
             item_id = reward["item_id"]
             value = reward["value"]
             duration = reward.get("duration", 0) # days
-            if duration > 0:
-                duration_sec = duration * 86400
-            else:
-                duration_sec = PERMANENT_ITEM_EXPIRE_TIME
-            await game_vars.get_inventory_mgr().update_inventory(uid, item_id, value, duration_sec)
+            duration_sec = PERMANENT_ITEM_EXPIRE_TIME if duration == -1 else duration * 86400  # convert days to seconds
+            await game_vars.get_inventory_mgr().update_inventory(uid, item_id, duration_sec=duration_sec, value=value)
     
     await user_info.send_update_money()
     await game_vars.get_inventory_mgr().send_user_inventory(uid)
@@ -231,6 +233,7 @@ async def send_shop_config(uid, platform):
     currencies = []
     no_ads_days = []
     
+    details = pkg.details
     if platform == "web":
         packs = shop_config.get("web_packs")
     else:
@@ -242,6 +245,16 @@ async def send_shop_config(uid, platform):
         prices.append(p.get("price"))
         currencies.append(p.get("currency"))
         no_ads_days.append(p.get("no_ads_days", 0))
+
+        items = p.get("items", [])
+        print(f"Pack {p.get('pack_id')} items: {items}")
+        detail_pack = details.add()
+        for item in items:
+            detail_item = detail_pack.items.add()
+            detail_item.item_id = item.get("item_id")
+            detail_item.value = item.get("value", 1)
+            if "duration" in item:
+                detail_item.duration = item.get("duration", 0)
 
     pkg.pack_ids.extend(pack_ids)
     pkg.golds.extend(golds)

@@ -21,7 +21,7 @@ class BotsMgr:
         user.win_count = random.randint(0, user.game_count)
         user.exp = random.randint(500, 5000)
         user.login_type = random.choice([LOGIN_GUEST, LOGIN_GOOGLE])
-        user.avatar_frame = random.choice([AVATAR_FRAME_DEFAULT, AVATAR_FRAME_SEASON, AVATAR_FRAME_VIP])
+        user.avatar_frame = random.choice([AVATAR_FRAME_DEFAULT, AVATAR_FRAME_SEASON, AVATAR_FRAME_VIP, AVATAR_FRAME_GOLD])
 
         self.bots[uid] = user
         return user

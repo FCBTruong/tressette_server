@@ -1167,7 +1167,7 @@ class TressetteMatch(Match):
         # add gold
         for player in self.players:
             player.rewards = []
-            gold_received = 50
+            gold_received = 20
             if player.uid == -1 or player.is_bot:
                 is_bot_win = '0'
                 if player.team_id == self.win_team:
@@ -1177,12 +1177,12 @@ class TressetteMatch(Match):
 
             user_info = await users_info_mgr.get_user_info(player.uid)
             user_info.game_count += 1
-            added_exp = 50
+            added_exp = 20
 
             if player.team_id == self.win_team:
                 user_info.win_count += 1
-                added_exp = added_exp * 2
-                gold_received = gold_received * 2
+                added_exp = 100
+                gold_received = 100
 
                 await game_vars.get_ranking_mgr().on_user_win_game(player.uid)
             

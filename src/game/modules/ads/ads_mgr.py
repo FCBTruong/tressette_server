@@ -28,13 +28,10 @@ class AdsMgr:
                 gold_reward = 100
                 
                 if user_info.num_claimed_ads == 1:
-                    # First time: 90k–100k
-                    gold_reward = random.randint(50, 100)
+                    gold_reward = 100
                 else:
-                    # 30k–60k
-                    gold_reward = random.randint(30, 60)
-               
-                gold_reward = round(gold_reward, -3)
+                    gold_reward = random.choice([50, 60, 70, 80, 90, 100])
+
                 pkg.gold = gold_reward
                 pkg.time_ads_reward = user_info.time_ads_reward
 

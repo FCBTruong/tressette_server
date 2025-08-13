@@ -248,6 +248,11 @@ message ShopConfig {
   string currency_offer_first = 9;
   string pack_id_offer_first = 10;
   repeated RewardInventoryItem items_offer_first_buy = 11;
+  repeated DetailShopPack details = 12;
+}
+
+message DetailShopPack {
+  repeated RewardInventoryItem items = 1;
 }
 
 message GuestAccount {

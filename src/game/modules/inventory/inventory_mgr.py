@@ -199,7 +199,8 @@ class InventoryMgr:
         await user_info.commit_to_database('gold')
         await user_info.send_update_money()
         # Update inventory
-        await self.update_inventory(uid, item_id, duration_sec= duration * 86400)  # convert days to seconds
+        duration_sec = PERMANENT_ITEM_EXPIRE_TIME if duration == -1 else duration * 86400  # convert days to seconds
+        await self.update_inventory(uid, item_id, duration_sec=duration_sec)  
         await self.send_user_inventory(uid)
         await game_vars.get_game_client().send_packet(
             uid, CMDs.BUY_ITEM, buy_item_pkg

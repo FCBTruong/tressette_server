@@ -1,4 +1,40 @@
 {
+    "18": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": -1,
+                "price": 10000
+            }
+        ]
+    },
+    "19": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": -1,
+                "price": 10000
+            }
+        ]
+    },
+    "20": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": -1,
+                "price": 10000
+            }
+        ]
+    },
+    "21": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": -1,
+                "price": 10000
+            }
+        ]
+    },
     "1001": {
         "shop": [
             {
@@ -18,17 +54,17 @@
             }
         ]
     },
-    "1002": {
+    "1004": {
         "shop": [
             {
                 "id": 0,
                 "duration": 7,
-                "price": 5000
+                "price": 50000
             },
             {
                 "id": 1,
                 "duration": 30,
-                "price": 15000
+                "price": 150000
             }
         ]
     },
@@ -51,7 +87,7 @@
             }
         ]
     },
-    "2002": {
+    "2003": {
         "shop": [
             {
                 "id": 0,
@@ -70,22 +106,60 @@
             }
         ]
     },
+    "2004": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 100000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 300000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 800000
+            }
+        ]
+    },
+     "2005": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 1000000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 3000000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 8000000
+            }
+        ]
+    },
     "4001": {
         "shop": [
             {
                 "id": 0,
                 "duration": 7,
-                "price": 3000
+                "price": 5000
             },
             {
                 "id": 1,
                 "duration": 30,
-                "price": 9000
+                "price": 15000
             },
             {
                 "id": 2,
                 "duration": 90,
-                "price": 24000
+                "price": 45000
             }
         ]
     },
@@ -113,17 +187,36 @@
             {
                 "id": 0,
                 "duration": 7,
-                "price": 5000
+                "price": 20000
             },
             {
                 "id": 1,
                 "duration": 30,
-                "price": 15000
+                "price": 60000
             },
             {
                 "id": 2,
                 "duration": 90,
-                "price": 40000
+                "price": 160000
+            }
+        ]
+    },
+    "4005": {
+        "shop": [
+            {
+                "id": 0,
+                "duration": 7,
+                "price": 100000
+            },
+            {
+                "id": 1,
+                "duration": 30,
+                "price": 300000
+            },
+            {
+                "id": 2,
+                "duration": 90,
+                "price": 800000
             }
         ]
     }

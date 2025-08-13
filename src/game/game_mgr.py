@@ -3,6 +3,7 @@
 import asyncio
 from datetime import date, datetime, timezone
 from src.base.network.packets import packet_pb2
+from src.constants import PERMANENT_ITEM_EXPIRE_TIME
 from src.game.users_info_mgr import users_info_mgr
 from src.game.cmds import CMDs
 from src.game.game_vars import game_vars
@@ -153,7 +154,8 @@ class GameMgr:
                     item_id = item["item_id"]
                     duration = item["duration"] # days
                     items.append((item_id, duration))
-                    await game_vars.get_inventory_mgr().update_inventory(uid, item_id, duration_sec=duration * 86400)  # convert days to seconds
+                    duration_sec = PERMANENT_ITEM_EXPIRE_TIME if duration == -1 else duration * 86400  # convert days to seconds
+                    await game_vars.get_inventory_mgr().update_inventory(uid, item_id, duration_sec=duration_sec)  # convert days to seconds
                     
                 break
         user_info.claimed_levels.append(level)
