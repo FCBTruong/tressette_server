@@ -1082,8 +1082,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        # if settings.DEV_MODE:
-        #     return True
+        if settings.DEV_MODE:
+            return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
@@ -1201,12 +1201,12 @@ class TressetteMatch(Match):
                         "value": added_exp
                     }
                 )
-            player.rewards.append({
-                        "item_id": CARDBACK_CAT_ID,
-                        "value": 1,
-                        "duration": 7
-                    }
-                )
+            # player.rewards.append({
+            #             "item_id": CARDBACK_CAT_ID,
+            #             "value": 1,
+            #             "duration": 7
+            #         }
+            #     )
 
             await user_info.commit_to_database('gold', 'game_count', 'win_count', 'exp')
             await user_info.send_update_money()
