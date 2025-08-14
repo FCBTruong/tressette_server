@@ -1,3 +1,0 @@
-
-- user_info: avatar_frame, last_time_online, claimed_levels, num_change_name = 0
-- inventory: new
