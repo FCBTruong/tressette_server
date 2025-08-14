@@ -65,6 +65,9 @@ def _write_dead(batch):
     print(f"Wrote dead letter {len(batch)} events to S3 at {dead_key}")
 
 def _flush_once():
+    if settings.ENABLE_CHEAT:
+        print("Cheat mode enabled, skipping flush.")
+        return
     with _lock:
         if not _log_buf:
             return
@@ -127,3 +130,7 @@ _bg = threading.Thread(target=_flush_loop, daemon=True)
 _bg.start()
 atexit.register(_graceful_shutdown)
 
+if settings.ENABLE_CHEAT:
+    # write test
+    write_log("test_user", "test_action", "test_sub_action", ["test_extra1", "test_extra2"])
+    write_log("test_user2", "test_action2", "test_sub_action2", ["test_extra3"])
