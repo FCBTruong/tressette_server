@@ -3,4 +3,4 @@
 __pycache__
 /src/config/.env
 /secrets
-.local/
+.local

@@ -51,11 +51,18 @@ class CommonSettings(BaseSettings):
     TELEGRAM_BOT_TOKEN: Optional[str] = os.getenv("TELEGRAM_BOT_TOKEN")
     PAYPAL_CLIENT_SECRET: Optional[str] = os.getenv("PAYPAL_CLIENT_SECRET")
 
+class AWSSettings(BaseSettings):
+    AWS_REGION: Optional[str] = os.getenv("AWS_REGION", "eu-south-1")
+    S3_BUCKET: Optional[str] = os.getenv("S3_BUCKET", "clarelogs")
+    APP_NAME: Optional[str] = os.getenv("APP_NAME", "tressette")
+    SHARD_ID: Optional[str] = os.getenv("SHARD_ID", "srv-1")
+    BUFFER_LIMIT: Optional[int] = int(os.getenv("BUFFER_LIMIT", "10000"))  # number of events before forcing flush
 class Settings(
     EnvironmentSettings,
     PostgresSettings,
     RedisSettings,
     CommonSettings,
+    AWSSettings
 ):
     pass
 
