@@ -1,6 +1,7 @@
 import json
 from sqlalchemy import select, update
 from datetime import datetime, timedelta
+from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
 from src.constants import *
@@ -150,6 +151,7 @@ class InventoryMgr:
         await game_vars.get_game_client().send_packet(
             uid, CMDs.USE_ITEM, use_item_pkg
         )
+        write_log(uid, "use_item", item_id, [])
     
     async def handle_cheat_item(self, uid: int, payload):
         if not settings.ENABLE_CHEAT:
@@ -205,6 +207,7 @@ class InventoryMgr:
         await game_vars.get_game_client().send_packet(
             uid, CMDs.BUY_ITEM, buy_item_pkg
         )
+        write_log(uid, "buy_item", item_id, [price, pack_id, duration])
 
         
 

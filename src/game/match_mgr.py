@@ -462,5 +462,7 @@ class MatchManager:
         if match:
             self.user_views[uid] = match_id
             await match.user_view_game(uid)
+
+            write_log(uid, "view_game", match_id, [])
         else:
             logger.warning(f"Match {match_id} not found for user {uid} to view game.")

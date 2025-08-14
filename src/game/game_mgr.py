@@ -2,6 +2,7 @@
 
 import asyncio
 from datetime import date, datetime, timezone
+from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.constants import PERMANENT_ITEM_EXPIRE_TIME
 from src.game.users_info_mgr import users_info_mgr
@@ -175,3 +176,5 @@ class GameMgr:
         if items:
             # Send inventory update
             await game_vars.get_inventory_mgr().send_user_inventory(uid)
+
+        write_log(uid, "claim_reward_level", level, [gold, items])

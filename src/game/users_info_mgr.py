@@ -3,6 +3,7 @@ from datetime import datetime
 import json
 import logging
 # from src.cache import redis_cache
+from src.base.logs.logs_mgr import write_log
 from src.base.network.packets import packet_pb2
 from src.config.settings import settings
 from src.game.game_vars import game_vars
@@ -186,6 +187,7 @@ class UsersInfoMgr:
         user.num_change_name += 1
         await user.commit_to_database("name", "num_change_name")
         await game_vars.get_inventory_mgr().send_user_inventory(uid)
+        write_log(uid, "change_user_name", new_name, [price])
 
 
 
