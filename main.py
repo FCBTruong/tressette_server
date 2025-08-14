@@ -143,8 +143,8 @@ async def get_data_cmds(password, cmd, data: Optional[str] = None):
         elif cmd == "cheat_items":
             if data is None:
                 raise HTTPException(status_code=400, detail="Missing data for cheat items command")
-            uid, item_id, duraction_secs = data.split(',')
-            await game_vars.get_inventory_mgr()._cheat_item(int(uid), int(item_id), duraction_secs=int(duraction_secs))
+            uid, item_id, duration_sec = data.split(',')
+            await game_vars.get_inventory_mgr()._cheat_item(int(uid), int(item_id), duration_sec=int(duration_sec))
             return 'cheat items ok'
         return "hello"
     except Exception as e:
