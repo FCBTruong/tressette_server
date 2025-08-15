@@ -373,11 +373,11 @@ class MatchManager:
         # STEP JOIN A MATCH
         if user.game_count == 0:
             # for new user, should create new match instead
-            match = await self._create_match(0, PLAYER_SOLO_MODE, False, 11)
+            match = await self._create_match(0, PLAYER_SOLO_MODE, False, 21)
         else:
             match = await self.find_a_suitable_match_quickplay()
             if not match:
-                point_mode = random.choice([11, 21])
+                point_mode = random.choice([21])
                 match = await self._create_match(0, PLAYER_SOLO_MODE, False, point_mode)
         
         print(f"User {uid} join match {match.match_id}")
