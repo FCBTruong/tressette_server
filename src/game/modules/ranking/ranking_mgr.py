@@ -46,15 +46,23 @@ class RankingMgr:
             reward.gold_reward = rewards[i]
 
             # add reward item now
+            has_frame = False
             if i == 0:
                 # RANK 1, add special item
                 await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 7 * 86400)  # 7 days
+                has_frame = True
             elif i == 1:
                 # RANK 2, add special item
                 await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 5 * 86400)  # 5 days
+                has_frame = True
             elif i == 2:
                 # RANK 3, add special item
                 await game_vars.get_inventory_mgr().update_inventory(player.uid, AVATAR_FRAME_VICTORY, 3 * 86400)  # 3 days
+                has_frame = True
+            
+            if has_frame:
+                # auto use avatar frame
+                await game_vars.get_inventory_mgr().handle_use_item(player.uid, AVATAR_FRAME_VICTORY)
                 
             async with PsqlOrm.get().session() as session:
                 session.add(reward)

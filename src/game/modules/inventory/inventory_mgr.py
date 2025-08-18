@@ -22,7 +22,7 @@ class InventoryMgr:
     async def on_receive_packet(self, uid: int, cmd_id: int, payload):
         match cmd_id:
             case CMDs.USE_ITEM:
-                await self.handle_use_item(uid, payload)
+                await self.receive_request_use_item(uid, payload)
             case CMDs.CHEAT_ITEM:
                 await self.handle_cheat_item(uid, payload)
             case CMDs.BUY_ITEM:
@@ -116,14 +116,17 @@ class InventoryMgr:
                 pack_item.duration = pack['duration']
         await game_vars.get_game_client().send_packet(uid, CMDs.INVENTORY_SHOP_CONFIG, pkg)
             
-    async def handle_use_item(self, uid: int, payload):
+    async def receive_request_use_item(self, uid: int, payload):
+        use_item_pkg = packet_pb2.UseItem()
+        use_item_pkg.ParseFromString(payload)
+        item_id = use_item_pkg.item_id
+        await self.handle_use_item(uid, item_id)
+    
+    async def handle_use_item(self, uid: int, item_id: int):
         inventory_list = await self.get_inventory(uid)
         if not inventory_list:
             return
         
-        use_item_pkg = packet_pb2.UseItem()
-        use_item_pkg.ParseFromString(payload)
-        item_id = use_item_pkg.item_id
         item = next((i for i in inventory_list if i.item_id == item_id), None)
         if not item:
             print(f"User {uid} tried to use an item that does not exist: {item_id}")
