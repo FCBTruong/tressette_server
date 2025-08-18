@@ -25,12 +25,12 @@ class AdsMgr:
 
                 # send ads reward
                 pkg = packet_pb2.AdsReward()
-                gold_reward = 100
+                gold_reward = 500
                 
                 if user_info.num_claimed_ads == 1:
-                    gold_reward = 100
+                    gold_reward = 1000
                 else:
-                    gold_reward = random.choice([50, 60, 70, 80, 90, 100])
+                    gold_reward = random.choice([500, 600, 700, 800, 900, 1000])
 
                 pkg.gold = gold_reward
                 pkg.time_ads_reward = user_info.time_ads_reward
