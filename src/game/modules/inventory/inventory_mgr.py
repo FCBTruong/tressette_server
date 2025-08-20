@@ -151,6 +151,8 @@ class InventoryMgr:
         await user_info.commit_to_database('avatar_frame')
 
         # send back to user
+        use_item_pkg = packet_pb2.UseItem()
+        use_item_pkg.item_id = item_id
         await game_vars.get_game_client().send_packet(
             uid, CMDs.USE_ITEM, use_item_pkg
         )

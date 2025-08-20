@@ -47,7 +47,7 @@ SETTE_MEZZO_MODE = 1
 SERVER_SCORE_ONE_POINT = 3
 
 TIME_AUTO_PLAY = tress_config.get("time_thinking_in_turn")
-TIME_AUTO_PLAY_SEVERE = min(3, TIME_AUTO_PLAY)
+TIME_AUTO_PLAY_SEVERE = min(1, TIME_AUTO_PLAY)
 TAX_PERCENT = tress_config.get("tax_percent")
 TIME_START_TO_DEAL = 3.5 # seconds
 TIME_DRAW_CARD = 3.5 # seconds
@@ -1082,8 +1082,8 @@ class TressetteMatch(Match):
         self.team_scores = [0, 0]
         for player in self.players:
             self.team_scores[player.team_id] += player.points
-        if settings.DEV_MODE:
-            return True
+        # if settings.DEV_MODE:
+        #     return True
         
         if self.team_scores[0] >= self.point_to_win or self.team_scores[1] >= self.point_to_win:
             return True
