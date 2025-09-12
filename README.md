@@ -69,6 +69,9 @@ python -m grpc_tools.protoc -I. --python_out=. src/base/network/packets/packet.p
 uvicorn main:app --reload
 ```
 
+## Dashboard
+![Overview](assets/metrics-overview.png)
+
 ---
 
 Thanks for reviewing!
