@@ -58,6 +58,7 @@ class InventoryMgr:
                 session.add(item)
                 inventory_list.append(item)
             else:
+                session.add(item)
                 if item_type == ITEM_TYPE_STACKABLE:
                     item.value += value
                 else:
@@ -73,7 +74,7 @@ class InventoryMgr:
                             if item.expire_time < now_ts:
                                 item.expire_time = now_ts
                             item.expire_time += duration_sec
-
+            await session.flush()
             await session.commit()
 
         self.cache_inventory[uid] = inventory_list
