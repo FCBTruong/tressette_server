@@ -6,7 +6,7 @@ from src.config.settings import settings
 SECRET_KEY = settings.JWT_SECRET_KEY  # Replace with a secure secret key
 ALGORITHM = "HS256"
 SESSION_TOKEN_EXPIRE_MINUTES = 60 * 24 * 1  # Token expiration time in minutes # 1 days
-LOGIN_TOKEN_EXPIRE_MINUTES = 60 * 24 * 90  # Token expiration time in minutes # 90 days
+LOGIN_TOKEN_EXPIRE_MINUTES = 60 * 24 * 360  # Token expiration time in minutes # 360 days
 
 
 # Function to create JWT token
