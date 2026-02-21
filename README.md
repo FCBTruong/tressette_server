@@ -1,13 +1,30 @@
-Hi Recruiter,
+Dear Hiring Manager,
 
-This is one of my key projects — a real-time online multiplayer game I built to showcase my backend development skills.
+This project implements an online turn-based card game based on a client–server architecture.
+The server operates as an authoritative source of truth, handling all game logic, validating player actions, and synchronizing game state across clients.
 
-The backend is written in **Python** using **FastAPI**, and communicates via **WebSocket** using **Protobuf** for efficient data transfer.  
-It includes login via Firebase, full multiplayer logic, and supports integrated payments (Apple, Google, PayPal).  
-The system runs on **AWS ECS**, uses **PostgreSQL** for storage, **Redis** for caching, and **Amazon S3** for hosting static assets and CDN.
+## Features
 
-I’ve also implemented async architecture using Python’s `async/await` to handle concurrent connections smoothly.
+* **Core Gameplay Logic**
+  Implements the full turn-based card game mechanics, including turn handling, rule validation, match flow, and win conditions.
 
+* **Authoritative Server Architecture**
+  Server-side validation of all player actions to ensure fairness, consistency, and cheat prevention.
+
+* **User Management**
+  Player registration, authentication, profile management, and account data handling.
+
+* **Inventory System**
+  Manage owned cards, items, rewards, and player assets.
+
+* **In-Game Shop**
+  Purchase cards, packs, or items using in-game currency.
+
+* **Friends & Social System**
+  Add friends, manage friend lists, and enable social interactions between players.
+
+* **Client–Server Networking**
+  Real-time communication between client and server with synchronized game state management.
 
 You can play the game at: [https://tressette.clareentertainment.com/](https://tressette.clareentertainment.com/)
 or download it from Google Play and the App Store (search **Tressette Royal Online**).
